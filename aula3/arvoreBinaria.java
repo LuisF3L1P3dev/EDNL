@@ -75,6 +75,11 @@ public class arvoreBinaria {
         return alturaArvore.calcular(raiz);
     }
 
+    public int contarNos() {
+        // Envia a raiz para a classe responsavel pela contagem dos nos.
+        return numeroNos.contar(raiz);
+    }
+
     public void mostrarArvore() {
         // Envia a raiz para a classe responsavel somente pelo desenho.
         VisualizadorArvore.mostrar(raiz);
@@ -93,6 +98,9 @@ public class arvoreBinaria {
 
         // Calcula a altura considerando o numero de arestas.
         System.out.println("\nAltura da arvore: " + arvore.calcularAltura());
+
+        // Conta somente os nos fisicos; repeticoes ficam em quantidade.
+        System.out.println("Numero de nos: " + arvore.contarNos());
 
         System.out.println("\nPercurso em ordem:");
 
