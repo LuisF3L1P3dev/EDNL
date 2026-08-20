@@ -80,6 +80,11 @@ public class arvoreBinaria {
         return numeroNos.contar(raiz);
     }
 
+    public int contarFolhas() {
+        // Envia a raiz para a classe responsavel pela contagem das folhas.
+        return numeroFolhas.contar(raiz);
+    }
+
     public void mostrarArvore() {
         // Envia a raiz para a classe responsavel somente pelo desenho.
         VisualizadorArvore.mostrar(raiz);
@@ -101,6 +106,9 @@ public class arvoreBinaria {
 
         // Conta somente os nos fisicos; repeticoes ficam em quantidade.
         System.out.println("Numero de nos: " + arvore.contarNos());
+
+        // Conta somente os nos que nao possuem filhos.
+        System.out.println("Numero de folhas: " + arvore.contarFolhas());
 
         System.out.println("\nPercurso em ordem:");
 
