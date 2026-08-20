@@ -78,7 +78,7 @@ public class arvoreBinaria {
     public static void main(String[] args) {
         arvoreBinaria arvore = new arvoreBinaria();
 
-        int[] numeros = {8, 3, 10, 1, 6, 10};
+        int[] numeros = {50,30,70,20,40,60,80,80,20};
 
         // Preenche a arvore com todos os valores.
         arvore.preencher(numeros);
