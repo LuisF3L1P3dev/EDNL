@@ -13,7 +13,8 @@ final class VisualizadorArvore {
             return;
         }
 
-        int altura = calcularAltura(raiz);
+        // Reutiliza a classe responsavel pelo calculo da altura.
+        int altura = alturaArvore.calcular(raiz);
 
         // Evita criar uma linha gigantesca para uma arvore muito alta.
         if (altura > 10) {
@@ -99,17 +100,6 @@ final class VisualizadorArvore {
                 tela
             );
         }
-    }
-
-    private static int calcularAltura(arvoreBinaria.No atual) {
-        if (atual == null) {
-            return -1;
-        }
-
-        return 1 + Math.max(
-            calcularAltura(atual.esquerda),
-            calcularAltura(atual.direita)
-        );
     }
 
     private static int maiorLargura(arvoreBinaria.No atual) {

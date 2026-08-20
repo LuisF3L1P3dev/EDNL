@@ -70,6 +70,11 @@ public class arvoreBinaria {
         mostrarEmOrdem(atual.direita);
     }
 
+    public int calcularAltura() {
+        // Envia a raiz para a classe responsavel pelo calculo da altura.
+        return alturaArvore.calcular(raiz);
+    }
+
     public void mostrarArvore() {
         // Envia a raiz para a classe responsavel somente pelo desenho.
         VisualizadorArvore.mostrar(raiz);
@@ -85,6 +90,9 @@ public class arvoreBinaria {
 
         // Desenha a arvore com a raiz no topo.
         arvore.mostrarArvore();
+
+        // Calcula a altura considerando o numero de arestas.
+        System.out.println("\nAltura da arvore: " + arvore.calcularAltura());
 
         System.out.println("\nPercurso em ordem:");
 
