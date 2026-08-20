@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aula 01 — Árvores: Conceito, Representação e Caminhamentos | Estrutura de Dados Não Lineares — TADS/IFRN</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --if-verde:#2f9e41; --if-vermelho:#cd191e;
+  --bg:#ffffff; --bg2:#f5f7fa; --bg3:#edf0f5; --bg-dest:#e3ecfc;
+  --txt:#1e1e1e; --txt2:#444; --txt3:#666; --tit:#0d0d0d;
+  --ac:#1d5fc4; --ac2:#3b82f6; --verm:#c62828;
+  --verde:#16a34a; --amarelo:#b45309; --roxo:#7c3aed;
+  --brd:#cdd5e0; --rad:10px; --trans:0.3s ease;
+  --fonte:'Raleway',sans-serif; --mono:'Fira Code','Consolas',monospace;
+  --cab-h:78px; --sidebar-w:200px;
+  --term-bg:#12161f; --term-brd:#2a3242;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--fonte);background:var(--bg);color:var(--txt);overflow:hidden;height:100vh;}
+::selection{background:var(--ac);color:#fff;}
+
+.barra-if{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--if-verde) 0%,var(--if-verde) 85%,var(--if-vermelho) 85%);z-index:300;}
+.cab{position:fixed;top:4px;left:0;right:0;display:flex;align-items:center;gap:12px;padding:6px 20px;background:var(--bg2);border-bottom:1px solid var(--brd);z-index:200;height:calc(var(--cab-h) - 4px);}
+.cab img{height:50px;background:#fff;padding:2px 4px;border-radius:3px;}
+.cab .cnt{margin-left:auto;font-size:1.62rem;color:var(--txt3);font-weight:700;}
+.cab-breadcrumb{display:flex;align-items:center;gap:0;margin-left:4px;flex:1;min-width:0;}
+.cab-breadcrumb .current{font-size:1.53rem;font-weight:500;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.sidebar{position:fixed;left:0;top:var(--cab-h);width:var(--sidebar-w);height:calc(100vh - var(--cab-h));background:var(--bg2);border-right:1px solid var(--brd);padding:12px 0;overflow-y:auto;z-index:100;}
+.sidebar::-webkit-scrollbar{width:3px;} .sidebar::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:1.05rem;color:var(--txt3);cursor:pointer;transition:all var(--trans);border-left:3px solid transparent;font-weight:500;line-height:1.3;}
+.nav-item:hover{background:rgba(29,95,196,.07);color:var(--txt);}
+.nav-item.active{color:var(--ac);border-left-color:var(--ac);background:rgba(29,95,196,.1);font-weight:700;}
+.nav-item span{font-size:1.15rem;flex-shrink:0;}
+.nav-item .sub-count{margin-left:auto;font-size:.9rem;background:var(--brd);color:var(--txt2);padding:2px 7px;border-radius:10px;font-weight:700;min-width:22px;text-align:center;}
+.nav-item.active .sub-count{background:rgba(29,95,196,.2);color:var(--ac);}
+
+.progress{position:fixed;bottom:0;left:var(--sidebar-w);right:0;height:3px;background:var(--brd);z-index:200;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#1e40af,var(--ac2));transition:width .4s ease;width:0%;}
+
+.nav-arrows{position:fixed;bottom:24px;right:28px;display:flex;align-items:center;gap:14px;z-index:200;}
+.nav-btn{width:64px;height:64px;border-radius:50%;border:2px solid var(--brd);background:var(--bg2);color:var(--txt);font-size:1.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--trans);box-shadow:0 2px 10px rgba(0,0,0,.12);}
+.nav-btn:hover{border-color:var(--ac);color:var(--ac);background:rgba(29,95,196,.1);box-shadow:0 4px 16px rgba(29,95,196,.2);}
+.nav-btn:active{transform:scale(.92);}
+.nav-btn.disabled{opacity:.2;pointer-events:none;}
+
+.chapter-indicator{position:fixed;bottom:24px;left:var(--sidebar-w);right:0;display:flex;justify-content:center;align-items:center;gap:10px;z-index:199;pointer-events:none;}
+.chapter-dots{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.95);border:1px solid var(--brd);padding:12px 24px;border-radius:24px;pointer-events:all;box-shadow:0 2px 12px rgba(0,0,0,.12);}
+.ch-dot{width:14px;height:14px;border-radius:50%;background:var(--brd);cursor:pointer;transition:all var(--trans);}
+.ch-dot.active{background:var(--ac);transform:scale(1.35);box-shadow:0 0 8px rgba(29,95,196,.4);}
+.ch-dot:hover{background:var(--ac2);}
+.ch-label{font-size:1.5rem;color:var(--txt);margin-right:8px;font-weight:700;white-space:nowrap;}
+
+.slides-area{position:fixed;top:var(--cab-h);left:var(--sidebar-w);right:0;bottom:3px;overflow:hidden;}
+.slide{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding:16px 20px 96px;opacity:0;transform:translateX(30px);transition:opacity .4s ease,transform .4s ease;pointer-events:none;overflow-y:auto;overflow-x:hidden;}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all;}
+.slide::-webkit-scrollbar{width:6px;} .slide::-webkit-scrollbar-thumb{background:var(--brd);border-radius:4px;}
+
+.sc{max-width:100%;width:100%;margin:0;}
+.sc.section-slide{margin:auto 0;}
+.sc.title-slide{margin:auto 0;text-align:center;}
+
+h1{font-size:4.4rem;font-weight:800;color:var(--tit);line-height:1.1;margin-bottom:10px;}
+h2{font-size:3.4rem;font-weight:700;color:var(--tit);line-height:1.1;margin-bottom:10px;}
+h3.label{font-size:1.44rem;text-transform:uppercase;letter-spacing:3px;color:var(--ac);font-weight:700;margin-bottom:6px;}
+h4{font-size:2rem;font-weight:700;color:var(--tit);margin-bottom:6px;}
+
+.txt{font-size:1.84rem;line-height:1.6;color:var(--txt);margin-bottom:10px;text-align:justify;}
+.txt strong{color:var(--tit);font-weight:700;}
+.txt-sm{font-size:1.67rem;line-height:1.6;color:var(--txt2);margin-bottom:8px;text-align:justify;}
+.txt-center{text-align:center;}
+ul.lista,ol.lista{margin:8px 0 8px 22px;font-size:1.6rem;line-height:1.7;color:var(--txt2);}
+ul.lista li,ol.lista li{margin-bottom:4px;}
+ul.lista li strong,ol.lista li strong{color:var(--tit);}
+
+.dest{background:linear-gradient(135deg,#1e3a8a,#2563eb);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:800;}
+
+/* ===== CALLOUTS ===== */
+.analogia,.curiosidade,.dica,.sucesso,.erro,.def{border-radius:0 var(--rad) var(--rad) 0;padding:12px 20px;margin:10px 0;font-size:1.67rem;line-height:1.6;color:var(--txt);}
+.analogia{background:var(--bg-dest);border-left:4px solid var(--ac);}
+.curiosidade{background:rgba(198,40,40,.07);border-left:4px solid var(--verm);}
+.dica{background:rgba(29,95,196,.07);border-left:4px solid var(--ac);}
+.sucesso{background:rgba(22,163,74,.08);border-left:4px solid var(--verde);}
+.erro{background:rgba(180,83,9,.09);border-left:4px solid var(--amarelo);}
+.def{background:rgba(124,58,237,.07);border-left:4px solid var(--roxo);}
+.analogia .al,.curiosidade .cl,.dica .dl,.sucesso .sl,.erro .el,.def .dfl{font-size:1.44rem;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:4px;}
+.analogia .al{color:var(--ac);} .curiosidade .cl{color:var(--verm);} .dica .dl{color:var(--ac);}
+.sucesso .sl{color:var(--verde);} .erro .el{color:var(--amarelo);} .def .dfl{color:var(--roxo);}
+
+/* ===== LAYOUT ===== */
+.cards{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:8px 0;}
+.card{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:14px;flex:1;min-width:180px;max-width:300px;transition:all var(--trans);}
+.card:hover{border-color:var(--ac);transform:translateY(-2px);}
+.card-icon{font-size:2.8rem;display:block;margin-bottom:8px;}
+.card h4{font-size:1.62rem;margin-bottom:4px;}
+.card p{font-size:1.5rem;line-height:1.6;color:var(--txt2);}
+.two-col{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;}
+.three-col{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:8px 0;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0;}
+
+.vs{display:flex;gap:12px;align-items:stretch;margin:8px auto;max-width:100%;flex-wrap:wrap;}
+.vs-col{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:12px 14px;flex:1;min-width:200px;}
+.vs-col ul{list-style:none;padding:0;margin-top:6px;}
+.vs-col li{padding:4px 0;font-size:1.5rem;line-height:1.6;color:var(--txt2);border-bottom:1px solid var(--brd);}
+.vs-col li:last-child{border:none;}
+.vs-div{display:flex;align-items:center;font-weight:800;font-size:1.7rem;color:var(--txt3);}
+
+.items{display:flex;flex-direction:column;gap:6px;margin:8px 0;}
+.it{display:flex;align-items:flex-start;gap:12px;background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:10px 14px;font-size:1.6rem;line-height:1.6;color:var(--txt);}
+.it-icon{font-size:1.8rem;flex-shrink:0;margin-top:2px;}
+
+.tbl{width:100%;border-collapse:collapse;margin:8px 0;font-size:1.6rem;}
+.tbl th{background:var(--bg-dest);color:var(--ac);padding:8px 14px;text-align:left;font-weight:700;font-size:1.44rem;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid var(--ac);}
+.tbl td{padding:8px 14px;border-bottom:1px solid var(--brd);color:var(--txt);line-height:1.5;}
+.tbl tr:hover td{background:rgba(29,95,196,.05);}
+.tbl td strong{color:var(--tit);}
+.tbl.compacta{font-size:1.44rem;} .tbl.compacta td,.tbl.compacta th{padding:5px 10px;}
+.tbl td.mono,.tbl th.mono{font-family:var(--mono);}
+
+.title-slide .inst{font-size:1.44rem;text-transform:uppercase;letter-spacing:4px;color:var(--txt3);margin-bottom:20px;}
+.title-slide h1{font-size:5rem;margin-bottom:12px;}
+.title-slide .sub{font-size:2rem;color:var(--txt2);font-weight:300;margin-bottom:16px;}
+.title-slide .prof{font-size:1.6rem;color:var(--txt3);margin-top:14px;}
+.title-slide .badge{display:inline-block;background:var(--bg-dest);border:1px solid var(--ac);color:var(--ac);padding:8px 22px;border-radius:20px;font-size:1.5rem;font-weight:600;margin-top:12px;}
+.section-slide{text-align:center;}
+.section-slide .big-icon{font-size:6rem;margin-bottom:16px;}
+.section-slide h1{font-size:4.4rem;}
+.section-slide .sub{font-size:1.8rem;color:var(--txt2);font-weight:300;margin-top:10px;max-width:820px;margin-left:auto;margin-right:auto;line-height:1.7;}
+
+kbd{background:var(--bg3);border:1px solid var(--brd);border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:1.5rem;}
+.verm{color:var(--verm);} .verd{color:var(--verde);} .amar{color:var(--amarelo);} .azul{color:var(--ac);}
+
+/* ===== TIMELINE ===== */
+.timeline{display:flex;flex-direction:column;gap:0;margin:10px 0;position:relative;}
+.timeline::before{content:'';position:absolute;left:22px;top:0;bottom:0;width:2px;background:var(--brd);}
+.tl-item{display:flex;gap:14px;padding:8px 0;position:relative;}
+.tl-dot{width:44px;height:44px;border-radius:50%;background:var(--bg-dest);border:2px solid var(--ac);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;z-index:1;}
+.tl-body{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:10px 14px;flex:1;}
+.tl-body h4{font-size:1.6rem;font-weight:700;color:var(--tit);margin-bottom:2px;}
+.tl-body p{font-size:1.44rem;color:var(--txt2);line-height:1.5;margin:0;}
+.tl-tag{font-size:1.2rem;background:rgba(29,95,196,.12);color:var(--ac);padding:2px 8px;border-radius:10px;font-weight:700;display:inline-block;margin-bottom:3px;}
+
+/* --- Terminal / saída de comando --- */
+.term{background:var(--term-bg);border:1px solid var(--term-brd);border-radius:var(--rad);padding:12px 16px;margin:8px 0;font-family:var(--mono);font-size:1.44rem;line-height:1.7;color:#d7e0ee;overflow-x:auto;white-space:pre;}
+.term .p{color:#4ade80;}
+.term .c{color:#7dd3fc;}
+.term .o{color:#8b97ab;}
+.term .hl{color:#fbbf24;font-weight:600;}
+
+/* --- Bloco de código-fonte --- */
+.code{background:var(--term-bg);border:1px solid var(--term-brd);border-radius:var(--rad);margin:8px 0;overflow:hidden;}
+.code-cab{display:flex;align-items:center;gap:10px;background:#1b2130;border-bottom:1px solid var(--term-brd);padding:6px 14px;font-family:var(--mono);font-size:1.32rem;color:#9fb0c9;}
+.code-cab .arq{color:#7dd3fc;font-weight:600;}
+.code-cab .cmp{margin-left:auto;color:#6b7a90;font-size:1.2rem;}
+.code pre{padding:10px 14px;font-family:var(--mono);font-size:1.38rem;line-height:1.65;color:#d7e0ee;overflow-x:auto;white-space:pre;counter-reset:ln;}
+.code pre .ln{display:inline-block;width:2.4em;color:#4b5768;user-select:none;text-align:right;margin-right:12px;}
+.code pre .lin{display:block;}
+.code pre .lin.mark{background:rgba(251,191,36,.13);border-left:3px solid #fbbf24;margin-left:-14px;padding-left:11px;}
+.code .k{color:#c084fc;}
+.code .f{color:#7dd3fc;}
+.code .s{color:#86efac;}
+.code .cm{color:#6b7a90;font-style:italic;}
+.code .n{color:#fbbf24;}
+.code .t{color:#5eead4;}
+
+/* --- Notas numeradas --- */
+.notas{display:flex;flex-direction:column;gap:5px;margin:6px 0 8px;}
+.nota{display:flex;gap:10px;align-items:flex-start;font-size:1.5rem;line-height:1.55;color:var(--txt2);}
+.nota .num{flex:0 0 26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-size:1.25rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.nota strong{color:var(--tit);}
+
+/* --- Passo a passo --- */
+.passos{display:flex;flex-direction:column;gap:7px;margin:8px 0;}
+.passo{display:flex;gap:12px;align-items:flex-start;background:var(--bg3);border:1px solid var(--brd);border-left:4px solid var(--ac);border-radius:0 var(--rad) var(--rad) 0;padding:9px 14px;}
+.passo .pn{flex:0 0 32px;height:32px;border-radius:8px;background:var(--bg-dest);color:var(--ac);font-size:1.5rem;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.passo .pb{flex:1;font-size:1.5rem;line-height:1.55;color:var(--txt2);}
+.passo .pb b{color:var(--tit);}
+
+/* --- Quiz --- */
+.quiz{background:var(--bg-dest);border:1px solid var(--ac);border-radius:var(--rad);padding:12px 16px;margin:8px 0;}
+.quiz-q{font-size:1.6rem;font-weight:700;color:var(--tit);line-height:1.5;margin-bottom:8px;}
+.quiz-q::before{content:'❓ ';}
+.quiz-alts{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
+.quiz-alt{font-size:1.5rem;color:var(--txt2);background:#fff;border:1px solid var(--brd);border-radius:6px;padding:6px 12px;cursor:pointer;transition:all var(--trans);}
+.quiz-alt:hover{border-color:var(--ac);background:rgba(29,95,196,.06);}
+.quiz-alt.ok{border-color:var(--verde);background:rgba(22,163,74,.1);color:var(--verde);font-weight:600;}
+.quiz-alt.no{border-color:var(--verm);background:rgba(198,40,40,.08);color:var(--verm);text-decoration:line-through;}
+.quiz-btn{background:var(--ac);color:#fff;border:none;border-radius:6px;padding:7px 18px;font-family:var(--fonte);font-size:1.44rem;font-weight:700;cursor:pointer;transition:all var(--trans);}
+.quiz-btn:hover{background:var(--ac2);}
+.quiz-r{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--ac);font-size:1.5rem;line-height:1.6;color:var(--txt);}
+.quiz-r.show{display:block;}
+.quiz-r b{color:var(--verde);}
+
+/* --- Exercício resolvido --- */
+.exerc{background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:12px 16px;margin:8px 0;}
+.exerc-t{font-size:1.44rem;text-transform:uppercase;letter-spacing:2px;color:var(--roxo);font-weight:700;margin-bottom:6px;}
+.exerc-e{font-size:1.55rem;line-height:1.6;color:var(--txt);margin-bottom:8px;}
+.exerc-s{font-size:1.5rem;line-height:1.65;color:var(--txt2);border-top:1px dashed var(--brd);padding-top:8px;}
+.exerc-s b{color:var(--tit);}
+
+/* Resumo final */
+.resumo{display:flex;flex-direction:column;gap:6px;margin:8px 0;}
+.res-i{display:flex;gap:12px;align-items:flex-start;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.3);border-radius:var(--rad);padding:9px 14px;font-size:1.55rem;line-height:1.55;color:var(--txt);}
+.res-i .rn{flex:0 0 26px;height:26px;border-radius:50%;background:var(--verde);color:#fff;font-size:1.25rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+
+/* Referências */
+.refs{font-size:1.44rem;line-height:1.7;color:var(--txt2);margin:8px 0;}
+.refs li{margin-bottom:5px;margin-left:20px;}
+.refs b{color:var(--tit);}
+.refs .fonte{font-size:1.25rem;color:var(--txt3);font-style:italic;}
+
+/* ===== Diagrama de árvore em CSS puro (organograma) ===== */
+.arv-wrap{overflow-x:auto;max-width:100%;padding:8px 0 16px;}
+.arvore, .arvore ul{padding-top:20px;position:relative;transition:all .3s;display:flex;justify-content:center;}
+.arvore li{display:flex;flex-direction:column;align-items:center;list-style-type:none;position:relative;padding:20px 10px 0 10px;transition:all .3s;}
+.arvore > li{display:inline-block;}
+.arvore ul{display:flex;flex-direction:row;padding-top:20px;}
+.arvore li::before, .arvore li::after{content:'';position:absolute;top:0;right:50%;border-top:2px solid var(--brd);width:50%;height:20px;}
+.arvore li::after{right:auto;left:50%;border-left:2px solid var(--brd);}
+.arvore li:only-child::after, .arvore li:only-child::before{display:none;}
+.arvore li:only-child{padding-top:0;}
+.arvore li:first-child::before, .arvore li:last-child::after{border:0 none;}
+.arvore li:last-child::before{border-right:2px solid var(--brd);border-radius:0 5px 0 0;}
+.arvore li:first-child::after{border-radius:5px 0 0 0;}
+.arvore ul::before{content:'';position:absolute;top:0;left:50%;border-left:2px solid var(--brd);width:0;height:20px;}
+.arvore li .no-arv{border:2px solid var(--ac);border-radius:8px;padding:6px 16px;display:inline-block;background:var(--bg-dest);color:var(--ac);font-weight:700;font-family:var(--mono);font-size:1.5rem;min-width:16px;text-align:center;transition:all .3s;white-space:nowrap;}
+.arvore li .no-arv.raiz{border-color:var(--roxo);color:var(--roxo);}
+.arvore li .no-arv.visitado{background:var(--verde);border-color:var(--verde);color:#fff;transform:scale(1.15);}
+
+/* --- Painel de simulação --- */
+.sim-painel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);padding:10px 16px;}
+.sim-painel .sim-label{font-size:1.5rem;color:var(--txt2);margin-right:4px;}
+.sim-painel input[type=number]{font-family:var(--mono);font-size:1.5rem;padding:6px 10px;border:1px solid var(--brd);border-radius:6px;width:110px;}
+.sim-btn{background:var(--ac);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-family:var(--fonte);font-size:1.44rem;font-weight:700;cursor:pointer;transition:all var(--trans);}
+.sim-btn:hover{background:var(--ac2);}
+.sim-btn.sec{background:var(--bg2);color:var(--txt2);border:1px solid var(--brd);}
+.sim-btn.sec:hover{border-color:var(--ac);color:var(--ac);background:rgba(29,95,196,.06);}
+.sim-msg{font-size:1.3rem;color:var(--verm);min-height:1.3em;margin:2px 0 4px;}
+.sim-seq{font-family:var(--mono);font-size:1.6rem;background:var(--term-bg);color:#d7e0ee;border-radius:var(--rad);padding:12px 16px;min-height:1.6em;margin-top:8px;letter-spacing:.5px;}
+
+/* Compactação de espaçamentos (não mexe em tamanho de fonte) — caber em 1600x900 sem rolagem. */
+.slide h2{margin-bottom:6px;}
+.slide .items{gap:5px;}
+.slide .it{padding:8px 12px;}
+.slide .analogia,.slide .curiosidade,.slide .dica,
+.slide .sucesso,.slide .erro,.slide .def{padding:9px 16px;margin:8px 0;}
+.slide .passos{gap:6px;}
+.slide .passo{padding:7px 12px;}
+.slide .tbl.compacta td,.slide .tbl.compacta th{padding:4px 10px;}
+.slide .timeline .tl-item{padding:5px 0;}
+.slide .vs-col{padding:10px 14px;}
+.slide .card{padding:12px;}
+.slide .exerc{padding:10px 14px;}
+.slide .quiz{padding:10px 14px;}
+.slide .resumo{gap:5px;}
+.slide .res-i{padding:7px 14px;}
+.slide .txt-sm{margin-bottom:6px;}
+.slide .notas{gap:4px;}
+.slide .cards,.slide .grid2,.slide .two-col{gap:8px;}
+.slide .vs{gap:10px;}
+.slide .timeline .tl-item{padding:4px 0;}
+.slide .tl-body{padding:8px 12px;}
+.slide .code{margin:6px 0;}
+.slide .term{margin:6px 0;padding:10px 14px;}
+
+@media(max-width:900px){
+  .sidebar{width:155px;} :root{--sidebar-w:155px;}
+  h1{font-size:3rem;} h2{font-size:2.4rem;}
+  .slide{padding:20px 18px 80px;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+}
+@media(max-width:640px){
+  .sidebar{display:none;} :root{--sidebar-w:0px;}
+  .slide{padding:16px 14px 80px;}
+}
+</style>
+</head>
+<body>
+
+<div class="barra-if"></div>
+<div class="cab">
+  <img src="images/logo-horizontal.png" alt="IFRN">
+  <div class="cab-breadcrumb">
+    <span class="current">Estrutura de Dados Não Lineares · Aula 01 — Árvores</span>
+  </div>
+  <span class="cnt" id="counter">1/1</span>
+</div>
+
+<nav class="sidebar">
+  <div class="nav-item active" data-chapter="0" onclick="goTo(0)"><span>🏠</span> Abertura<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="1" onclick="goTo(1)"><span>🎯</span> Objetivos<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="2" onclick="goTo(2)"><span>🌳</span> Conceito e terminologia<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="3" onclick="goTo(3)"><span>🌿</span> Árvores genéricas<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="4" onclick="goTo(4)"><span>🔀</span> Árvores binárias<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="5" onclick="goTo(5)"><span>🔍</span> Árvores binárias de busca<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="6" onclick="goTo(6)"><span>🧭</span> Caminhamentos<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="7" onclick="goTo(7)"><span>🕹️</span> Simulação<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="8" onclick="goTo(8)"><span>🏭</span> Aplicações práticas<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="9" onclick="goTo(9)"><span>✏️</span> Exercícios resolvidos<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="10" onclick="goTo(10)"><span>📌</span> Resumo<span class="sub-count"></span></div>
+  <div class="nav-item" data-chapter="11" onclick="goTo(11)"><span>🔗</span> Referências<span class="sub-count"></span></div>
+</nav>
+
+<div class="progress"><div class="progress-fill" id="fill"></div></div>
+
+<div class="slides-area">
+
+<!-- ===================== CAP 0 — ABERTURA ===================== -->
+<div class="slide active" data-chapter="0">
+  <div class="sc title-slide">
+    <p class="inst">Instituto Federal do Rio Grande do Norte — Tecnologia em Análise e Desenvolvimento de Sistemas</p>
+    <h1>Árvores: a estrutura por trás de <span class="dest">toda hierarquia</span></h1>
+    <p class="sub">De pastas de arquivo a índices de banco de dados — o primeiro bloco de construção das estruturas não lineares</p>
+    <p class="prof">Aula 01 · Unidade 1 — Árvores · Prof(a). [seu nome] — IFRN — 2026.2</p>
+    <span class="badge">Estrutura de Dados Não Lineares · Unidade 1</span>
+  </div>
+</div>
+
+<div class="slide" data-chapter="0">
+  <div class="sc">
+    <h3 class="label">Plano de hoje</h3>
+    <h2>O que vamos ver <span class="dest">nesta aula</span></h2>
+
+    <div class="cards">
+      <div class="card"><span class="card-icon">🌳</span><h4>Conceito e terminologia</h4><p>Raiz, nó, folha, altura, profundidade — o vocabulário que vamos usar o semestre inteiro.</p></div>
+      <div class="card"><span class="card-icon">🌿</span><h4>Genéricas × binárias</h4><p>Quando um nó pode ter N filhos, e quando ele tem no máximo dois.</p></div>
+      <div class="card"><span class="card-icon">🔍</span><h4>ABB e caminhamentos</h4><p>Como inserir, buscar e visitar cada nó de quatro formas diferentes.</p></div>
+      <div class="card"><span class="card-icon">🕹️</span><h4>Simulação + exercícios</h4><p>Você constrói a árvore na tela e resolve exercícios com o algoritmo na mão.</p></div>
+    </div>
+
+    <div class="dica">
+      <div class="dl">💡 De onde viemos</div>
+      Na Aula 00 vimos que estruturas lineares não representam bem relações de hierarquia. Hoje começamos a resolver exatamente esse problema: <strong>árvores</strong>.
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 1 — OBJETIVOS ===================== -->
+<div class="slide" data-chapter="1">
+  <div class="sc">
+    <h3 class="label">Objetivos de aprendizagem</h3>
+    <h2>Ao final desta aula, você será capaz de…</h2>
+
+    <div class="items">
+      <div class="it"><span class="it-icon">1️⃣</span><span><strong>Definir árvore formalmente</strong> e nomear seus elementos: raiz, nó, aresta, folha, altura, profundidade, grau.</span></div>
+      <div class="it"><span class="it-icon">2️⃣</span><span><strong>Diferenciar árvores genéricas de árvores binárias</strong> e escolher a representação computacional adequada a cada caso.</span></div>
+      <div class="it"><span class="it-icon">3️⃣</span><span><strong>Implementar uma árvore binária de busca</strong> — inserção, busca e os três casos de remoção.</span></div>
+      <div class="it"><span class="it-icon">4️⃣</span><span><strong>Executar os quatro algoritmos de caminhamento</strong> (pré-ordem, em-ordem, pós-ordem, em nível) e saber quando usar cada um.</span></div>
+      <div class="it"><span class="it-icon">5️⃣</span><span><strong>Reconhecer árvores</strong> em sistemas reais: bancos de dados, compiladores, sistemas de arquivos.</span></div>
+    </div>
+
+    <div class="dica">
+      <div class="dl">💡 Um aviso desde já</div>
+      Vamos ver, ainda hoje, que uma árvore binária de busca "comum" pode degenerar numa lista encadeada. É exatamente esse problema que as árvores <strong>AVL</strong>, <strong>rubro-negra</strong> e <strong>B/B+</strong> das próximas aulas resolvem.
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 2 — CONCEITO E TERMINOLOGIA ===================== -->
+<div class="slide" data-chapter="2">
+  <div class="sc section-slide">
+    <span class="big-icon">🌳</span>
+    <h1>O que é, formalmente, <span class="dest">uma árvore</span>?</h1>
+    <p class="sub">Um conjunto de nós ligados por arestas, organizados em níveis, a partir de um único nó especial: a raiz.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="2">
+  <div class="sc">
+    <h3 class="label">Definição</h3>
+    <h2>Uma <span class="dest">hierarquia</span>, não uma sequência</h2>
+
+    <p class="txt-sm">Uma <strong>árvore</strong> é uma estrutura de dados formada por um conjunto de nós, na qual: (1) existe um único nó especial, chamado <strong>raiz</strong>, sem pai; (2) todo outro nó tem <strong>exatamente um pai</strong>; e (3) não existem ciclos — não há como, partindo de um nó, voltar a ele mesmo seguindo as arestas.</p>
+
+    <div class="arv-wrap">
+      <ul class="arvore">
+        <li><span class="no-arv raiz">raiz</span>
+          <ul>
+            <li><span class="no-arv">nó</span>
+              <ul>
+                <li><span class="no-arv">folha</span></li>
+                <li><span class="no-arv">folha</span></li>
+              </ul>
+            </li>
+            <li><span class="no-arv">nó</span>
+              <ul>
+                <li><span class="no-arv">folha</span></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="def"><div class="dfl">📐 Regra da árvore</div>Todo nó tem <strong>um único caminho</strong> até a raiz. É essa unicidade que distingue uma árvore de um grafo qualquer — assunto que vamos retomar a partir da Unidade 6.</div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="2">
+  <div class="sc">
+    <h3 class="label">Vocabulário essencial</h3>
+    <h2>O <span class="dest">glossário</span> que vamos usar o semestre inteiro</h2>
+
+    <table class="tbl compacta">
+      <thead><tr><th>Termo</th><th>Definição</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Nó / vértice</strong></td><td>Cada elemento armazenado na árvore</td></tr>
+        <tr><td><strong>Raiz</strong></td><td>O único nó sem pai — ponto de entrada da árvore</td></tr>
+        <tr><td><strong>Pai / filho</strong></td><td>Relação direta entre dois nós ligados por uma aresta</td></tr>
+        <tr><td><strong>Irmãos</strong></td><td>Nós que compartilham o mesmo pai</td></tr>
+        <tr><td><strong>Folha</strong></td><td>Nó sem filhos</td></tr>
+        <tr><td><strong>Nó interno</strong></td><td>Nó com pelo menos um filho</td></tr>
+        <tr><td><strong>Grau de um nó</strong></td><td>Número de filhos que ele tem</td></tr>
+        <tr><td><strong>Profundidade (nível)</strong></td><td>Número de arestas da raiz até esse nó</td></tr>
+        <tr><td><strong>Altura da árvore</strong></td><td>A maior profundidade entre todas as folhas</td></tr>
+        <tr><td><strong>Subárvore</strong></td><td>Um nó e todos os seus descendentes, vistos como uma árvore à parte</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="slide" data-chapter="2">
+  <div class="sc">
+    <h3 class="label">Representação computacional</h3>
+    <h2>Como isso vira <span class="dest">código</span></h2>
+
+    <div class="items">
+      <div class="it"><span class="it-icon">🌿</span><span><strong>Árvore genérica</strong> — cada nó guarda uma <strong>lista de filhos</strong>, de tamanho variável.</span></div>
+      <div class="it"><span class="it-icon">🔀</span><span><strong>Árvore binária</strong> — cada nó guarda no máximo <strong>duas referências nomeadas</strong>: esquerda e direita.</span></div>
+      <div class="it"><span class="it-icon">📊</span><span><strong>Representação sequencial (array)</strong> — usada em árvores binárias completas (como heaps, na próxima unidade): o filho esquerdo do nó <kbd>i</kbd> fica no índice <kbd>2i+1</kbd>, o direito em <kbd>2i+2</kbd>.</span></div>
+    </div>
+
+    <div class="dica"><div class="dl">💡 O que vem depois</div>A representação por array só funciona bem quando a árvore é "completa" (sem buracos) — é exatamente o caso dos heaps, que vemos na Unidade 2. Para ABB, AVL e árvores B, usamos referências ligadas.</div>
+  </div>
+</div>
+
+<!-- ===================== CAP 3 — ÁRVORES GENÉRICAS ===================== -->
+<div class="slide" data-chapter="3">
+  <div class="sc section-slide">
+    <span class="big-icon">🌿</span>
+    <h1>Um nó, <span class="dest">quantos filhos precisar</span></h1>
+    <p class="sub">Numa árvore genérica não existe limite de filhos por nó — a única regra é a própria definição de árvore: um pai, zero ou mais filhos, sem ciclos.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="3">
+  <div class="sc">
+    <h3 class="label">Exemplo — organograma</h3>
+    <h2>Uma hierarquia com <span class="dest">graus variados</span></h2>
+
+    <div class="arv-wrap">
+      <ul class="arvore">
+        <li><span class="no-arv raiz">Diretoria</span>
+          <ul>
+            <li><span class="no-arv">TI</span>
+              <ul>
+                <li><span class="no-arv">Dev</span></li>
+                <li><span class="no-arv">Suporte</span></li>
+              </ul>
+            </li>
+            <li><span class="no-arv">Vendas</span>
+              <ul>
+                <li><span class="no-arv">Norte</span></li>
+                <li><span class="no-arv">Sul</span></li>
+                <li><span class="no-arv">Centro</span></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="analogia"><div class="al">💡 Repare no nó "Vendas"</div>Ele tem <strong>três</strong> filhos, enquanto "TI" tem dois. Numa árvore genérica isso é perfeitamente normal — o grau de cada nó pode variar livremente.</div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="3">
+  <div class="sc">
+    <h3 class="label">Genérica × binária</h3>
+    <h2>A mesma ideia, <span class="dest">duas restrições</span> diferentes</h2>
+
+    <div class="two-col" style="align-items:flex-start;gap:14px;">
+      <div style="flex:1;">
+        <div class="code">
+          <div class="code-cab"><span class="arq">NoGenerico.java</span><span class="cmp">lista de filhos</span></div>
+          <pre><span class="lin"><span class="k">public class</span> <span class="t">NoGenerico</span>&lt;<span class="t">T</span>&gt; {</span><span class="lin">    <span class="t">T</span> valor;</span><span class="lin">    <span class="t">List</span>&lt;<span class="t">NoGenerico</span>&lt;<span class="t">T</span>&gt;&gt; filhos</span><span class="lin">        = <span class="k">new</span> <span class="f">ArrayList</span>&lt;&gt;();</span><span class="lin">}</span></pre>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div class="vs" style="margin:0;">
+          <div class="vs-col">
+            <h4 class="azul">🌿 Genérica</h4>
+            <ul>
+              <li>0..N filhos por nó</li>
+              <li>Filhos numa lista</li>
+              <li>Sistema de arquivos, organograma</li>
+            </ul>
+          </div>
+          <div class="vs-col">
+            <h4 class="azul">🔀 Binária</h4>
+            <ul>
+              <li>No máximo 2 filhos</li>
+              <li>Esquerda e direita nomeados</li>
+              <li>ABB, heap, árvore de expressão</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dica"><div class="dl">💡 Uma inclusão especial</div>Toda árvore binária <em>é</em> uma árvore genérica — só que com uma regra extra (no máximo 2 filhos, e a ordem entre eles importa). Ela ganha teoria própria por ser extremamente comum na prática.</div>
+  </div>
+</div>
+
+<!-- ===================== CAP 4 — ÁRVORES BINÁRIAS ===================== -->
+<div class="slide" data-chapter="4">
+  <div class="sc section-slide">
+    <span class="big-icon">🔀</span>
+    <h1>No máximo <span class="dest">dois</span> filhos — e a ordem importa</h1>
+    <p class="sub">Numa árvore binária, "filho esquerdo" e "filho direito" não são intercambiáveis: são posições distintas, mesmo quando um nó tem só um filho.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="4">
+  <div class="sc">
+    <h3 class="label">Formatos possíveis</h3>
+    <h2>Nem toda árvore binária é <span class="dest">bem-comportada</span></h2>
+
+    <table class="tbl compacta">
+      <thead><tr><th>Tipo</th><th>Característica</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cheia (full)</strong></td><td>Todo nó tem 0 ou 2 filhos — nunca exatamente 1</td></tr>
+        <tr><td><strong>Completa</strong></td><td>Todos os níveis cheios, exceto possivelmente o último, preenchido da esquerda para a direita</td></tr>
+        <tr><td><strong>Perfeita</strong></td><td>Todos os níveis completamente cheios — folhas todas na mesma profundidade</td></tr>
+        <tr><td><strong>Degenerada</strong></td><td>Cada nó tem no máximo 1 filho — vira, na prática, uma lista encadeada</td></tr>
+      </tbody>
+    </table>
+
+    <div class="arv-wrap">
+      <ul class="arvore">
+        <li><span class="no-arv raiz">10</span>
+          <ul>
+            <li><span class="no-arv">20</span>
+              <ul>
+                <li><span class="no-arv">30</span>
+                  <ul><li><span class="no-arv">40</span></li></ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <p class="txt-sm" style="text-align:center;color:var(--txt3);">↑ Árvore degenerada — mesma altura de uma lista de 4 elementos</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="4">
+  <div class="sc">
+    <h3 class="label">Representação em código</h3>
+    <h2>O nó que sustenta <span class="dest">tudo</span> daqui pra frente</h2>
+
+    <div class="two-col" style="align-items:flex-start;gap:14px;">
+      <div style="flex:1;">
+        <div class="code">
+          <div class="code-cab"><span class="arq">NoArvoreBinaria.java</span><span class="cmp">classe genérica</span></div>
+          <pre><span class="lin"><span class="k">public class</span> <span class="t">NoArvoreBinaria</span>&lt;<span class="t">T</span>&gt; {</span><span class="lin">    <span class="t">T</span> valor;</span><span class="lin">    <span class="t">NoArvoreBinaria</span>&lt;<span class="t">T</span>&gt; esquerda;</span><span class="lin">    <span class="t">NoArvoreBinaria</span>&lt;<span class="t">T</span>&gt; direita;</span><span class="lin">}</span></pre>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div class="def">
+          <div class="dfl">📐 Altura, em números</div>
+          Com <kbd>n</kbd> nós, a altura mínima possível é <strong>⌊log₂ n⌋</strong> (árvore perfeita/completa) — e a altura máxima é <strong>n − 1</strong> (árvore degenerada, como a da página anterior).
+        </div>
+        <div class="curiosidade">
+          <div class="cl">🔥 Por que isso importa</div>
+          A diferença entre <kbd>log₂ n</kbd> e <kbd>n</kbd> é a diferença entre uma busca instantânea e uma busca lenta — a mesma ideia de custo que vimos na Aula 00.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 5 — ÁRVORES BINÁRIAS DE BUSCA ===================== -->
+<div class="slide" data-chapter="5">
+  <div class="sc section-slide">
+    <span class="big-icon">🔍</span>
+    <h1>Uma regra a mais: <span class="dest">esquerda menor, direita maior</span></h1>
+    <p class="sub">A árvore binária de busca (ABB) acrescenta uma única propriedade à árvore binária — e essa propriedade é o que permite buscar em O(log n).</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="5">
+  <div class="sc">
+    <h3 class="label">A propriedade da ABB</h3>
+    <h2>Um exemplo que vamos <span class="dest">reutilizar</span> a aula toda</h2>
+
+    <p class="txt-sm">Para <strong>todo</strong> nó da árvore: tudo na subárvore esquerda é <strong>menor</strong> que ele, e tudo na subárvore direita é <strong>maior</strong>. A árvore abaixo é o resultado de inserir, nessa ordem, 50, 30, 70, 20, 40, 60, 80 numa ABB vazia:</p>
+
+    <div class="arv-wrap">
+      <ul class="arvore">
+        <li><span class="no-arv raiz" id="ex-50">50</span>
+          <ul>
+            <li><span class="no-arv" id="ex-30">30</span>
+              <ul>
+                <li><span class="no-arv" id="ex-20">20</span></li>
+                <li><span class="no-arv" id="ex-40">40</span></li>
+              </ul>
+            </li>
+            <li><span class="no-arv" id="ex-70">70</span>
+              <ul>
+                <li><span class="no-arv" id="ex-60">60</span></li>
+                <li><span class="no-arv" id="ex-80">80</span></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="def"><div class="dfl">📐 Consequência prática</div>Buscar um valor é, a cada nó, uma única comparação: se for menor, vá à esquerda; se for maior, vá à direita. Numa árvore balanceada, isso custa <strong>O(log n)</strong>.</div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="5">
+  <div class="sc">
+    <h3 class="label">Algoritmo de inserção</h3>
+    <h2>Sempre <span class="dest">o mesmo caminho</span> da busca</h2>
+
+    <div class="passos">
+      <div class="passo"><span class="pn">1</span><span class="pb">Se a árvore está vazia, o novo valor <b>vira a raiz</b>.</span></div>
+      <div class="passo"><span class="pn">2</span><span class="pb">Compare o valor a inserir com o nó atual, começando pela raiz.</span></div>
+      <div class="passo"><span class="pn">3</span><span class="pb">Se for <b>menor</b>, repita o processo na subárvore <b>esquerda</b>.</span></div>
+      <div class="passo"><span class="pn">4</span><span class="pb">Se for <b>maior</b>, repita o processo na subárvore <b>direita</b>.</span></div>
+      <div class="passo"><span class="pn">5</span><span class="pb">Ao encontrar uma posição vazia, <b>insira o novo nó</b> ali.</span></div>
+    </div>
+
+    <div class="notas">
+      <div class="nota"><span class="num">1</span><span><strong>Remover uma folha</strong> — basta desligá-la do pai.</span></div>
+      <div class="nota"><span class="num">2</span><span><strong>Remover um nó com um filho</strong> — o filho assume o lugar do nó removido.</span></div>
+      <div class="nota"><span class="num">3</span><span><strong>Remover um nó com dois filhos</strong> — substitui-se pelo sucessor (menor valor da subárvore direita) e remove-se o sucessor de sua posição original.</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="5">
+  <div class="sc">
+    <h3 class="label">O aviso da Aula 00, formalizado</h3>
+    <h2>Inserir em <span class="dest">ordem</span> é a pior coisa que você pode fazer</h2>
+
+    <div class="erro">
+      <div class="el">⚠️ Uma ABB comum não garante nada no pior caso</div>
+      Se você inserir 10, 20, 30, 40, 50 — <strong>já em ordem crescente</strong> — cada novo valor vira filho direito do anterior. O resultado é uma árvore degenerada: altura <kbd>n − 1</kbd>, busca <kbd>O(n)</kbd>. A árvore existe, mas perdeu a vantagem que motivou usá-la.
+    </div>
+    <div class="sucesso">
+      <div class="sl">✅ É exatamente esse problema que as próximas 4 unidades resolvem</div>
+      Árvores <strong>AVL</strong> (Unidade 3), <strong>rubro-negra</strong> (Unidade 4) e <strong>B/B+</strong> (Unidade 5) acrescentam regras de <strong>balanceamento</strong> — rotações e reorganizações automáticas — para garantir altura <kbd>O(log n)</kbd> mesmo no pior caso de inserção.
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 6 — CAMINHAMENTOS ===================== -->
+<div class="slide" data-chapter="6">
+  <div class="sc section-slide">
+    <span class="big-icon">🧭</span>
+    <h1>Quatro formas de <span class="dest">visitar</span> cada nó</h1>
+    <p class="sub">Um caminhamento (ou percurso) visita todos os nós de uma árvore exatamente uma vez — a ordem em que isso acontece muda o que você consegue fazer com o resultado.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="6">
+  <div class="sc">
+    <h3 class="label">Os quatro algoritmos</h3>
+    <h2>Mesma árvore, <span class="dest">ordens</span> diferentes</h2>
+
+    <table class="tbl compacta">
+      <thead><tr><th>Caminhamento</th><th>Ordem de visita</th><th>Usado para</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Pré-ordem</strong></td><td class="mono">raiz → esq → dir</td><td>Copiar / serializar a árvore</td></tr>
+        <tr><td><strong>Em-ordem</strong></td><td class="mono">esq → raiz → dir</td><td>Numa ABB, visita em ordem <strong>crescente</strong></td></tr>
+        <tr><td><strong>Pós-ordem</strong></td><td class="mono">esq → dir → raiz</td><td>Apagar a árvore com segurança; avaliar expressões</td></tr>
+        <tr><td><strong>Em nível (BFS)</strong></td><td class="mono">nível a nível, com fila</td><td>Imprimir por nível; achar o nó mais raso</td></tr>
+      </tbody>
+    </table>
+
+    <div class="dica"><div class="dl">💡 Pilha ou fila?</div>Pré, em- e pós-ordem são <strong>recursivos</strong> — usam a pilha de chamadas implicitamente. O caminhamento em nível é diferente: usa uma <strong>fila</strong> explícita — os mesmos conceitos LIFO/FIFO da Estrutura de Dados Lineares, agora aplicados a uma árvore.</div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="6">
+  <div class="sc">
+    <h3 class="label">Passo a passo — pré-ordem</h3>
+    <h2>Na mesma árvore de <span class="dest">50, 30, 70…</span></h2>
+
+    <div class="arv-wrap">
+      <ul class="arvore">
+        <li><span class="no-arv raiz">50</span>
+          <ul>
+            <li><span class="no-arv">30</span>
+              <ul><li><span class="no-arv">20</span></li><li><span class="no-arv">40</span></li></ul>
+            </li>
+            <li><span class="no-arv">70</span>
+              <ul><li><span class="no-arv">60</span></li><li><span class="no-arv">80</span></li></ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="it"><span class="it-icon">1️⃣</span><span><strong>Pré-ordem:</strong> 50, 30, 20, 40, 70, 60, 80</span></div>
+      <div class="it"><span class="it-icon">2️⃣</span><span><strong>Em-ordem:</strong> 20, 30, 40, 50, 60, 70, 80</span></div>
+      <div class="it"><span class="it-icon">3️⃣</span><span><strong>Pós-ordem:</strong> 20, 40, 30, 60, 80, 70, 50</span></div>
+      <div class="it"><span class="it-icon">4️⃣</span><span><strong>Em nível:</strong> 50, 30, 70, 20, 40, 60, 80</span></div>
+    </div>
+
+    <div class="analogia"><div class="al">💡 Repare</div>Em-ordem devolveu os valores <strong>em ordem crescente</strong> — não por acaso: é uma consequência direta da propriedade da ABB.</div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="6">
+  <div class="sc">
+    <h3 class="label">Em código</h3>
+    <h2>Três funções, <span class="dest">uma linha</span> de diferença</h2>
+
+    <div class="two-col" style="align-items:flex-start;gap:14px;">
+      <div style="flex:1;">
+        <div class="code">
+          <div class="code-cab"><span class="arq">Caminhamentos.java</span><span class="cmp">recursivo</span></div>
+          <pre><span class="lin"><span class="k">void</span> <span class="f">preOrdem</span>(<span class="t">No</span> no) {</span><span class="lin">    <span class="k">if</span> (no == <span class="k">null</span>) <span class="k">return</span>;</span><span class="lin">    <span class="f">visita</span>(no);</span><span class="lin">    <span class="f">preOrdem</span>(no.esquerda);</span><span class="lin">    <span class="f">preOrdem</span>(no.direita);</span><span class="lin">}</span><span class="lin">    </span><span class="lin"><span class="k">void</span> <span class="f">emOrdem</span>(<span class="t">No</span> no) {</span><span class="lin">    <span class="k">if</span> (no == <span class="k">null</span>) <span class="k">return</span>;</span><span class="lin">    <span class="f">emOrdem</span>(no.esquerda);</span><span class="lin">    <span class="f">visita</span>(no);</span><span class="lin">    <span class="f">emOrdem</span>(no.direita);</span><span class="lin">}</span></pre>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div class="dica">
+          <div class="dl">💡 A diferença é só a ordem das 3 linhas</div>
+          <kbd>visita()</kbd>, <kbd>esquerda</kbd> e <kbd>direita</kbd> aparecem sempre — o que muda é a <strong>posição</strong> de <kbd>visita()</kbd> entre as duas chamadas recursivas. Pós-ordem só move <kbd>visita(no)</kbd> para o final.
+        </div>
+        <div class="def"><div class="dfl">📐 E o caminhamento em nível?</div>Não é recursivo: usa uma <strong>fila</strong> — insere a raiz, e a cada passo remove um nó da fila, visita, e insere seus filhos (se existirem) no final da fila.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="6">
+  <div class="sc">
+    <h3 class="label">Testando a intuição</h3>
+    <h2>Qual é a <span class="dest">ordem de visita</span>?</h2>
+
+    <div class="quiz">
+      <div class="quiz-q">Na árvore com raiz 50, filhos 30 e 70, e netos 20, 40, 60, 80 — qual é a sequência de visita em pós-ordem?</div>
+      <div class="quiz-alts">
+        <div class="quiz-alt" onclick="marcar(this)">a) 50, 30, 20, 40, 70, 60, 80</div>
+        <div class="quiz-alt" onclick="marcar(this)">b) 20, 30, 40, 50, 60, 70, 80</div>
+        <div class="quiz-alt" data-ok="1" onclick="marcar(this)">c) 20, 40, 30, 60, 80, 70, 50</div>
+        <div class="quiz-alt" onclick="marcar(this)">d) 50, 30, 70, 20, 40, 60, 80</div>
+      </div>
+      <button class="quiz-btn" onclick="verResp(this)">Ver resposta</button>
+      <div class="quiz-r"><b>Resposta: (c).</b> Pós-ordem visita esquerda, depois direita, e só então a raiz — em cada subárvore. (a) é pré-ordem, (b) é em-ordem, (d) é o caminhamento em nível.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 7 — SIMULAÇÃO ===================== -->
+<div class="slide" data-chapter="7">
+  <div class="sc section-slide">
+    <span class="big-icon">🕹️</span>
+    <h1>Construa sua <span class="dest">ABB</span> e veja os caminhamentos</h1>
+    <p class="sub">Insira valores, veja a árvore se reorganizar sozinha, e rode cada algoritmo de caminhamento para ver, na prática, a ordem em que os nós são visitados.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="7">
+  <div class="sc">
+    <h3 class="label">Simulação interativa</h3>
+    <h2>Sua <span class="dest">árvore binária de busca</span></h2>
+
+    <div class="sim-painel">
+      <span class="sim-label">Inserir valor:</span>
+      <input type="number" id="simInput" placeholder="ex: 42">
+      <button class="sim-btn" onclick="simInserirDoInput()">➕ Inserir</button>
+      <button class="sim-btn sec" onclick="simCarregarExemplo()">📋 Carregar exemplo (50,30,70,20,40,60,80)</button>
+      <button class="sim-btn sec" onclick="simResetar()">🗑️ Resetar</button>
+    </div>
+    <div class="sim-msg" id="simMsg"></div>
+
+    <div class="arv-wrap"><div id="arvoreSimCtn"><p class="txt-sm" style="text-align:center;color:var(--txt3);">Árvore vazia — insira um valor ou carregue o exemplo para começar.</p></div></div>
+
+    <div class="sim-painel">
+      <span class="sim-label">Caminhamento:</span>
+      <button class="sim-btn" onclick="simAnimar('pre')">Pré-ordem</button>
+      <button class="sim-btn" onclick="simAnimar('in')">Em-ordem</button>
+      <button class="sim-btn" onclick="simAnimar('pos')">Pós-ordem</button>
+      <button class="sim-btn" onclick="simAnimar('nivel')">Em nível</button>
+    </div>
+    <div class="sim-seq" id="simSequencia">—</div>
+  </div>
+</div>
+
+<!-- ===================== CAP 8 — APLICAÇÕES PRÁTICAS ===================== -->
+<div class="slide" data-chapter="8">
+  <div class="sc section-slide">
+    <span class="big-icon">🏭</span>
+    <h1>Árvores em <span class="dest">produção</span></h1>
+    <p class="sub">Do compilador que roda o seu código ao banco de dados que guarda seus registros — árvores aparecem em toda camada de um sistema.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="8">
+  <div class="sc">
+    <h3 class="label">Onde você já usa isso</h3>
+    <h2>Seis sistemas, <span class="dest">uma ideia</span></h2>
+
+    <div class="cards">
+      <div class="card"><span class="card-icon">🗄️</span><h4>Índices de banco de dados</h4><p>Um <kbd>SELECT</kbd> rápido depende de uma árvore (B+ Tree) por trás do índice.</p></div>
+      <div class="card"><span class="card-icon">🗂️</span><h4>Sistema de arquivos</h4><p>Pastas dentro de pastas — uma árvore genérica na prática.</p></div>
+      <div class="card"><span class="card-icon">🌐</span><h4>DOM de páginas web</h4><p>O navegador percorre a árvore de elementos HTML para renderizar a tela.</p></div>
+      <div class="card"><span class="card-icon">🧮</span><h4>Compiladores</h4><p>Toda expressão que você escreve vira uma <strong>árvore de sintaxe</strong> antes de ser executada.</p></div>
+      <div class="card"><span class="card-icon">📄</span><h4>JSON / XML</h4><p>Dados aninhados (objeto dentro de objeto) são, estruturalmente, árvores.</p></div>
+      <div class="card"><span class="card-icon">🧭</span><h4>Árvores de decisão</h4><p>Modelos de machine learning e assistentes guiados escolhem entre alternativas, nível a nível.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="8">
+  <div class="sc">
+    <h3 class="label">Um caso concreto — árvore de expressão</h3>
+    <h2>(3 + 4) × 5 vira <span class="dest">uma árvore</span></h2>
+
+    <div class="two-col" style="align-items:flex-start;gap:14px;">
+      <div style="flex:1;">
+        <div class="arv-wrap">
+          <ul class="arvore">
+            <li><span class="no-arv raiz">*</span>
+              <ul>
+                <li><span class="no-arv">+</span>
+                  <ul><li><span class="no-arv">3</span></li><li><span class="no-arv">4</span></li></ul>
+                </li>
+                <li><span class="no-arv">5</span></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div class="items">
+          <div class="it"><span class="it-icon">1️⃣</span><span><strong>Pré-ordem:</strong> <kbd>* + 3 4 5</kbd> — notação <strong>prefixa</strong> (polonesa)</span></div>
+          <div class="it"><span class="it-icon">2️⃣</span><span><strong>Em-ordem:</strong> <kbd>3 + 4 * 5</kbd> — notação <strong>infixa</strong>, a do dia a dia</span></div>
+          <div class="it"><span class="it-icon">3️⃣</span><span><strong>Pós-ordem:</strong> <kbd>3 4 + 5 *</kbd> — notação <strong>posfixa</strong> (RPN)</span></div>
+        </div>
+        <div class="curiosidade"><div class="cl">🔥 A posfixa reaproveita a pilha</div>Calculadoras HP e a avaliação interna de compiladores usam a notação posfixa porque ela se avalia com uma <strong>pilha</strong>: empilhe números, e a cada operador desempilhe dois e empilhe o resultado — sem precisar de parênteses.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 9 — EXERCÍCIOS RESOLVIDOS ===================== -->
+<div class="slide" data-chapter="9">
+  <div class="sc section-slide">
+    <span class="big-icon">✏️</span>
+    <h1>Agora é a sua <span class="dest">vez</span></h1>
+    <p class="sub">Dois exercícios resolvidos passo a passo — construção de uma ABB e leitura dos quatro caminhamentos.</p>
+  </div>
+</div>
+
+<div class="slide" data-chapter="9">
+  <div class="sc">
+    <h3 class="label">Exercício 1</h3>
+    <div class="exerc">
+      <div class="exerc-t">📝 Enunciado</div>
+      <div class="exerc-e">Insira, nessa ordem, os valores <strong>45, 20, 60, 10, 30, 50, 70, 25</strong> numa ABB inicialmente vazia. Desenhe a árvore resultante e informe sua altura.</div>
+      <div class="exerc-s">
+        <b>Solução — inserindo um a um:</b><br>
+        45 → raiz · 20 → esquerda de 45 · 60 → direita de 45 · 10 → esquerda de 20 · 30 → direita de 20 · 50 → esquerda de 60 · 70 → direita de 60 · <strong>25</strong> → menor que 45, menor que 45... vai à esquerda (20), maior que 20 → direita (30), <strong>menor</strong> que 30 → vira o filho esquerdo de 30.
+        <br><br>
+        <div class="arv-wrap">
+          <ul class="arvore">
+            <li><span class="no-arv raiz">45</span>
+              <ul>
+                <li><span class="no-arv">20</span>
+                  <ul>
+                    <li><span class="no-arv">10</span></li>
+                    <li><span class="no-arv">30</span>
+                      <ul><li><span class="no-arv">25</span></li></ul>
+                    </li>
+                  </ul>
+                </li>
+                <li><span class="no-arv">60</span>
+                  <ul><li><span class="no-arv">50</span></li><li><span class="no-arv">70</span></li></ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <b>Altura: 3</b> (45 → 20 → 30 → 25). Note que o ramo direito (60) ficou bem mais raso que o esquerdo — um sinal de desbalanceamento, mesmo numa árvore pequena.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-chapter="9">
+  <div class="sc">
+    <h3 class="label">Exercício 2</h3>
+    <div class="exerc">
+      <div class="exerc-t">📝 Enunciado</div>
+      <div class="exerc-e">Para a árvore com raiz 50, filhos 30 e 70, e netos 20, 40, 60, 80, escreva a sequência de visita nos quatro caminhamentos estudados.</div>
+      <div class="exerc-s">
+        <b>Solução:</b>
+        <div class="notas">
+          <div class="nota"><span class="num">1</span><span><strong>Pré-ordem</strong> (raiz, esq, dir): 50, 30, 20, 40, 70, 60, 80</span></div>
+          <div class="nota"><span class="num">2</span><span><strong>Em-ordem</strong> (esq, raiz, dir): 20, 30, 40, 50, 60, 70, 80</span></div>
+          <div class="nota"><span class="num">3</span><span><strong>Pós-ordem</strong> (esq, dir, raiz): 20, 40, 30, 60, 80, 70, 50</span></div>
+          <div class="nota"><span class="num">4</span><span><strong>Em nível</strong> (fila, nível a nível): 50, 30, 70, 20, 40, 60, 80</span></div>
+        </div>
+        Repare que o em-ordem é o único que devolve os valores já ordenados — consequência direta da propriedade da ABB, não coincidência.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 10 — RESUMO ===================== -->
+<div class="slide" data-chapter="10">
+  <div class="sc">
+    <h3 class="label">Fechando a aula</h3>
+    <h2>O que <span class="dest">leva</span> para casa</h2>
+
+    <div class="resumo">
+      <div class="res-i"><span class="rn">1</span><span>Árvore é uma hierarquia: um nó especial (raiz) sem pai, todo outro nó com exatamente um pai, sem ciclos.</span></div>
+      <div class="res-i"><span class="rn">2</span><span>Árvore genérica permite N filhos por nó; árvore binária limita a 2 (esquerda/direita) — e a ordem entre eles importa.</span></div>
+      <div class="res-i"><span class="rn">3</span><span>ABB acrescenta uma regra: esquerda menor, raiz, direita maior — o que permite buscar em O(log n), <strong>se</strong> a árvore estiver balanceada.</span></div>
+      <div class="res-i"><span class="rn">4</span><span>Os quatro caminhamentos (pré, em-, pós-ordem e em nível) visitam os mesmos nós em ordens diferentes, cada uma útil para um problema diferente.</span></div>
+      <div class="res-i"><span class="rn">5</span><span><strong>Próxima aula:</strong> filas de prioridade com heaps — a árvore binária que sempre mantém o elemento mais urgente no topo.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAP 11 — REFERÊNCIAS ===================== -->
+<div class="slide" data-chapter="11">
+  <div class="sc">
+    <h3 class="label">Referências</h3>
+    <h2>De onde veio o conteúdo desta <span class="dest">aula</span></h2>
+
+    <ul class="refs">
+      <li><b>Plano de Disciplina de Curso — Estrutura de Dados Não Lineares.</b> IFRN, Unidade 1 — Árvores. <span class="fonte">Material/Ementa.pdf</span></li>
+      <li><b>CORMEN, Thomas H. et al.; SOUZA, Vandenberg D. de.</b> <i>Algoritmos: teoria e prática</i>. Rio de Janeiro: Elsevier, 2012. Cap. 12 — Árvores de busca binária. <span class="fonte">Material/algoritmos-teoria-e-prc3a1tica-3ed-thomas-cormen.pdf, a partir da p. 244 do PDF</span></li>
+      <li><b>LINTZMAYER, Carla N.; MOTA, Guilherme O.</b> <i>Análise de Algoritmos e de Estruturas de Dados</i>. UFABC/USP. Cap. 11 — Árvores (busca, inserção, remoção, altura). <span class="fonte">Material/livro_AAED.pdf, p. 139–151</span></li>
+      <li><b>CORTÉS, Mariela Inés.</b> <i>Estrutura de Dados</i>. 3. ed. Fortaleza: UAB/UECE, 2015. Cap. 6 — Árvores, inclui ordens de percurso. <span class="fonte">Material/Estrutura-de-Dados-2014.pdf, p. 85–103</span></li>
+      <li><b>TENENBAUM, Aaron M.; LANGSAM, Yedidyah et al.</b> <i>Estruturas de Dados Usando C</i>. Cap. 5 — Árvores; Cap. 7.2 — Busca em árvores. <span class="fonte">Material/ESTRUTURAS DE DADOS USANDO C (AARON TENENBAUM, YEDIDYAH LANGSAM etc.).pdf, p. 303–350 e 510–537</span></li>
+    </ul>
+
+    <p class="txt-sm" style="margin-top:6px;color:var(--txt3);text-align:center;">Prof(a). [seu nome] — IFRN — Estrutura de Dados Não Lineares — TADS — 2026.2</p>
+  </div>
+</div>
+
+</div><!-- /slides-area -->
+
+<div class="nav-arrows">
+  <button class="nav-btn" id="btnPrev" title="Slide anterior (←)">&#8592;</button>
+  <button class="nav-btn" id="btnNext" title="Próximo slide (→)">&#8594;</button>
+</div>
+
+<div class="chapter-indicator">
+  <div class="chapter-dots" id="chapterDots"></div>
+</div>
+
+<script>
+const slides  = document.querySelectorAll('.slide'),
+      navs    = document.querySelectorAll('.nav-item'),
+      ctr     = document.getElementById('counter'),
+      fill    = document.getElementById('fill'),
+      btnPrev = document.getElementById('btnPrev'),
+      btnNext = document.getElementById('btnNext'),
+      dotsCtn = document.getElementById('chapterDots');
+
+let cur = 0;
+const total = slides.length;
+
+const chapterMap = {};
+slides.forEach((s, i) => {
+  const ch = s.dataset.chapter;
+  if (!chapterMap[ch]) chapterMap[ch] = [];
+  chapterMap[ch].push(i);
+});
+
+navs.forEach(nav => {
+  const ch = nav.dataset.chapter;
+  const badge = nav.querySelector('.sub-count');
+  if (badge && chapterMap[ch]) {
+    const count = chapterMap[ch].length;
+    badge.textContent = count > 1 ? count : '';
+  }
+});
+
+function renderDots() {
+  const ch = slides[cur].dataset.chapter;
+  const indices = chapterMap[ch] || [];
+  dotsCtn.innerHTML = '';
+  if (indices.length <= 1) { dotsCtn.parentElement.style.opacity = '0'; return; }
+  dotsCtn.parentElement.style.opacity = '1';
+  const pos = indices.indexOf(cur);
+  const lbl = document.createElement('span');
+  lbl.className = 'ch-label';
+  lbl.textContent = (pos + 1) + '/' + indices.length;
+  dotsCtn.appendChild(lbl);
+  indices.forEach((slideIdx, dotIdx) => {
+    const dot = document.createElement('span');
+    dot.className = 'ch-dot' + (slideIdx === cur ? ' active' : '');
+    dot.title = 'Slide ' + (dotIdx + 1) + ' de ' + indices.length;
+    dot.addEventListener('click', () => go(slideIdx));
+    dotsCtn.appendChild(dot);
+  });
+}
+
+function updateArrows() {
+  btnPrev.classList.toggle('disabled', cur === 0);
+  btnNext.classList.toggle('disabled', cur === total - 1);
+}
+
+function go(n) {
+  if (n < 0 || n >= total) return;
+  slides[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  ctr.textContent = (cur + 1) + '/' + total;
+  fill.style.width = ((cur + 1) / total * 100) + '%';
+  const ch = slides[cur].dataset.chapter;
+  navs.forEach(v => { v.classList.toggle('active', v.dataset.chapter === ch); });
+  slides[cur].scrollTop = 0;
+  renderDots();
+  updateArrows();
+}
+
+function goTo(ch) {
+  for (let i = 0; i < total; i++) {
+    if (slides[i].dataset.chapter == ch) { go(i); return; }
+  }
+}
+
+btnPrev.addEventListener('click', () => go(cur - 1));
+btnNext.addEventListener('click', () => go(cur + 1));
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' || e.key === ' ') go(cur + 1);
+  if (e.key === 'ArrowLeft') go(cur - 1);
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End') go(total - 1);
+});
+
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const d = e.changedTouches[0].clientX - tx;
+  if (d < -50) go(cur + 1);
+  if (d > 50) go(cur - 1);
+});
+
+/* ---- Helpers didáticos ---- */
+function verResp(btn) {
+  const box = btn.closest('.quiz').querySelector('.quiz-r');
+  box.classList.toggle('show');
+  btn.textContent = box.classList.contains('show') ? 'Esconder resposta' : 'Ver resposta';
+}
+
+function marcar(el) {
+  el.classList.add(el.dataset.ok === '1' ? 'ok' : 'no');
+  if (el.dataset.ok === '1') {
+    el.closest('.quiz').querySelectorAll('.quiz-alt').forEach(a => {
+      if (a !== el && a.dataset.ok !== '1') a.classList.add('no');
+    });
+  }
+}
+
+go(0);
+</script>
+
+<!-- ===================== SIMULAÇÃO — ABB (simARV_) ===================== -->
+<script>
+let simRaiz = null;
+let simIdCounter = 0;
+let simAnimTimer = null;
+
+function simInserirNo(no, valor) {
+  if (!no) return { id: 'sn' + (simIdCounter++), valor: valor, esq: null, dir: null };
+  if (valor < no.valor) no.esq = simInserirNo(no.esq, valor);
+  else if (valor > no.valor) no.dir = simInserirNo(no.dir, valor);
+  return no;
+}
+
+function simExisteValor(no, valor) {
+  if (!no) return false;
+  if (valor === no.valor) return true;
+  return valor < no.valor ? simExisteValor(no.esq, valor) : simExisteValor(no.dir, valor);
+}
+
+function simInserir(valor) {
+  const msg = document.getElementById('simMsg');
+  if (simExisteValor(simRaiz, valor)) {
+    msg.textContent = '⚠️ O valor ' + valor + ' já existe na árvore — ABB não guarda duplicatas.';
+    return;
+  }
+  msg.textContent = '';
+  simRaiz = simInserirNo(simRaiz, valor);
+  simRenderizar();
+}
+
+function simInserirDoInput() {
+  const input = document.getElementById('simInput');
+  const valor = parseInt(input.value, 10);
+  const msg = document.getElementById('simMsg');
+  if (isNaN(valor)) { msg.textContent = '⚠️ Digite um número inteiro para inserir.'; return; }
+  simInserir(valor);
+  input.value = '';
+  input.focus();
+}
+
+function simCarregarExemplo() {
+  simRaiz = null;
+  simIdCounter = 0;
+  [50, 30, 70, 20, 40, 60, 80].forEach(v => { simRaiz = simInserirNo(simRaiz, v); });
+  document.getElementById('simMsg').textContent = '';
+  document.getElementById('simSequencia').textContent = '—';
+  simRenderizar();
+}
+
+function simResetar() {
+  simRaiz = null;
+  simIdCounter = 0;
+  clearInterval(simAnimTimer);
+  document.getElementById('simMsg').textContent = '';
+  document.getElementById('simSequencia').textContent = '—';
+  simRenderizar();
+}
+
+function simRenderNo(no) {
+  if (!no) return '';
+  let html = '<li><span class="no-arv' + (no === simRaiz ? ' raiz' : '') + '" id="' + no.id + '">' + no.valor + '</span>';
+  if (no.esq || no.dir) {
+    html += '<ul>';
+    if (no.esq) html += simRenderNo(no.esq);
+    if (no.dir) html += simRenderNo(no.dir);
+    html += '</ul>';
+  }
+  html += '</li>';
+  return html;
+}
+
+function simRenderizar() {
+  const ctn = document.getElementById('arvoreSimCtn');
+  if (!simRaiz) {
+    ctn.innerHTML = '<p class="txt-sm" style="text-align:center;color:var(--txt3);">Árvore vazia — insira um valor ou carregue o exemplo para começar.</p>';
+    return;
+  }
+  ctn.innerHTML = '<ul class="arvore">' + simRenderNo(simRaiz) + '</ul>';
+}
+
+function simPre(no, out) { if (!no) return; out.push(no); simPre(no.esq, out); simPre(no.dir, out); }
+function simIn(no, out) { if (!no) return; simIn(no.esq, out); out.push(no); simIn(no.dir, out); }
+function simPos(no, out) { if (!no) return; simPos(no.esq, out); simPos(no.dir, out); out.push(no); }
+function simNivel(raiz, out) {
+  if (!raiz) return;
+  const fila = [raiz];
+  while (fila.length) {
+    const atual = fila.shift();
+    out.push(atual);
+    if (atual.esq) fila.push(atual.esq);
+    if (atual.dir) fila.push(atual.dir);
+  }
+}
+
+function simColetarOrdem(tipo) {
+  const ordem = [];
+  if (tipo === 'pre') simPre(simRaiz, ordem);
+  if (tipo === 'in') simIn(simRaiz, ordem);
+  if (tipo === 'pos') simPos(simRaiz, ordem);
+  if (tipo === 'nivel') simNivel(simRaiz, ordem);
+  return ordem;
+}
+
+function simAnimar(tipo) {
+  const msg = document.getElementById('simMsg');
+  if (!simRaiz) { msg.textContent = '⚠️ Insira valores na árvore antes de rodar um caminhamento.'; return; }
+  msg.textContent = '';
+  clearInterval(simAnimTimer);
+  document.querySelectorAll('#arvoreSimCtn .no-arv').forEach(el => el.classList.remove('visitado'));
+  const ordem = simColetarOrdem(tipo);
+  const seqEl = document.getElementById('simSequencia');
+  seqEl.textContent = '';
+  let i = 0;
+  simAnimTimer = setInterval(() => {
+    if (i >= ordem.length) { clearInterval(simAnimTimer); return; }
+    const no = ordem[i];
+    const el = document.getElementById(no.id);
+    if (el) el.classList.add('visitado');
+    seqEl.textContent += (i > 0 ? '  →  ' : '') + no.valor;
+    i++;
+  }, 650);
+}
+</script>
+
+</body>
+</html>
