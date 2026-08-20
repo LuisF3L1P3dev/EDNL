@@ -70,6 +70,11 @@ public class arvoreBinaria {
         mostrarEmOrdem(atual.direita);
     }
 
+    public void mostrarArvore() {
+        // Envia a raiz para a classe responsavel somente pelo desenho.
+        VisualizadorArvore.mostrar(raiz);
+    }
+
     public static void main(String[] args) {
         arvoreBinaria arvore = new arvoreBinaria();
 
@@ -77,6 +82,11 @@ public class arvoreBinaria {
 
         // Preenche a arvore com todos os valores.
         arvore.preencher(numeros);
+
+        // Desenha a arvore com a raiz no topo.
+        arvore.mostrarArvore();
+
+        System.out.println("\nPercurso em ordem:");
 
         // Exibe os valores em ordem crescente.
         arvore.mostrarEmOrdem();
