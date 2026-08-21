@@ -25,11 +25,8 @@ public class arvoreBinaria {
     private No raiz;
 
     public void preencher(int[] numeros) {
-        // Percorre todos os numeros do vetor.
-        for (int numero : numeros) {
-            // Reutiliza a insercao de um unico numero.
-            inserirNumero(numero);
-        }
+        // Envia a raiz e o vetor para a classe responsavel pelo preenchimento.
+        raiz = inserirNumero.preencher(raiz, numeros);
     }
 
     public void inserirNumero(int numero) {
@@ -37,7 +34,7 @@ public class arvoreBinaria {
          * Atualiza a raiz porque, se a arvore estiver vazia,
          * o novo no criado devera se tornar a raiz.
          */
-        raiz = inserir(raiz, numero);
+        raiz = inserirNumero.inserir(raiz, numero);
     }
 
     public void deletarNumero(int numero) {
@@ -46,27 +43,6 @@ public class arvoreBinaria {
          * ou substituida durante a operacao.
          */
         raiz = deletarNo.remover(raiz, numero);
-    }
-
-    private No inserir(No atual, int numero) {
-        // Encontramos uma posicao vazia.
-        if (atual == null) {
-            return new No(numero);
-        }
-
-        if (numero < atual.valor) {
-            // Numeros menores pertencem a subarvore esquerda.
-            atual.esquerda = inserir(atual.esquerda, numero);
-        } else if (numero > atual.valor) {
-            // Numeros maiores pertencem a subarvore direita.
-            atual.direita = inserir(atual.direita, numero);
-        } else {
-            // O numero ja existe: nao criamos outro no.
-            atual.quantidade++;
-        }
-
-        // Devolve o no com suas possiveis alteracoes.
-        return atual;
     }
 
     public void mostrarEmOrdem() {
