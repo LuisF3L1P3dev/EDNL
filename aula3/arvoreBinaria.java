@@ -40,6 +40,14 @@ public class arvoreBinaria {
         raiz = inserir(raiz, numero);
     }
 
+    public void deletarNumero(int numero) {
+        /*
+         * Atualiza a raiz porque ela tambem pode ser removida
+         * ou substituida durante a operacao.
+         */
+        raiz = deletarNo.remover(raiz, numero);
+    }
+
     private No inserir(No atual, int numero) {
         // Encontramos uma posicao vazia.
         if (atual == null) {
@@ -106,8 +114,13 @@ public class arvoreBinaria {
         // Preenche a arvore com todos os valores.
         arvore.preencher(numeros);
 
+        arvore.mostrarArvore();
+        
         // Insere um unico numero depois do preenchimento inicial.
         arvore.inserirNumero(65);
+
+        // Remove o 70, que possui dois filhos: 60 e 80.
+        arvore.deletarNumero(70);
 
         // Desenha a arvore com a raiz no topo.
         arvore.mostrarArvore();
