@@ -27,9 +27,17 @@ public class arvoreBinaria {
     public void preencher(int[] numeros) {
         // Percorre todos os numeros do vetor.
         for (int numero : numeros) {
-            // Insere o numero e atualiza a raiz, se necessario.
-            raiz = inserir(raiz, numero);
+            // Reutiliza a insercao de um unico numero.
+            inserirNumero(numero);
         }
+    }
+
+    public void inserirNumero(int numero) {
+        /*
+         * Atualiza a raiz porque, se a arvore estiver vazia,
+         * o novo no criado devera se tornar a raiz.
+         */
+        raiz = inserir(raiz, numero);
     }
 
     private No inserir(No atual, int numero) {
@@ -97,6 +105,9 @@ public class arvoreBinaria {
 
         // Preenche a arvore com todos os valores.
         arvore.preencher(numeros);
+
+        // Insere um unico numero depois do preenchimento inicial.
+        arvore.inserirNumero(65);
 
         // Desenha a arvore com a raiz no topo.
         arvore.mostrarArvore();
