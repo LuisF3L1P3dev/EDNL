@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Visualizador interativo de arvore binaria de busca">
+    <title>Laboratório ABB</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<main class="app-shell">
+    <header class="hero">
+        <div>
+            <p class="eyebrow">Estrutura de Dados</p>
+            <h1>Laboratório <span>ABB</span></h1>
+            <p class="subtitle">Insira, remova e acompanhe cada mudança na árvore binária de busca.</p>
+        </div>
+        <div class="legend" aria-label="Legenda da árvore">
+            <span><i class="legend-dot root"></i> raiz</span>
+            <span><i class="legend-dot node"></i> nó</span>
+            <span><i class="legend-badge">×n</i> repetição</span>
+        </div>
+    </header>
+
+    <section class="control-panel" aria-labelledby="controles-title">
+        <div class="section-heading">
+            <div>
+                <p class="section-kicker">Operações</p>
+                <h2 id="controles-title">Controle a árvore</h2>
+            </div>
+            <p>Valores menores seguem à esquerda; maiores, à direita.</p>
+        </div>
+
+        <form id="operacao-form" class="operations">
+            <label for="numero">Número ou lista</label>
+            <div class="input-group">
+                <input id="numero" name="numero" type="text"
+                       placeholder="Ex.: 10, 20, 40, 60"
+                       inputmode="text" autocomplete="off" required>
+                <button id="inserir" class="button button-primary" type="submit">Inserir</button>
+                <button id="remover" class="button button-danger" type="button">Remover</button>
+            </div>
+        </form>
+
+        <div class="secondary-actions">
+            <button id="carregar-exemplo" class="button button-secondary" type="button">Carregar exemplo</button>
+            <button id="limpar" class="button button-ghost" type="button">Limpar árvore</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="metrics" aria-label="Métricas da árvore">
+        <article class="metric-card">
+            <div class="metric-icon" aria-hidden="true">↕</div>
+            <div><span>Altura</span><strong id="altura">-1</strong></div>
+            <small>medida em arestas</small>
+        </article>
+        <article class="metric-card">
+            <div class="metric-icon" aria-hidden="true">●</div>
+            <div><span>Nós</span><strong id="numero-nos">0</strong></div>
+            <small>valores distintos</small>
+        </article>
+        <article class="metric-card">
+            <div class="metric-icon" aria-hidden="true">◆</div>
+            <div><span>Folhas</span><strong id="numero-folhas">0</strong></div>
+            <small>nós sem filhos</small>
+        </article>
+    </section>
+
+    <section class="tree-panel" aria-labelledby="arvore-title">
+        <div class="section-heading tree-heading">
+            <div>
+                <p class="section-kicker">Visualização</p>
+                <h2 id="arvore-title">Árvore binária de busca</h2>
+            </div>
+            <span class="scroll-hint">Role horizontalmente se necessário</span>
+        </div>
+        <div id="tree-stage" class="tree-stage">
+            <div id="empty-state" class="empty-state">
+                <div class="empty-tree" aria-hidden="true">
+                    <span></span><i></i><i></i>
+                </div>
+                <h3>A árvore está vazia</h3>
+                <p>Insira um número ou carregue o exemplo para começar.</p>
+            </div>
+            <svg id="tree-svg" role="img" aria-label="Representação da árvore binária de busca"></svg>
+        </div>
+    </section>
+
+    <section class="traversal-panel" aria-labelledby="percurso-title">
+        <div>
+            <p class="section-kicker">Esquerda · Raiz · Direita</p>
+            <h2 id="percurso-title">Percurso em ordem</h2>
+        </div>
+        <div id="percurso" class="traversal-list" aria-live="polite">
+            <span class="traversal-empty">Nenhum valor para percorrer.</span>
+        </div>
+    </section>
+</main>
+
+<script src="/js/app.js" defer></script>
+</body>
+</html>
