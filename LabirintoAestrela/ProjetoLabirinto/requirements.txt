@@ -1,0 +1,6 @@
+# Este projeto utiliza somente módulos da biblioteca padrão do Python.
+# Requer Python 3.10 ou superior.
+#
+# Tkinter deve estar disponível na instalação do Python e não é instalado
+# pelo pip. Em distribuições Linux, ele pode ser fornecido pelo pacote
+# python3-tk do sistema operacional.
