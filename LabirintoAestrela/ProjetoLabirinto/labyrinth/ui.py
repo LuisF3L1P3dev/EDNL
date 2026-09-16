@@ -37,6 +37,22 @@ COLORS = {
 
 MODE_INDIVIDUAL = "Individual"
 MODE_COMPARISON = "Comparação"
+GRID_SIZES: dict[str, tuple[int, int]] = {
+    "Pequeno (11 × 17)": (11, 17),
+    "Médio (21 × 31)": (21, 31),
+    "Grande (31 × 45)": (31, 45),
+}
+DEFAULT_GRID_SIZE = "Médio (21 × 31)"
+
+
+def _create_grid_for_size(size_name: str) -> Grid:
+    """Cria uma grade limpa para uma das dimensões disponíveis na interface."""
+
+    dimensions = GRID_SIZES.get(size_name)
+    if dimensions is None:
+        raise ValueError(f"Tamanho de grade desconhecido: {size_name}")
+    rows, columns = dimensions
+    return Grid(rows=rows, columns=columns)
 
 
 @dataclass(slots=True)
@@ -355,10 +371,11 @@ class PathfindingApp(tk.Tk):
         self.configure(background=COLORS["background"])
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        self.grid_model = Grid()
+        self.grid_model = _create_grid_for_size(DEFAULT_GRID_SIZE)
         self.mode_var = tk.StringVar(value=MODE_INDIVIDUAL)
         self.algorithm_var = tk.StringVar(value=Algorithm.ASTAR.value)
         self.movement_var = tk.StringVar(value=Movement.FOUR.value)
+        self.grid_size_var = tk.StringVar(value=DEFAULT_GRID_SIZE)
         self.tool_var = tk.StringVar(value="wall")
         self.speed_var = tk.DoubleVar(value=75)
         self.speed_label_var = tk.StringVar(value="75%")
@@ -477,12 +494,12 @@ class PathfindingApp(tk.Tk):
         ).pack(side="right", fill="x", expand=True, padx=(12, 0))
 
     def _build_selection_controls(self, parent: ttk.Frame) -> None:
-        row = ttk.Frame(parent, style="Surface.TFrame")
-        row.pack(fill="x")
+        selection_row = ttk.Frame(parent, style="Surface.TFrame")
+        selection_row.pack(fill="x")
 
-        ttk.Label(row, text="Visualização:").pack(side="left")
+        ttk.Label(selection_row, text="Visualização:").pack(side="left")
         mode = ttk.Combobox(
-            row,
+            selection_row,
             textvariable=self.mode_var,
             values=(MODE_INDIVIDUAL, MODE_COMPARISON),
             state="readonly",
@@ -491,9 +508,9 @@ class PathfindingApp(tk.Tk):
         mode.pack(side="left", padx=(5, 14))
         mode.bind("<<ComboboxSelected>>", self._on_mode_changed)
 
-        ttk.Label(row, text="Estratégia:").pack(side="left")
+        ttk.Label(selection_row, text="Estratégia:").pack(side="left")
         self.algorithm_combo = ttk.Combobox(
-            row,
+            selection_row,
             textvariable=self.algorithm_var,
             values=(Algorithm.GREEDY.value, Algorithm.ASTAR.value),
             state="readonly",
@@ -502,9 +519,9 @@ class PathfindingApp(tk.Tk):
         self.algorithm_combo.pack(side="left", padx=(5, 14))
         self.algorithm_combo.bind("<<ComboboxSelected>>", self._on_algorithm_changed)
 
-        ttk.Label(row, text="Movimento:").pack(side="left")
+        ttk.Label(selection_row, text="Movimento:").pack(side="left")
         movement = ttk.Combobox(
-            row,
+            selection_row,
             textvariable=self.movement_var,
             values=(Movement.FOUR.value, Movement.EIGHT.value),
             state="readonly",
@@ -513,27 +530,52 @@ class PathfindingApp(tk.Tk):
         movement.pack(side="left", padx=(5, 16))
         movement.bind("<<ComboboxSelected>>", self._on_movement_changed)
 
-        ttk.Label(row, text="Velocidade:").pack(side="left")
+        ttk.Label(selection_row, text="Tamanho:").pack(side="left")
+        grid_size = ttk.Combobox(
+            selection_row,
+            textvariable=self.grid_size_var,
+            values=tuple(GRID_SIZES),
+            state="readonly",
+            width=18,
+        )
+        grid_size.pack(side="left", padx=(5, 0))
+        grid_size.bind("<<ComboboxSelected>>", self._on_grid_size_changed)
+
+        tuning_row = ttk.Frame(parent, style="Surface.TFrame")
+        tuning_row.pack(fill="x", pady=(8, 0))
+
+        ttk.Label(tuning_row, text="Velocidade:").pack(side="left")
         ttk.Scale(
-            row,
+            tuning_row,
             from_=1,
             to=100,
             variable=self.speed_var,
             command=self._on_speed_changed,
             length=115,
         ).pack(side="left", padx=(5, 4))
-        ttk.Label(row, textvariable=self.speed_label_var, width=5).pack(side="left")
+        ttk.Label(
+            tuning_row,
+            textvariable=self.speed_label_var,
+            width=5,
+        ).pack(side="left")
 
-        ttk.Label(row, text="Obstáculos:").pack(side="left", padx=(12, 0))
+        ttk.Label(
+            tuning_row,
+            text="Obstáculos:",
+        ).pack(side="left", padx=(12, 0))
         ttk.Scale(
-            row,
+            tuning_row,
             from_=5,
             to=55,
             variable=self.density_var,
             command=self._on_density_changed,
             length=100,
         ).pack(side="left", padx=(5, 4))
-        ttk.Label(row, textvariable=self.density_label_var, width=5).pack(side="left")
+        ttk.Label(
+            tuning_row,
+            textvariable=self.density_label_var,
+            width=5,
+        ).pack(side="left")
 
     def _build_action_controls(self, parent: ttk.Frame) -> None:
         row = ttk.Frame(parent, style="Surface.TFrame")
@@ -870,6 +912,23 @@ class PathfindingApp(tk.Tk):
         self._clear_search()
         self.status_var.set(
             f"Modelo alterado para {self.movement_var.get().lower()}."
+        )
+
+    def _on_grid_size_changed(self, _event: tk.Event[tk.Misc]) -> None:
+        """Substitui o labirinto atual por uma grade limpa do tamanho escolhido."""
+
+        try:
+            resized_grid = _create_grid_for_size(self.grid_size_var.get())
+        except ValueError:
+            self.grid_size_var.set(DEFAULT_GRID_SIZE)
+            self.status_var.set("Não foi possível alterar o tamanho da grade.")
+            return
+
+        self._cancel_execution()
+        self.grid_model = resized_grid
+        self._rebuild_panels()
+        self.status_var.set(
+            f"Grade alterada para {resized_grid.rows} × {resized_grid.columns}."
         )
 
     def _on_speed_changed(self, value: str) -> None:
