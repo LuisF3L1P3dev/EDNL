@@ -3,7 +3,11 @@ import unittest
 from labyrinth.model import Grid, Movement
 from labyrinth.search import (
     Algorithm,
+    AStarStrategy,
+    GreedyStrategy,
+    SearchEngine,
     SearchEventType,
+    SearchStrategy,
     heuristic,
     search_steps,
     solve,
@@ -54,6 +58,29 @@ class HeuristicTests(unittest.TestCase):
 
     def test_octile_for_eight_directions(self) -> None:
         self.assertEqual(heuristic((1, 2), (4, 6), Movement.EIGHT), 52)
+
+
+class StrategyTests(unittest.TestCase):
+    def test_astar_combines_cost_and_estimate_and_accepts_better_routes(self) -> None:
+        strategy = AStarStrategy()
+
+        self.assertIsInstance(strategy, SearchStrategy)
+        self.assertIs(strategy.algorithm, Algorithm.ASTAR)
+        self.assertEqual(strategy.priority(path_cost=30, estimate=40), 70)
+        self.assertTrue(strategy.should_update(None, 30))
+        self.assertTrue(strategy.should_update(40, 30))
+        self.assertFalse(strategy.should_update(30, 30))
+        self.assertFalse(strategy.should_update(20, 30))
+
+    def test_greedy_uses_estimate_and_accepts_only_first_route(self) -> None:
+        strategy = GreedyStrategy()
+
+        self.assertIsInstance(strategy, SearchStrategy)
+        self.assertIs(strategy.algorithm, Algorithm.GREEDY)
+        self.assertEqual(strategy.priority(path_cost=30, estimate=40), 40)
+        self.assertTrue(strategy.should_update(None, 30))
+        self.assertFalse(strategy.should_update(40, 30))
+        self.assertFalse(strategy.should_update(20, 30))
 
 
 class SearchTests(unittest.TestCase):
@@ -124,6 +151,106 @@ class SearchTests(unittest.TestCase):
 
         self.assertEqual(first.path, second.path)
         self.assertEqual(first.nodes_explored, second.nodes_explored)
+
+
+class SearchEngineTests(unittest.TestCase):
+    def test_engine_results_match_functional_facade(self) -> None:
+        blocked = Grid(
+            rows=5,
+            columns=5,
+            start=(2, 0),
+            goal=(2, 4),
+            walls={(row, 2) for row in range(5)},
+        )
+        scenarios = (
+            (
+                Grid(rows=5, columns=7, start=(2, 1), goal=(2, 5)),
+                Movement.FOUR,
+                Algorithm.ASTAR,
+                AStarStrategy,
+            ),
+            (
+                Grid(rows=5, columns=5, start=(1, 1), goal=(3, 3)),
+                Movement.EIGHT,
+                Algorithm.ASTAR,
+                AStarStrategy,
+            ),
+            (
+                grid_from_ascii(GREEDY_TRAP),
+                Movement.FOUR,
+                Algorithm.GREEDY,
+                GreedyStrategy,
+            ),
+            (blocked, Movement.FOUR, Algorithm.ASTAR, AStarStrategy),
+            (blocked, Movement.FOUR, Algorithm.GREEDY, GreedyStrategy),
+        )
+
+        for grid, movement, algorithm, strategy_type in scenarios:
+            with self.subTest(
+                movement=movement,
+                algorithm=algorithm,
+                blocked=grid is blocked,
+            ):
+                engine_result = SearchEngine(
+                    grid,
+                    movement,
+                    strategy_type(),
+                ).solve()
+                facade_result = solve(grid, algorithm, movement)
+
+                self.assertEqual(engine_result.algorithm, facade_result.algorithm)
+                self.assertEqual(engine_result.movement, facade_result.movement)
+                self.assertEqual(engine_result.found, facade_result.found)
+                self.assertEqual(engine_result.path, facade_result.path)
+                self.assertEqual(engine_result.cost, facade_result.cost)
+                self.assertEqual(
+                    engine_result.nodes_explored,
+                    facade_result.nodes_explored,
+                )
+
+    def test_engine_steps_match_facade_events(self) -> None:
+        grid = grid_from_ascii(GREEDY_TRAP)
+
+        engine_events = list(
+            SearchEngine(grid, Movement.FOUR, AStarStrategy()).steps()
+        )
+        facade_events = list(
+            search_steps(grid, Algorithm.ASTAR, Movement.FOUR)
+        )
+
+        def stable_event_data(events):
+            return [
+                (
+                    event.kind,
+                    event.current,
+                    event.opened,
+                    event.path,
+                    event.metrics.nodes_explored,
+                    event.metrics.frontier_size,
+                    event.metrics.path_cost,
+                    event.metrics.path_length,
+                )
+                for event in events
+            ]
+
+        self.assertEqual(
+            stable_event_data(engine_events),
+            stable_event_data(facade_events),
+        )
+
+    def test_old_and_new_public_imports_refer_to_same_classes(self) -> None:
+        import labyrinth
+        from labyrinth.search_core import (
+            AStarStrategy as CoreAStarStrategy,
+            GreedyStrategy as CoreGreedyStrategy,
+            SearchEngine as CoreSearchEngine,
+            SearchStrategy as CoreSearchStrategy,
+        )
+
+        self.assertIs(labyrinth.AStarStrategy, CoreAStarStrategy)
+        self.assertIs(labyrinth.GreedyStrategy, CoreGreedyStrategy)
+        self.assertIs(labyrinth.SearchEngine, CoreSearchEngine)
+        self.assertIs(labyrinth.SearchStrategy, CoreSearchStrategy)
 
 
 if __name__ == "__main__":
