@@ -26,7 +26,8 @@ No ambiente virtual deste repositório, a partir da raiz:
 ## Como usar
 
 1. Escolha o modo **Individual** ou **Comparação**.
-2. Selecione movimentos em quatro ou oito direções.
+2. Escolha o tamanho **Pequeno**, **Médio** ou **Grande** e selecione movimentos
+   em quatro ou oito direções. Alterar o tamanho cria uma grade limpa.
 3. Desenhe paredes com o mouse ou use **Gerar labirinto**.
 4. Use as ferramentas **Ponto A** e **Ponto B** para reposicionar o agente e
    o alvo. O botão direito funciona como borracha.
