@@ -10,13 +10,15 @@ pontos A e B.
 - animação incremental da fronteira, dos nós explorados e do caminho;
 - caminhada do agente depois do planejamento;
 - tempo computacional, nós explorados, fronteira, custo e passos em tempo real;
-- editor de paredes e reposicionamento dos pontos A e B;
+- editor de paredes, Borracha e reposicionamento dos pontos A e B;
+- escolha entre as heurísticas Manhattan e Euclidiana;
+- mapas retangulares personalizados de 5–61 linhas por 7–81 colunas;
 - cenários aberto, armadilha para a Gulosa, labirinto clássico e aleatório;
 - inspeção de `g`, `h` e prioridade ao passar o mouse sobre uma célula.
 
-O movimento é ortogonal, cada passo custa 1 e a heurística é a distância de
-Manhattan. A Busca Gulosa prioriza somente `h(n)`; o A* prioriza
-`f(n) = g(n) + h(n)`.
+O movimento é ortogonal e cada passo custa 1. A heurística pode ser Manhattan
+ou Euclidiana; ambas são admissíveis nesse modelo. A Busca Gulosa prioriza
+somente `h(n)` e o A* prioriza `f(n) = g(n) + h(n)`.
 
 ## Instalação e execução
 
@@ -46,7 +48,8 @@ A partir da raiz, usando o ambiente virtual do repositório:
 | `Espaço` | Executa, pausa ou continua |
 | `Tab` | Alterna entre Individual e Duelo |
 | `G` / `A` | Seleciona Gulosa / A* no modo Individual |
-| `1` / `2` / `3` | Parede / mover A / mover B |
+| `1` / `2` / `3` / `4` | Parede / mover A / mover B / Borracha |
+| `E` | Seleciona a Borracha |
 | `R` | Reinicia a visualização, preservando o mapa |
 | `C` | Limpa o mapa |
 | `Esc` | Fecha a aplicação |
@@ -55,12 +58,17 @@ A edição fica bloqueada durante a execução e a pausa. Use **Reiniciar** para
 voltar à edição. Trocar o mapa limpa resultados anteriores para que a
 comparação nunca misture cenários diferentes.
 
+O botão com as dimensões atuais abre o diálogo de tamanho. Use clique ou
+`Tab` para alternar entre Linhas e Colunas, `Enter` para aplicar e `Esc` para
+cancelar. Aplicar cria um Mundo aberto vazio; cenários prontos mantêm seus
+próprios tamanhos.
+
 O tempo exibido mede somente o trabalho do algoritmo, sem incluir pausas ou o
 intervalo configurado para a animação.
 
 ## Testes
 
-Os testes usam apenas a biblioteca padrão:
+Os testes usam `unittest` e o driver gráfico headless do Pygame:
 
 ```powershell
 $env:PYTHONPATH = ".\LabirintoV3"
