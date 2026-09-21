@@ -9,8 +9,16 @@ from typing import Callable
 import pygame
 
 from .model import Grid, Position
-from .scenarios import SCENARIOS, create_scenario
-from .search import SearchAlgorithm, SearchMetrics
+from .scenarios import (
+    MAX_COLS,
+    MAX_ROWS,
+    MIN_COLS,
+    MIN_ROWS,
+    SCENARIOS,
+    create_empty_grid,
+    create_scenario,
+)
+from .search import HeuristicType, SearchAlgorithm, SearchMetrics
 from .simulation import Simulation, SimulationState
 
 
@@ -62,6 +70,7 @@ class App:
         }
         self.mode = "Individual"
         self.algorithm = SearchAlgorithm.ASTAR
+        self.heuristic = HeuristicType.MANHATTAN
         self.scenario_index = 0
         self.grid = create_scenario(SCENARIOS[self.scenario_index])
         self.simulations = {
@@ -72,6 +81,17 @@ class App:
             simulation.reset(self.grid)
         self.history: dict[SearchAlgorithm, SearchMetrics] = {}
         self.tool = "Parede"
+        self.size_dialog_open = False
+        self.size_inputs = {
+            "rows": str(self.grid.rows),
+            "cols": str(self.grid.cols),
+        }
+        self.active_size_field = "rows"
+        self.replace_size_value = True
+        self.size_error = ""
+        self.size_field_rects: dict[str, pygame.Rect] = {}
+        self.size_apply_rect = pygame.Rect(0, 0, 0, 0)
+        self.size_cancel_rect = pygame.Rect(0, 0, 0, 0)
         self.speeds = (2, 5, 10, 20, 40, 80)
         self.speed_index = 3
         self.step_accumulator = 0.0
@@ -97,6 +117,11 @@ class App:
                 width = max(WINDOW_MIN[0], event.w)
                 height = max(WINDOW_MIN[1], event.h)
                 self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+            elif self.size_dialog_open:
+                if event.type == pygame.KEYDOWN:
+                    self._handle_size_key(event)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self._handle_size_click(event.pos)
             elif event.type == pygame.KEYDOWN:
                 self._handle_key(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -131,6 +156,90 @@ class App:
             self.tool = "Ponto A"
         elif key == pygame.K_3:
             self.tool = "Ponto B"
+        elif key in (pygame.K_4, pygame.K_e):
+            self.tool = "Borracha"
+
+    def _handle_size_key(self, event: pygame.event.Event) -> None:
+        if event.key == pygame.K_ESCAPE:
+            self.size_dialog_open = False
+            self.size_error = ""
+        elif event.key == pygame.K_TAB:
+            self.active_size_field = (
+                "cols" if self.active_size_field == "rows" else "rows"
+            )
+            self.replace_size_value = True
+        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            self._apply_custom_size()
+        elif event.key == pygame.K_BACKSPACE:
+            value = self.size_inputs[self.active_size_field]
+            self.size_inputs[self.active_size_field] = (
+                "" if self.replace_size_value else value[:-1]
+            )
+            self.replace_size_value = False
+            self.size_error = ""
+        elif event.unicode.isdigit():
+            value = "" if self.replace_size_value else self.size_inputs[self.active_size_field]
+            if len(value) < 3:
+                self.size_inputs[self.active_size_field] = value + event.unicode
+                self.replace_size_value = False
+                self.size_error = ""
+
+    def _handle_size_click(self, position: tuple[int, int]) -> None:
+        for field, rect in self.size_field_rects.items():
+            if rect.collidepoint(position):
+                self.active_size_field = field
+                self.replace_size_value = True
+                return
+        if self.size_apply_rect.collidepoint(position):
+            self._apply_custom_size()
+        elif self.size_cancel_rect.collidepoint(position):
+            self.size_dialog_open = False
+            self.size_error = ""
+
+    def _open_size_dialog(self) -> None:
+        if not self._can_edit():
+            self.notice = "Reinicie a execução antes de alterar o tamanho."
+            return
+        self._sync_size_inputs()
+        self.active_size_field = "rows"
+        self.replace_size_value = True
+        self.size_error = ""
+        self.size_dialog_open = True
+
+    def _apply_custom_size(self) -> None:
+        if not self.size_inputs["rows"] or not self.size_inputs["cols"]:
+            self.size_error = "Preencha os dois campos numéricos."
+            return
+        try:
+            rows = int(self.size_inputs["rows"])
+            cols = int(self.size_inputs["cols"])
+            grid = create_empty_grid(rows, cols)
+        except (TypeError, ValueError) as error:
+            self.size_error = str(error) or "Informe linhas e colunas válidas."
+            return
+        self.grid = grid
+        self.scenario_index = 0
+        self.size_dialog_open = False
+        self._map_changed(f"Mapa vazio redimensionado para {rows} × {cols}.")
+
+    def _cycle_heuristic(self) -> None:
+        if not self._can_edit():
+            self.notice = "Reinicie a execução antes de trocar a heurística."
+            return
+        self.heuristic = (
+            HeuristicType.EUCLIDEAN
+            if self.heuristic is HeuristicType.MANHATTAN
+            else HeuristicType.MANHATTAN
+        )
+        for simulation in self.simulations.values():
+            simulation.heuristic = self.heuristic
+            simulation.reset(self.grid)
+        self.history.clear()
+        self.notice = f"Heurística {self.heuristic.value} selecionada."
+
+    def _sync_size_inputs(self) -> None:
+        self.size_inputs["rows"] = str(self.grid.rows)
+        self.size_inputs["cols"] = str(self.grid.cols)
 
     def _update(self, delta: float) -> None:
         active = self._visible_simulations()
@@ -196,7 +305,7 @@ class App:
                 if self.mode == "Duelo" else (self.algorithm,)
             )
             for algorithm in algorithms:
-                self.simulations[algorithm].start(self.grid)
+                self.simulations[algorithm].start(self.grid, self.heuristic)
                 self.history.pop(algorithm, None)
             self.step_accumulator = 0.0
             self.notice = "Busca em andamento: fronteira e visitados são atualizados em tempo real."
@@ -211,7 +320,7 @@ class App:
         if not self._can_edit():
             self.notice = "Pause não libera a edição; reinicie a simulação primeiro."
             return
-        self.grid = create_scenario("Mundo aberto")
+        self.grid = create_empty_grid(self.grid.rows, self.grid.cols)
         self.scenario_index = 0
         self._map_changed("Grade limpa.")
 
@@ -243,6 +352,7 @@ class App:
         for simulation in self.simulations.values():
             simulation.reset(self.grid)
         self.history.clear()
+        self._sync_size_inputs()
         self.notice = message
 
     def _can_edit(self) -> bool:
@@ -265,9 +375,12 @@ class App:
                         if self.algorithm is SearchAlgorithm.ASTAR else SearchAlgorithm.ASTAR
                     ),
                     "scenario": self._cycle_scenario,
+                    "heuristic": self._cycle_heuristic,
+                    "size": self._open_size_dialog,
                     "wall": lambda: setattr(self, "tool", "Parede"),
                     "start": lambda: setattr(self, "tool", "Ponto A"),
                     "goal": lambda: setattr(self, "tool", "Ponto B"),
+                    "eraser": lambda: setattr(self, "tool", "Borracha"),
                     "run": self._run_or_pause,
                     "reset": self._reset_visualization,
                     "clear": self._clear_grid,
@@ -287,7 +400,7 @@ class App:
         if position is None:
             return
         changed = False
-        if erase:
+        if erase or self.tool == "Borracha":
             changed = self.grid.set_wall(position, False)
         elif self.tool == "Parede":
             changed = self.grid.set_wall(position, True)
@@ -322,7 +435,10 @@ class App:
         else:
             self._draw_duel(content)
         self._draw_sidebar(sidebar)
-        self._draw_hover_tooltip()
+        if self.size_dialog_open:
+            self._draw_size_dialog()
+        else:
+            self._draw_hover_tooltip()
 
     def _draw_header(self) -> None:
         self.screen.blit(self.fonts["title"].render("LABIRINTO V3", True, TEXT), (22, 15))
@@ -439,7 +555,26 @@ class App:
 
         self._section_label("CONFIGURAÇÃO", x, y)
         y += 27
-        self._add_button(x, y, inner_width, f"Modo: {self.mode}", "mode", active=True)
+        half_width = (inner_width - 6) // 2
+        self._add_button(
+            x,
+            y,
+            half_width,
+            f"Modo: {self.mode}",
+            "mode",
+            active=True,
+            enabled=self._can_edit(),
+        )
+        self._add_button(
+            x + half_width + 6,
+            y,
+            inner_width - half_width - 6,
+            f"H: {self.heuristic.value}",
+            "heuristic",
+            active=True,
+            enabled=self._can_edit(),
+            accent=PURPLE,
+        )
         y += 39
         algorithm_enabled = self.mode == "Individual"
         self._add_button(
@@ -449,14 +584,42 @@ class App:
         )
         y += 39
         scenario = SCENARIOS[self.scenario_index]
-        self._add_button(x, y, inner_width, f"Cenário: {scenario}", "scenario")
+        scenario_labels = {
+            "Mundo aberto": "Aberto",
+            "Armadilha Gulosa": "Armadilha",
+            "Labirinto clássico": "Clássico",
+            "Aleatório": "Aleatório",
+        }
+        scenario_width = 186
+        self._add_button(
+            x,
+            y,
+            scenario_width,
+            f"Cenário: {scenario_labels[scenario]}",
+            "scenario",
+            enabled=self._can_edit(),
+        )
+        self._add_button(
+            x + scenario_width + 6,
+            y,
+            inner_width - scenario_width - 6,
+            f"{self.grid.rows} × {self.grid.cols}",
+            "size",
+            enabled=self._can_edit(),
+            accent=CYAN,
+        )
         y += 49
 
         self._section_label("FERRAMENTAS DE EDIÇÃO", x, y)
         y += 27
-        tool_width = (inner_width - 12) // 3
+        tool_width = (inner_width - 18) // 4
         for index, (label, action) in enumerate(
-            (("Parede", "wall"), ("Ponto A", "start"), ("Ponto B", "goal"))
+            (
+                ("Parede", "wall"),
+                ("Ponto A", "start"),
+                ("Ponto B", "goal"),
+                ("Borracha", "eraser"),
+            )
         ):
             self._add_button(
                 x + index * (tool_width + 6), y, tool_width, label, action,
@@ -575,7 +738,10 @@ class App:
         values = f"({position[0]}, {position[1]})"
         if g is not None:
             symbol = "h" if simulation.algorithm is SearchAlgorithm.GREEDY else "f"
-            values += f"   g={g}  h={h}  {symbol}={score}"
+            values += (
+                f"   g={g}  h={self._format_search_value(h)}"
+                f"  {symbol}={self._format_search_value(score)}"
+            )
         rendered = self.fonts["small"].render(values, True, TEXT)
         box = rendered.get_rect()
         box.inflate_ip(16, 10)
@@ -584,6 +750,93 @@ class App:
         pygame.draw.rect(self.screen, (7, 12, 22), box, border_radius=5)
         pygame.draw.rect(self.screen, BORDER, box, 1, border_radius=5)
         self.screen.blit(rendered, (box.x + 8, box.y + 5))
+
+    def _draw_size_dialog(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((3, 7, 15, 190))
+        self.screen.blit(overlay, (0, 0))
+
+        dialog = pygame.Rect(0, 0, 440, 270)
+        dialog.center = self.screen.get_rect().center
+        pygame.draw.rect(self.screen, PANEL, dialog, border_radius=12)
+        pygame.draw.rect(self.screen, CYAN, dialog, 1, border_radius=12)
+
+        self.screen.blit(
+            self.fonts["heading"].render("Tamanho personalizado", True, TEXT),
+            (dialog.x + 24, dialog.y + 20),
+        )
+        help_text = "Digite as dimensões do novo mapa vazio."
+        self.screen.blit(
+            self.fonts["small"].render(help_text, True, MUTED),
+            (dialog.x + 24, dialog.y + 49),
+        )
+
+        field_width = 184
+        field_y = dialog.y + 98
+        self.size_field_rects = {
+            "rows": pygame.Rect(dialog.x + 24, field_y, field_width, 42),
+            "cols": pygame.Rect(dialog.x + 232, field_y, field_width, 42),
+        }
+        labels = {
+            "rows": f"Linhas ({MIN_ROWS}–{MAX_ROWS})",
+            "cols": f"Colunas ({MIN_COLS}–{MAX_COLS})",
+        }
+        for field, field_rect in self.size_field_rects.items():
+            active = field == self.active_size_field
+            self.screen.blit(
+                self.fonts["small"].render(labels[field], True, MUTED),
+                (field_rect.x, field_rect.y - 20),
+            )
+            pygame.draw.rect(self.screen, (12, 20, 35), field_rect, border_radius=6)
+            pygame.draw.rect(
+                self.screen,
+                CYAN if active else BORDER,
+                field_rect,
+                2 if active else 1,
+                border_radius=6,
+            )
+            value = self.size_inputs[field]
+            value_surface = self.fonts["metric"].render(value, True, TEXT)
+            self.screen.blit(
+                value_surface,
+                value_surface.get_rect(midleft=(field_rect.x + 12, field_rect.centery)),
+            )
+            if active and pygame.time.get_ticks() % 1000 < 550:
+                cursor_x = field_rect.x + 13 + value_surface.get_width()
+                pygame.draw.line(
+                    self.screen,
+                    CYAN,
+                    (cursor_x, field_rect.y + 10),
+                    (cursor_x, field_rect.bottom - 10),
+                    2,
+                )
+
+        message = self.size_error or "Tab alterna os campos • Enter aplica • Esc cancela"
+        message_color = RED if self.size_error else MUTED
+        self.screen.blit(
+            self.fonts["small"].render(message, True, message_color),
+            (dialog.x + 24, dialog.y + 154),
+        )
+
+        self.size_cancel_rect = pygame.Rect(dialog.x + 160, dialog.bottom - 54, 116, 34)
+        self.size_apply_rect = pygame.Rect(dialog.x + 284, dialog.bottom - 54, 132, 34)
+        self._draw_dialog_button(self.size_cancel_rect, "Cancelar", BORDER)
+        self._draw_dialog_button(self.size_apply_rect, "Aplicar", GREEN)
+
+    def _draw_dialog_button(
+        self,
+        rect: pygame.Rect,
+        label: str,
+        accent: tuple[int, int, int],
+    ) -> None:
+        hovered = rect.collidepoint(pygame.mouse.get_pos())
+        color = PANEL_LIGHT if not hovered else tuple(
+            min(255, channel + 14) for channel in PANEL_LIGHT
+        )
+        pygame.draw.rect(self.screen, color, rect, border_radius=6)
+        pygame.draw.rect(self.screen, accent, rect, 1, border_radius=6)
+        rendered = self.fonts["small"].render(label, True, TEXT)
+        self.screen.blit(rendered, rendered.get_rect(center=rect.center))
 
     def _add_button(
         self,
@@ -634,6 +887,14 @@ class App:
         if current:
             lines.append(current)
         return lines
+
+    @staticmethod
+    def _format_search_value(value: float | None) -> str:
+        if value is None:
+            return "—"
+        if float(value).is_integer():
+            return str(int(value))
+        return f"{value:.2f}"
 
 
 def run() -> None:

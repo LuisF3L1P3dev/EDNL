@@ -8,11 +8,24 @@ from .model import Grid, Position
 
 
 SCENARIOS = ("Mundo aberto", "Armadilha Gulosa", "Labirinto clássico", "Aleatório")
+MIN_ROWS = 5
+MAX_ROWS = 61
+MIN_COLS = 7
+MAX_COLS = 81
+
+
+def create_empty_grid(rows: int = 21, cols: int = 31) -> Grid:
+    if not MIN_ROWS <= rows <= MAX_ROWS:
+        raise ValueError(f"Linhas devem estar entre {MIN_ROWS} e {MAX_ROWS}.")
+    if not MIN_COLS <= cols <= MAX_COLS:
+        raise ValueError(f"Colunas devem estar entre {MIN_COLS} e {MAX_COLS}.")
+    center = rows // 2
+    return Grid(rows, cols, (center, 2), (center, cols - 3))
 
 
 def create_scenario(name: str, seed: int | None = None) -> Grid:
     if name == "Mundo aberto":
-        return Grid()
+        return create_empty_grid()
     if name == "Armadilha Gulosa":
         return _greedy_trap()
     if name == "Labirinto clássico":
@@ -68,7 +81,7 @@ def _perfect_maze(seed: int) -> Grid:
 
 def _random_obstacles(seed: int | None) -> Grid:
     rng = random.Random(seed)
-    grid = Grid()
+    grid = create_empty_grid()
     # Mantém um corredor garantido de A até B e espalha obstáculos no restante.
     protected: set[Position] = set()
     row, col = grid.start

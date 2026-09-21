@@ -7,7 +7,14 @@ from enum import Enum
 from typing import Iterator
 
 from .model import Grid, Position
-from .search import EventKind, SearchAlgorithm, SearchEvent, SearchMetrics, search_steps
+from .search import (
+    EventKind,
+    HeuristicType,
+    SearchAlgorithm,
+    SearchEvent,
+    SearchMetrics,
+    search_steps,
+)
 
 
 class SimulationState(str, Enum):
@@ -22,6 +29,7 @@ class SimulationState(str, Enum):
 @dataclass(slots=True)
 class Simulation:
     algorithm: SearchAlgorithm
+    heuristic: HeuristicType = HeuristicType.MANHATTAN
     state: SimulationState = SimulationState.IDLE
     frontier: set[Position] = field(default_factory=set)
     explored: set[Position] = field(default_factory=set)
@@ -30,14 +38,20 @@ class Simulation:
     current: Position | None = None
     metrics: SearchMetrics = field(default_factory=SearchMetrics)
     g_values: dict[Position, int] = field(default_factory=dict)
-    h_values: dict[Position, int] = field(default_factory=dict)
-    scores: dict[Position, int] = field(default_factory=dict)
+    h_values: dict[Position, float] = field(default_factory=dict)
+    scores: dict[Position, float] = field(default_factory=dict)
     _steps: Iterator[SearchEvent] | None = field(default=None, repr=False)
     _walk_index: int = field(default=0, repr=False)
 
-    def start(self, grid: Grid) -> None:
+    def start(
+        self,
+        grid: Grid,
+        heuristic: HeuristicType | None = None,
+    ) -> None:
         self.reset(grid)
-        self._steps = search_steps(grid.clone(), self.algorithm)
+        if heuristic is not None:
+            self.heuristic = heuristic
+        self._steps = search_steps(grid.clone(), self.algorithm, self.heuristic)
         self.state = SimulationState.SEARCHING
 
     def reset(self, grid: Grid) -> None:

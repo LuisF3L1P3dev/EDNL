@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import heapq
 from itertools import count
+from math import hypot
 from time import perf_counter_ns
 from typing import Iterator
 
@@ -15,6 +16,11 @@ from .model import Grid, Position
 class SearchAlgorithm(str, Enum):
     GREEDY = "Busca Gulosa"
     ASTAR = "Algoritmo A*"
+
+
+class HeuristicType(str, Enum):
+    MANHATTAN = "Manhattan"
+    EUCLIDEAN = "Euclidiana"
 
 
 class EventKind(str, Enum):
@@ -41,24 +47,44 @@ class SearchEvent:
     metrics: SearchMetrics
     path: list[Position] = field(default_factory=list)
     g_values: dict[Position, int] = field(default_factory=dict)
-    h_values: dict[Position, int] = field(default_factory=dict)
-    scores: dict[Position, int] = field(default_factory=dict)
+    h_values: dict[Position, float] = field(default_factory=dict)
+    scores: dict[Position, float] = field(default_factory=dict)
 
 
 def manhattan(origin: Position, target: Position) -> int:
     return abs(origin[0] - target[0]) + abs(origin[1] - target[1])
 
 
-def search_steps(grid: Grid, algorithm: SearchAlgorithm) -> Iterator[SearchEvent]:
+def euclidean(origin: Position, target: Position) -> float:
+    return hypot(origin[0] - target[0], origin[1] - target[1])
+
+
+def heuristic_distance(
+    origin: Position,
+    target: Position,
+    heuristic: HeuristicType,
+) -> float:
+    if heuristic is HeuristicType.EUCLIDEAN:
+        return euclidean(origin, target)
+    return float(manhattan(origin, target))
+
+
+def search_steps(
+    grid: Grid,
+    algorithm: SearchAlgorithm,
+    heuristic: HeuristicType = HeuristicType.MANHATTAN,
+) -> Iterator[SearchEvent]:
     """Emite um retrato depois de cada expansão sem incluir atrasos visuais."""
 
     start, goal = grid.start, grid.goal
     sequence = count()
     g_values: dict[Position, int] = {start: 0}
-    h_values: dict[Position, int] = {start: manhattan(start, goal)}
-    scores: dict[Position, int] = {start: h_values[start]}
+    h_values: dict[Position, float] = {
+        start: heuristic_distance(start, goal, heuristic)
+    }
+    scores: dict[Position, float] = {start: h_values[start]}
     parents: dict[Position, Position] = {}
-    frontier_heap: list[tuple[int, int, int, Position, int]] = []
+    frontier_heap: list[tuple[float, float, int, Position, int]] = []
     heapq.heappush(frontier_heap, (h_values[start], h_values[start], next(sequence), start, 0))
     frontier_set = {start}
     explored: set[Position] = set()
@@ -105,13 +131,17 @@ def search_steps(grid: Grid, algorithm: SearchAlgorithm) -> Iterator[SearchEvent
 
             parents[neighbor] = current
             g_values[neighbor] = tentative_g
-            heuristic = manhattan(neighbor, goal)
-            h_values[neighbor] = heuristic
-            score = heuristic if algorithm is SearchAlgorithm.GREEDY else tentative_g + heuristic
+            heuristic_value = heuristic_distance(neighbor, goal, heuristic)
+            h_values[neighbor] = heuristic_value
+            score = (
+                heuristic_value
+                if algorithm is SearchAlgorithm.GREEDY
+                else tentative_g + heuristic_value
+            )
             scores[neighbor] = score
             heapq.heappush(
                 frontier_heap,
-                (score, heuristic, next(sequence), neighbor, tentative_g),
+                (score, heuristic_value, next(sequence), neighbor, tentative_g),
             )
             frontier_set.add(neighbor)
 
@@ -127,9 +157,13 @@ def search_steps(grid: Grid, algorithm: SearchAlgorithm) -> Iterator[SearchEvent
     )
 
 
-def solve(grid: Grid, algorithm: SearchAlgorithm) -> SearchEvent:
+def solve(
+    grid: Grid,
+    algorithm: SearchAlgorithm,
+    heuristic: HeuristicType = HeuristicType.MANHATTAN,
+) -> SearchEvent:
     final_event: SearchEvent | None = None
-    for final_event in search_steps(grid, algorithm):
+    for final_event in search_steps(grid, algorithm, heuristic):
         pass
     if final_event is None:
         raise RuntimeError("A busca terminou sem produzir resultado.")
@@ -143,8 +177,8 @@ def _event(
     explored: set[Position],
     elapsed_ns: int,
     g_values: dict[Position, int],
-    h_values: dict[Position, int],
-    scores: dict[Position, int],
+    h_values: dict[Position, float],
+    scores: dict[Position, float],
     path: list[Position] | None = None,
 ) -> SearchEvent:
     final_path = path or []
