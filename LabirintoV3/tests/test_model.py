@@ -1,7 +1,15 @@
 import unittest
 
 from labyrinth.model import Grid
-from labyrinth.scenarios import SCENARIOS, create_scenario
+from labyrinth.scenarios import (
+    MAX_COLS,
+    MAX_ROWS,
+    MIN_COLS,
+    MIN_ROWS,
+    SCENARIOS,
+    create_empty_grid,
+    create_scenario,
+)
 
 
 class GridTests(unittest.TestCase):
@@ -30,6 +38,27 @@ class GridTests(unittest.TestCase):
                 self.assertTrue(grid.has_path())
                 self.assertNotIn(grid.start, grid.walls)
                 self.assertNotIn(grid.goal, grid.walls)
+
+    def test_custom_grid_accepts_boundary_sizes(self) -> None:
+        for rows, cols in ((MIN_ROWS, MIN_COLS), (MAX_ROWS, MAX_COLS)):
+            with self.subTest(rows=rows, cols=cols):
+                grid = create_empty_grid(rows, cols)
+                self.assertEqual((grid.rows, grid.cols), (rows, cols))
+                self.assertTrue(grid.in_bounds(grid.start))
+                self.assertTrue(grid.in_bounds(grid.goal))
+                self.assertNotEqual(grid.start, grid.goal)
+                self.assertFalse(grid.walls)
+
+    def test_custom_grid_rejects_sizes_outside_limits(self) -> None:
+        for rows, cols in (
+            (MIN_ROWS - 1, MIN_COLS),
+            (MAX_ROWS + 1, MIN_COLS),
+            (MIN_ROWS, MIN_COLS - 1),
+            (MIN_ROWS, MAX_COLS + 1),
+        ):
+            with self.subTest(rows=rows, cols=cols):
+                with self.assertRaises(ValueError):
+                    create_empty_grid(rows, cols)
 
 
 if __name__ == "__main__":
