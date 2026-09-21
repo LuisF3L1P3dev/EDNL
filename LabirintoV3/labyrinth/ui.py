@@ -56,8 +56,13 @@ class Button:
 class App:
     def __init__(self) -> None:
         pygame.init()
-        pygame.display.set_caption("Labirinto V3 — Busca Gulosa vs. A*")
-        self.screen = pygame.display.set_mode(WINDOW_INITIAL, pygame.RESIZABLE)
+        self.window = pygame.Window(
+            "Labirinto V3 — Busca Gulosa vs. A*",
+            size=WINDOW_INITIAL,
+            resizable=True,
+        )
+        self.window.minimum_size = WINDOW_MIN
+        self.screen = self.window.get_surface()
         self.clock = pygame.time.Clock()
         self.fonts = {
             "title": pygame.font.SysFont("segoeui", 28, bold=True),
@@ -106,17 +111,20 @@ class App:
             self._handle_events()
             self._update(delta)
             self._draw()
-            pygame.display.flip()
+            self.window.flip()
+        self.window.destroy()
         pygame.quit()
 
     def _handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            elif event.type == pygame.VIDEORESIZE:
-                width = max(WINDOW_MIN[0], event.w)
-                height = max(WINDOW_MIN[1], event.h)
-                self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+            elif event.type in (
+                pygame.VIDEORESIZE,
+                pygame.WINDOWRESIZED,
+                pygame.WINDOWSIZECHANGED,
+            ):
+                self.screen = self.window.get_surface()
             elif self.size_dialog_open:
                 if event.type == pygame.KEYDOWN:
                     self._handle_size_key(event)
