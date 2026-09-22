@@ -1,0 +1,19 @@
+.root-pane { -fx-font-family: "Segoe UI", sans-serif; -fx-font-size: 13px; -fx-background-color: #edf2f8; }
+.toolbar-area, .bottom-area { -fx-padding: 14 18 12 18; -fx-background-color: white; }
+.toolbar-area { -fx-border-color: transparent transparent #d5dee9 transparent; }
+.bottom-area { -fx-border-color: #d5dee9 transparent transparent transparent; }
+.title { -fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
+.primary-button { -fx-background-color: #3167a8; -fx-text-fill: white; -fx-font-weight: bold; }
+.board-scroll { -fx-background: #edf2f8; -fx-background-color: #edf2f8; }
+.board-card { -fx-padding: 12; -fx-spacing: 8; -fx-background-color: white; -fx-background-radius: 7; -fx-border-color: #d5dee9; -fx-border-radius: 7; }
+.board-heading { -fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
+.board-metrics { -fx-text-fill: #3f536a; }
+.footnote { -fx-text-fill: #617087; -fx-font-size: 11px; }
+.legend-start, .legend-goal, .legend-wall, .legend-frontier, .legend-explored, .legend-path, .legend-agent { -fx-padding: 4 7; -fx-background-radius: 4; -fx-text-fill: white; }
+.legend-start { -fx-background-color: #27865d; }
+.legend-goal { -fx-background-color: #d45359; }
+.legend-wall { -fx-background-color: #27364a; }
+.legend-frontier { -fx-background-color: #d69c20; }
+.legend-explored { -fx-background-color: #3483ad; }
+.legend-path { -fx-background-color: #42994b; }
+.legend-agent { -fx-background-color: #794dc7; }
