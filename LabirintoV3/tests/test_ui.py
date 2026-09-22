@@ -10,7 +10,7 @@ import pygame
 from labyrinth.scenarios import MAX_COLS, MAX_ROWS, SCENARIOS, create_scenario
 from labyrinth.search import HeuristicType, SearchAlgorithm, SearchMetrics
 from labyrinth.simulation import SimulationState
-from labyrinth.ui import App
+from labyrinth.ui import App, DUEL_GAP, OUTER_MARGIN, PANEL_GAP
 
 
 class AppTests(unittest.TestCase):
@@ -169,6 +169,38 @@ class AppTests(unittest.TestCase):
                 self.app.mode = mode
                 self.app._draw()
                 self.assertEqual(len(self.app.grid_views), expected_views)
+
+    def test_layout_uses_full_height_without_header_band(self) -> None:
+        width, height = self.app.screen.get_size()
+        content, sidebar = self.app._layout_rects(width, height)
+        self.assertEqual(content.top, OUTER_MARGIN)
+        self.assertEqual(sidebar.top, OUTER_MARGIN)
+        self.assertEqual(content.bottom, height - OUTER_MARGIN)
+        self.assertEqual(sidebar.bottom, height - OUTER_MARGIN)
+        self.assertEqual(sidebar.left - content.right, PANEL_GAP)
+
+    def test_duel_grids_are_top_aligned_and_separated_by_small_gap(self) -> None:
+        self.app.mode = "Duelo"
+        self.app._draw()
+        content, sidebar = self.app._layout_rects(*self.app.screen.get_size())
+        greedy_rect, astar_rect = (view[0] for view in self.app.grid_views)
+        self.assertEqual(greedy_rect.top, astar_rect.top)
+        self.assertLess(greedy_rect.top, content.top + 50)
+        self.assertEqual(astar_rect.left - greedy_rect.right, DUEL_GAP)
+        self.assertLessEqual(astar_rect.right, content.right)
+        self.assertLess(content.right, sidebar.left)
+
+    def test_compact_layout_is_valid_at_minimum_window_size(self) -> None:
+        content, sidebar = self.app._layout_rects(*self.app.window.minimum_size)
+        self.assertGreater(content.width, sidebar.width)
+        self.assertEqual(
+            content.height,
+            self.app.window.minimum_size[1] - 2 * OUTER_MARGIN,
+        )
+        self.assertEqual(sidebar.width, 300)
+        self.assertEqual(sidebar.right, self.app.window.minimum_size[0] - OUTER_MARGIN)
+        _, wide_sidebar = self.app._layout_rects(2000, 1000)
+        self.assertEqual(wide_sidebar.width, 330)
 
 
 if __name__ == "__main__":

@@ -26,6 +26,13 @@ from .simulation import Simulation, SimulationState
 WINDOW_MIN = (1180, 820)
 WINDOW_INITIAL = (1380, 820)
 FPS = 60
+OUTER_MARGIN = 8
+PANEL_GAP = 8
+SIDEBAR_MIN_WIDTH = 300
+SIDEBAR_MAX_WIDTH = 330
+CONTENT_PADDING = 8
+GRID_HEADER_HEIGHT = 42
+DUEL_GAP = 6
 
 BG = (11, 16, 29)
 PANEL = (20, 29, 49)
@@ -58,7 +65,7 @@ class App:
     def __init__(self) -> None:
         pygame.init()
         self.window = pygame.Window(
-            "Labirinto V3 — Busca Gulosa vs. A*",
+            "Labirinto: Busca Gulosa vs. A*",
             size=WINDOW_INITIAL,
             resizable=True,
         )
@@ -66,8 +73,6 @@ class App:
         self.screen = self.window.get_surface()
         self.clock = pygame.time.Clock()
         self.fonts = {
-            "title": pygame.font.SysFont("segoeui", 28, bold=True),
-            "subtitle": pygame.font.SysFont("segoeui", 15),
             "heading": pygame.font.SysFont("segoeui", 18, bold=True),
             "body": pygame.font.SysFont("segoeui", 15),
             "small": pygame.font.SysFont("segoeui", 13),
@@ -442,11 +447,7 @@ class App:
     def _draw(self) -> None:
         self.screen.fill(BG)
         width, height = self.screen.get_size()
-        sidebar_width = 330
-        sidebar_x = width - sidebar_width - 20
-        content = pygame.Rect(20, 92, sidebar_x - 34, height - 118)
-        sidebar = pygame.Rect(sidebar_x, 92, sidebar_width, height - 112)
-        self._draw_header()
+        content, sidebar = self._layout_rects(width, height)
         self.grid_views.clear()
         if self.mode == "Individual":
             self._draw_individual(content)
@@ -458,50 +459,101 @@ class App:
         else:
             self._draw_hover_tooltip()
 
-    def _draw_header(self) -> None:
-        self.screen.blit(self.fonts["title"].render("LABIRINTO V3", True, TEXT), (22, 15))
-        subtitle = "Laboratório interativo de busca informada  •  Gulosa vs. A*"
-        self.screen.blit(self.fonts["subtitle"].render(subtitle, True, MUTED), (23, 54))
-        pygame.draw.circle(self.screen, CYAN, (self.screen.get_width() - 38, 33), 8)
+    @staticmethod
+    def _layout_rects(width: int, height: int) -> tuple[pygame.Rect, pygame.Rect]:
+        sidebar_width = max(
+            SIDEBAR_MIN_WIDTH,
+            min(SIDEBAR_MAX_WIDTH, width // 5),
+        )
+        sidebar = pygame.Rect(
+            width - OUTER_MARGIN - sidebar_width,
+            OUTER_MARGIN,
+            sidebar_width,
+            height - 2 * OUTER_MARGIN,
+        )
+        content = pygame.Rect(
+            OUTER_MARGIN,
+            OUTER_MARGIN,
+            sidebar.x - PANEL_GAP - OUTER_MARGIN,
+            height - 2 * OUTER_MARGIN,
+        )
+        return content, sidebar
 
     def _draw_individual(self, area: pygame.Rect) -> None:
         simulation = self.simulations[self.algorithm]
         self._panel(area)
         label = f"EXECUÇÃO INDIVIDUAL  /  {self.algorithm.value.upper()}"
-        self.screen.blit(self.fonts["small"].render(label, True, CYAN), (area.x + 16, area.y + 13))
-        grid_area = pygame.Rect(area.x + 16, area.y + 44, area.width - 32, area.height - 60)
-        grid_rect = self._fit_grid(grid_area)
+        grid_area = pygame.Rect(
+            area.x + CONTENT_PADDING,
+            area.y + GRID_HEADER_HEIGHT,
+            area.width - 2 * CONTENT_PADDING,
+            area.height - GRID_HEADER_HEIGHT - CONTENT_PADDING,
+        )
+        grid_rect = self._fit_grid(grid_area, vertical_alignment="top")
+        self.screen.blit(
+            self.fonts["small"].render(label, True, CYAN),
+            (grid_rect.x, area.y + 12),
+        )
         self.grid_views.append((grid_rect, self.algorithm))
         self._draw_grid(grid_rect, simulation)
 
     def _draw_duel(self, area: pygame.Rect) -> None:
         self._panel(area)
-        gap = 16
-        half = (area.width - gap - 32) // 2
+        available_width = area.width - 2 * CONTENT_PADDING - DUEL_GAP
+        half = available_width // 2
         for index, algorithm in enumerate((SearchAlgorithm.GREEDY, SearchAlgorithm.ASTAR)):
-            x = area.x + 16 + index * (half + gap)
+            x = area.x + CONTENT_PADDING + index * (half + DUEL_GAP)
+            column_width = (
+                half
+                if index == 0
+                else available_width - half
+            )
+            grid_area = pygame.Rect(
+                x,
+                area.y + GRID_HEADER_HEIGHT,
+                column_width,
+                area.height - GRID_HEADER_HEIGHT - CONTENT_PADDING,
+            )
+            grid_rect = self._fit_grid(
+                grid_area,
+                horizontal_alignment="right" if index == 0 else "left",
+                vertical_alignment="top",
+            )
             title_color = YELLOW if algorithm is SearchAlgorithm.GREEDY else CYAN
             self.screen.blit(
                 self.fonts["heading"].render(algorithm.value, True, title_color),
-                (x, area.y + 15),
+                (grid_rect.x, area.y + 11),
             )
             simulation = self.simulations[algorithm]
             state_text = self.fonts["small"].render(simulation.state.value, True, MUTED)
-            self.screen.blit(state_text, (x + half - state_text.get_width(), area.y + 20))
-            grid_area = pygame.Rect(x, area.y + 54, half, area.height - 72)
-            grid_rect = self._fit_grid(grid_area)
+            self.screen.blit(
+                state_text,
+                (grid_rect.right - state_text.get_width(), area.y + 16),
+            )
             self.grid_views.append((grid_rect, algorithm))
             self._draw_grid(grid_rect, simulation)
 
-    def _fit_grid(self, area: pygame.Rect) -> pygame.Rect:
+    def _fit_grid(
+        self,
+        area: pygame.Rect,
+        horizontal_alignment: str = "center",
+        vertical_alignment: str = "center",
+    ) -> pygame.Rect:
         size = max(2, min(area.width // self.grid.cols, area.height // self.grid.rows))
         width, height = size * self.grid.cols, size * self.grid.rows
-        return pygame.Rect(
-            area.x + (area.width - width) // 2,
-            area.y + (area.height - height) // 2,
-            width,
-            height,
-        )
+        if horizontal_alignment == "left":
+            x = area.x
+        elif horizontal_alignment == "right":
+            x = area.right - width
+        else:
+            x = area.x + (area.width - width) // 2
+        if vertical_alignment == "top":
+            y = area.y
+        elif vertical_alignment == "bottom":
+            y = area.bottom - height
+        else:
+            y = area.y + (area.height - height) // 2
+        return pygame.Rect(x, y, width, height)
 
     def _draw_grid(self, rect: pygame.Rect, simulation: Simulation) -> None:
         cell_size = rect.width // self.grid.cols
@@ -602,7 +654,7 @@ class App:
         )
         y += 39
         scenario = SCENARIOS[self.scenario_index]
-        scenario_width = 186
+        scenario_width = round(inner_width * 0.64)
         self._add_button(
             x,
             y,
@@ -645,8 +697,15 @@ class App:
         paused = any(sim.state is SimulationState.PAUSED for sim in visible)
         active = any(sim.active for sim in visible)
         run_label = "Continuar" if paused else "Pausar" if active else "Executar"
-        self._add_button(x, y, 142, run_label, "run", active=True, accent=GREEN)
-        self._add_button(x + 150, y, inner_width - 150, "Reiniciar", "reset")
+        run_width = (inner_width - 8) // 2
+        self._add_button(x, y, run_width, run_label, "run", active=True, accent=GREEN)
+        self._add_button(
+            x + run_width + 8,
+            y,
+            inner_width - run_width - 8,
+            "Reiniciar",
+            "reset",
+        )
         y += 39
         self._add_button(x, y, 42, "−", "slower", enabled=self.speed_index > 0)
         speed_text = f"{self.speeds[self.speed_index]} passos/s"
