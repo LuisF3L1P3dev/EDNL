@@ -78,6 +78,7 @@ def create_scenario(
 
 
 def _validate_dimensions(rows: int, cols: int) -> None:
+    """Exige dimensões inteiras dentro dos limites aceitos pelo editor."""
     if not isinstance(rows, int) or isinstance(rows, bool):
         raise TypeError("Linhas devem ser um número inteiro.")
     if not isinstance(cols, int) or isinstance(cols, bool):
@@ -97,6 +98,7 @@ def _scale(rows: int, cols: int) -> float:
 
 
 def _greedy_trap(rows: int, cols: int) -> Grid:
+    """Distribui paredes com semente fixa para desafiar a busca Gulosa."""
     grid = create_empty_grid(rows, cols)
     # A semente e a densidade padrão preservam a demonstração clássica de
     # 21 × 31, na qual a Gulosa percorre dez passos a mais que o A*.
@@ -111,6 +113,7 @@ def _greedy_trap(rows: int, cols: int) -> Grid:
 
 
 def _perfect_maze(rows: int, cols: int, seed: int) -> Grid:
+    """Escava um labirinto por busca em profundidade com a semente dada."""
     rng = random.Random(seed)
     walls = {(row, col) for row in range(rows) for col in range(cols)}
     start_cell = (1, 1)
@@ -146,6 +149,7 @@ def _perfect_maze(rows: int, cols: int, seed: int) -> Grid:
 
 
 def _random_obstacles(rows: int, cols: int, seed: int | None) -> Grid:
+    """Sorteia obstáculos e mantém um corredor livre entre A e B."""
     rng = random.Random(seed)
     grid = create_empty_grid(rows, cols)
     density = 0.19 + 0.08 * _scale(rows, cols)
@@ -173,6 +177,7 @@ def _random_obstacles(rows: int, cols: int, seed: int | None) -> Grid:
 
 
 def _zigzag(rows: int, cols: int) -> Grid:
+    """Cria barreiras verticais com aberturas alternadas."""
     grid = create_empty_grid(rows, cols)
     span = grid.goal[1] - grid.start[1]
     spacing = max(2, round(span / 6))
@@ -186,6 +191,7 @@ def _zigzag(rows: int, cols: int) -> Grid:
 
 
 def _rooms_and_doors(rows: int, cols: int) -> Grid:
+    """Divide a grade em salas e abre portas nas divisórias."""
     grid = create_empty_grid(rows, cols)
     grid.walls.update((0, col) for col in range(cols))
     grid.walls.update((rows - 1, col) for col in range(cols))
@@ -219,6 +225,7 @@ def _rooms_and_doors(rows: int, cols: int) -> Grid:
 
 
 def _dividers(length: int, count: int) -> list[int]:
+    """Escolhe posições internas proporcionais para as divisórias."""
     candidates = {
         round(length * index / (count + 1))
         for index in range(1, count + 1)
@@ -227,6 +234,7 @@ def _dividers(length: int, count: int) -> list[int]:
 
 
 def _bands(first: int, last: int, dividers: list[int]) -> list[tuple[int, int]]:
+    """Retorna os intervalos entre as divisórias e os limites dados."""
     boundaries = [first, *(divider + 1 for divider in dividers), last]
     return [
         (boundaries[index], dividers[index] if index < len(dividers) else last)
@@ -235,6 +243,7 @@ def _bands(first: int, last: int, dividers: list[int]) -> list[tuple[int, int]]:
 
 
 def _spiral(rows: int, cols: int) -> Grid:
+    """Desenha anéis concêntricos com portas em lados alternados."""
     grid = create_empty_grid(rows, cols)
     layer = 1
     ring_index = 0
@@ -258,6 +267,7 @@ def _spiral(rows: int, cols: int) -> Grid:
 
 
 def _two_routes(rows: int, cols: int) -> Grid:
+    """Oferece duas passagens por uma barreira, com desvios distintos."""
     grid = create_empty_grid(rows, cols)
     barrier_col = cols // 2
     center = rows // 2
@@ -283,6 +293,7 @@ def _two_routes(rows: int, cols: int) -> Grid:
 
 
 def _narrow_bridge(rows: int, cols: int) -> Grid:
+    """Ergue uma faixa de paredes atravessável em uma única linha."""
     grid = create_empty_grid(rows, cols)
     band_width = max(1, min(5, cols // 12))
     band_start = cols // 2 - band_width // 2
@@ -293,6 +304,7 @@ def _narrow_bridge(rows: int, cols: int) -> Grid:
 
 
 def _dead_ends(rows: int, cols: int) -> Grid:
+    """Forma corredores sem saída diante de uma passagem estreita."""
     grid = create_empty_grid(rows, cols)
     span = grid.goal[1] - grid.start[1]
     if span < 6 or rows < 7:
@@ -312,6 +324,7 @@ def _dead_ends(rows: int, cols: int) -> Grid:
 
 
 def _checkerboard(rows: int, cols: int) -> Grid:
+    """Espalha blocos de paredes em casas alternadas de um tabuleiro."""
     grid = create_empty_grid(rows, cols)
     block_size = max(1, min(rows, cols) // 8)
     gap = max(2, block_size)
@@ -327,6 +340,7 @@ def _checkerboard(rows: int, cols: int) -> Grid:
 
 
 def _archipelago(rows: int, cols: int) -> Grid:
+    """Distribui ilhas retangulares de paredes pela grade."""
     grid = create_empty_grid(rows, cols)
     island_height = max(2, rows // 6)
     island_width = max(2, cols // 10)

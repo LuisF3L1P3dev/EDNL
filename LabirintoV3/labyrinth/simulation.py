@@ -48,6 +48,7 @@ class Simulation:
         grid: Grid,
         heuristic: HeuristicType | None = None,
     ) -> None:
+        """Reinicia a simulação e inicia a busca em uma cópia do mapa."""
         self.reset(grid)
         if heuristic is not None:
             self.heuristic = heuristic
@@ -55,6 +56,7 @@ class Simulation:
         self.state = SimulationState.SEARCHING
 
     def reset(self, grid: Grid) -> None:
+        """Limpa estado e métricas e posiciona o agente em A."""
         self.state = SimulationState.IDLE
         self.frontier.clear()
         self.explored.clear()
@@ -69,14 +71,17 @@ class Simulation:
         self._walk_index = 0
 
     def pause(self) -> None:
+        """Pausa uma busca ou caminhada em andamento."""
         if self.state in (SimulationState.SEARCHING, SimulationState.WALKING):
             self.state = SimulationState.PAUSED
 
     def resume(self) -> None:
+        """Retoma a busca ou a caminhada conforme exista um caminho."""
         if self.state is SimulationState.PAUSED:
             self.state = SimulationState.WALKING if self.path else SimulationState.SEARCHING
 
     def advance(self) -> None:
+        """Consome um evento de busca ou move o agente um passo no caminho."""
         if self.state is SimulationState.SEARCHING and self._steps is not None:
             event = next(self._steps)
             self._consume(event)
@@ -89,6 +94,7 @@ class Simulation:
                 self.agent_position = self.path[self._walk_index]
 
     def _consume(self, event: SearchEvent) -> None:
+        """Atualiza a visualização e troca de fase em eventos terminais."""
         self.frontier = event.frontier
         self.explored = event.explored
         self.current = event.current
@@ -106,8 +112,10 @@ class Simulation:
 
     @property
     def active(self) -> bool:
+        """Informa se a busca ou a caminhada pode avançar."""
         return self.state in (SimulationState.SEARCHING, SimulationState.WALKING)
 
     @property
     def terminal(self) -> bool:
+        """Informa se a simulação terminou, com ou sem caminho."""
         return self.state in (SimulationState.FINISHED, SimulationState.NO_PATH)

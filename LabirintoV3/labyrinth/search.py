@@ -52,10 +52,12 @@ class SearchEvent:
 
 
 def manhattan(origin: Position, target: Position) -> int:
+    """Calcula a distância Manhattan entre duas posições."""
     return abs(origin[0] - target[0]) + abs(origin[1] - target[1])
 
 
 def euclidean(origin: Position, target: Position) -> float:
+    """Calcula a distância euclidiana entre duas posições."""
     return hypot(origin[0] - target[0], origin[1] - target[1])
 
 
@@ -64,6 +66,7 @@ def heuristic_distance(
     target: Position,
     heuristic: HeuristicType,
 ) -> float:
+    """Seleciona a distância heurística indicada; Manhattan é o padrão."""
     if heuristic is HeuristicType.EUCLIDEAN:
         return euclidean(origin, target)
     return float(manhattan(origin, target))
@@ -97,6 +100,7 @@ def search_steps(
             _, _, _, candidate, recorded_g = heapq.heappop(frontier_heap)
             if candidate in explored:
                 continue
+            # No A*, uma melhora de g deixa entradas antigas na fila; ignore-as.
             if algorithm is SearchAlgorithm.ASTAR and recorded_g != g_values.get(candidate):
                 continue
             current = candidate
@@ -123,6 +127,7 @@ def search_steps(
                 continue
             tentative_g = g_values[current] + 1
             known_g = g_values.get(neighbor)
+            # A Gulosa mantém a primeira descoberta; o A* aceita g menor.
             if algorithm is SearchAlgorithm.GREEDY:
                 if known_g is not None:
                     continue
@@ -162,6 +167,7 @@ def solve(
     algorithm: SearchAlgorithm,
     heuristic: HeuristicType = HeuristicType.MANHATTAN,
 ) -> SearchEvent:
+    """Consome a busca incremental e retorna seu evento final."""
     final_event: SearchEvent | None = None
     for final_event in search_steps(grid, algorithm, heuristic):
         pass
@@ -181,6 +187,7 @@ def _event(
     scores: dict[Position, float],
     path: list[Position] | None = None,
 ) -> SearchEvent:
+    """Cria um evento com métricas e cópias do estado atual da busca."""
     final_path = path or []
     metrics = SearchMetrics(
         elapsed_ms=elapsed_ns / 1_000_000,
@@ -203,6 +210,7 @@ def _event(
 
 
 def _reconstruct_path(parents: dict[Position, Position], goal: Position) -> list[Position]:
+    """Remonta o caminho da origem ao destino pelos predecessores."""
     path = [goal]
     while path[-1] in parents:
         path.append(parents[path[-1]])
