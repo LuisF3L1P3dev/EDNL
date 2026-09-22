@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="br.edu.ifrn.labirintojava.controller.MainController" styleClass="root-pane">
+    <top>
+        <VBox spacing="10" styleClass="toolbar-area">
+            <Label text="Labirinto: Busca Gulosa e A*" styleClass="title"/>
+            <FlowPane hgap="10" vgap="8" alignment="CENTER_LEFT">
+                <Label text="Mapa"/><ComboBox fx:id="presetBox" prefWidth="155" onAction="#loadPreset"/>
+                <Label text="Colunas"/><Spinner fx:id="widthSpinner" prefWidth="72"/>
+                <Label text="Linhas"/><Spinner fx:id="heightSpinner" prefWidth="72"/>
+                <Label text="Ferramenta"/><ComboBox fx:id="toolBox" prefWidth="145"/>
+                <Label text="Movimento"/><ComboBox fx:id="movementBox" prefWidth="125"/>
+                <Label text="Algoritmo"/><ComboBox fx:id="algorithmBox" prefWidth="140"/>
+                <CheckBox fx:id="compareBox" text="Comparar lado a lado"/>
+            </FlowPane>
+            <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
+                <Button fx:id="startButton" text="Iniciar" onAction="#start" styleClass="primary-button"/>
+                <Button fx:id="pauseButton" text="Pausar" onAction="#pause"/>
+                <Button fx:id="resumeButton" text="Continuar" onAction="#resume"/>
+                <Button fx:id="stepButton" text="Avançar 1 passo" onAction="#stepOnce"/>
+                <Button text="Reiniciar" onAction="#reset"/>
+                <Button text="Limpar mapa" onAction="#clearMap"/>
+                <Label text="Velocidade"/><Slider fx:id="speedSlider" min="1" max="30" value="8" prefWidth="135"/>
+                <Label fx:id="speedLabel"/>
+                <Label fx:id="visualLabel" text="Tempo visual: 0,00 s"/>
+            </FlowPane>
+            <Label fx:id="noticeLabel" text="Desenhe um mapa ou escolha um exemplo. Busca Gulosa prioriza somente H e não garante custo mínimo." wrapText="true"/>
+        </VBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" fitToHeight="true" pannable="false" styleClass="board-scroll">
+            <content>
+                <HBox fx:id="boards" alignment="TOP_CENTER" spacing="16">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                </HBox>
+            </content>
+        </ScrollPane>
+    </center>
+    <bottom>
+        <VBox spacing="7" styleClass="bottom-area">
+            <Label fx:id="inspectorLabel" text="Passe o mouse sobre uma célula para consultar G, H e F."/>
+            <HBox spacing="13" alignment="CENTER_LEFT">
+                <Label text="Início A" styleClass="legend-start"/><Label text="Destino B" styleClass="legend-goal"/>
+                <Label text="Obstáculo" styleClass="legend-wall"/><Label text="Fronteira" styleClass="legend-frontier"/>
+                <Label text="Explorado" styleClass="legend-explored"/><Label text="Caminho" styleClass="legend-path"/>
+                <Label text="Agente ●" styleClass="legend-agent"/>
+            </HBox>
+            <TableView fx:id="comparisonTable" prefHeight="105" visible="false" managed="false"/>
+            <Label text="Tempo computacional mede apenas os passos de busca. Uma execução isolada não é um benchmark conclusivo." styleClass="footnote"/>
+        </VBox>
+    </bottom>
+</BorderPane>
