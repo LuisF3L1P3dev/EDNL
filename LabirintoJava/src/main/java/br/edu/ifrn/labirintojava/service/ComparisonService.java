@@ -13,6 +13,7 @@ public final class ComparisonService {
 
     public List<RunPlan> prepare(GridMap source, MovementMode movement,
                                  SearchAlgorithm selected, boolean compare) {
+        // As duas buscas partem das mesmas regras, mas cada uma recebe seu próprio mapa.
         if (compare) return List.of(
                 new RunPlan(new GreedySearch(), source.copy(), movement),
                 new RunPlan(new AStarSearch(), source.copy(), movement));

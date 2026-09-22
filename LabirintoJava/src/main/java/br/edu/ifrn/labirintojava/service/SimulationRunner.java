@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 
 public final class SimulationRunner implements AutoCloseable {
     private final SearchSession session;
+    // Cada simulação tem um executor próprio; o cálculo nunca bloqueia a thread gráfica.
     private final ExecutorService executor;
     private final AtomicBoolean busy = new AtomicBoolean();
     private volatile boolean cancelled;
@@ -31,11 +32,14 @@ public final class SimulationRunner implements AutoCloseable {
     public boolean isBusy() { return busy.get(); }
 
     public boolean requestStep(Consumer<SearchStep> onStep, Consumer<Throwable> onError) {
+        // Impede que vários ticks agendem expansões simultâneas para a mesma sessão.
         if (cancelled || !busy.compareAndSet(false, true)) return false;
         try {
             executor.execute(() -> {
                 try {
                     SearchStep step = session.step();
+                    // Controles e Canvas só podem ser atualizados na JavaFX Application Thread.
+                    // A segunda checagem evita entregar resultados de uma execução já cancelada.
                     if (!cancelled) Platform.runLater(() -> {
                         busy.set(false);
                         if (!cancelled) onStep.accept(step);
@@ -55,6 +59,7 @@ public final class SimulationRunner implements AutoCloseable {
     }
 
     @Override public void close() {
+        // A interrupção encerra o executor; um passo que terminar depois será descartado.
         cancelled = true;
         executor.shutdownNow();
     }

@@ -72,7 +72,9 @@ public final class MainController {
     private boolean settingDimensions;
     private boolean editLocked;
     private boolean running;
+    // Muda a cada reinício: callbacks de uma busca anterior não podem desenhar na busca nova.
     private long generation;
+    // O tempo visual acumula apenas períodos ativos, inclusive os intervalos da animação.
     private long visualActiveNanos;
     private long visualResumedAt;
 
@@ -158,6 +160,7 @@ public final class MainController {
     }
 
     private void createEditorView() {
+        // Voltar ao editor fecha as sessões anteriores e limpa apenas as marcas visuais.
         cancelRuns();
         editLocked = false;
         boards.getChildren().clear();
@@ -191,6 +194,7 @@ public final class MainController {
         cancelRuns();
         editLocked = true;
         boards.getChildren().clear();
+        // O destino e os obstáculos usados na busca ficam congelados nesta cópia.
         GridMap snapshot = editorMap.copy();
         MovementMode movement = movementBox.getValue();
         SearchAlgorithm selected = "Busca Gulosa".equals(algorithmBox.getValue()) ? new GreedySearch() : new AStarSearch();
@@ -215,6 +219,7 @@ public final class MainController {
     }
 
     private void startTimeline() {
+        // O Timeline determina a cadência visual; o cálculo do algoritmo fica no executor.
         if (timeline != null) timeline.stop();
         timeline = new Timeline(new KeyFrame(Duration.millis(1000.0 / Math.round(speedSlider.getValue())), event -> tick()));
         timeline.setCycleCount(Timeline.INDEFINITE);
@@ -228,10 +233,12 @@ public final class MainController {
     }
 
     private void advanceOne() {
+        // O mesmo método atende ao relógio automático e ao botão de avanço manual.
         long runGeneration = generation;
         for (RunPanel panel : panels) {
             if (panel.phase == Phase.SEARCH) {
                 panel.runner.requestStep(step -> {
+                    // Um resultado tardio pertence à execução antiga e não altera a tela atual.
                     if (generation != runGeneration) return;
                     panel.accept(step);
                     updateComparisonTable();
@@ -254,6 +261,7 @@ public final class MainController {
         if (!running) return;
         running = false;
         if (timeline != null) timeline.stop();
+        // Pausas ficam fora do tempo visual; o tempo computacional já é medido na busca.
         visualActiveNanos += System.nanoTime() - visualResumedAt;
         updateVisualTime();
         noticeLabel.setText("Pausado. Avançar expande um nó válido ou move o agente uma célula.");
@@ -270,6 +278,7 @@ public final class MainController {
     }
 
     @FXML private void stepOnce() {
+        // Espera o passo pendente: cada clique avança uma expansão ou movimento por painel ativo.
         if (!editLocked || running || allDone() || panels.stream().anyMatch(p -> p.runner.isBusy())) return;
         advanceOne();
     }
@@ -304,6 +313,7 @@ public final class MainController {
     }
 
     private void cancelRuns() {
+        // Invalidar primeiro os callbacks impede que uma sessão fechada contamine a próxima.
         generation++;
         if (timeline != null) timeline.stop();
         for (RunPanel panel : panels) panel.runner.close();
@@ -403,6 +413,7 @@ public final class MainController {
         private void accept(SearchStep step) {
             last = step;
             canvas.apply(step);
+            // Depois da busca, os ticks passam a mover o agente pelo caminho reconstruído.
             if (step.status() == SearchStatus.FOUND) {
                 canvas.setAgent(step.path().getFirst());
                 phase = step.path().size() == 1 ? Phase.DONE : Phase.MOVE;
@@ -417,6 +428,7 @@ public final class MainController {
             Position previous = last.path().get(agentIndex);
             agentIndex++;
             Position next = last.path().get(agentIndex);
+            // O custo percorrido usa as mesmas regras de movimento usadas no planejamento.
             walkedCost += movement.cost(previous, next);
             canvas.setAgent(next);
             if (agentIndex == last.path().size() - 1) phase = Phase.DONE;

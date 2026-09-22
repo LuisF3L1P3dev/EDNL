@@ -40,6 +40,7 @@ public final class PresetMaps {
         GridMap map = new GridMap(width, rows.size());
         Position start = null;
         Position goal = null;
+        // Aplicamos paredes depois de A e B para não confundi-las com as posições padrão da grade.
         java.util.List<Position> walls = new java.util.ArrayList<>();
         for (int y = 0; y < rows.size(); y++) {
             String row = rows.get(y);

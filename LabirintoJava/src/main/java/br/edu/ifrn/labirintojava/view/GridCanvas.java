@@ -65,6 +65,7 @@ public final class GridCanvas extends Canvas {
     public NodeScore score(Position position) { return scores.get(position); }
 
     public void apply(SearchStep step) {
+        // Cada expansão chega como um conjunto de alterações, seguido de um único redesenho.
         scores.putAll(step.scoresChanged());
         for (Position position : step.scoresChanged().keySet()) {
             if (!explored.contains(position)) frontier.add(position);
@@ -87,6 +88,7 @@ public final class GridCanvas extends Canvas {
             for (int x = 0; x < map.width(); x++) {
                 Position p = new Position(x, y);
                 Color color = EMPTY;
+                // As últimas atribuições têm precedência: A, B e agente continuam visíveis.
                 if (explored.contains(p)) color = EXPLORED;
                 if (frontier.contains(p)) color = FRONTIER;
                 if (path.contains(p)) color = PATH;
