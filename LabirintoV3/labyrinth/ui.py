@@ -63,6 +63,7 @@ class Button:
 
 class App:
     def __init__(self) -> None:
+        """Inicializa a janela, o mapa e os controles da aplicação."""
         pygame.init()
         self.window = pygame.Window(
             "Labirinto: Busca Gulosa vs. A*",
@@ -112,6 +113,7 @@ class App:
         self.running = True
 
     def run(self) -> None:
+        """Processa eventos e desenha quadros até o fechamento da janela."""
         while self.running:
             delta = self.clock.tick(FPS) / 1000.0
             self._handle_events()
@@ -122,6 +124,7 @@ class App:
         pygame.quit()
 
     def _handle_events(self) -> None:
+        """Despacha eventos para o diálogo, os controles ou o editor."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -150,6 +153,7 @@ class App:
                     self._edit_at(event.pos, erase=True)
 
     def _handle_key(self, key: int) -> None:
+        """Executa os atalhos de teclado da tela principal."""
         if key == pygame.K_ESCAPE:
             self.running = False
         elif key == pygame.K_SPACE:
@@ -174,6 +178,7 @@ class App:
             self.tool = "Borracha"
 
     def _handle_size_key(self, event: pygame.event.Event) -> None:
+        """Edita os campos numéricos e os atalhos do diálogo de tamanho."""
         if event.key == pygame.K_ESCAPE:
             self.size_dialog_open = False
             self.size_error = ""
@@ -199,6 +204,7 @@ class App:
                 self.size_error = ""
 
     def _handle_size_click(self, position: tuple[int, int]) -> None:
+        """Seleciona um campo ou aciona um botão do diálogo de tamanho."""
         for field, rect in self.size_field_rects.items():
             if rect.collidepoint(position):
                 self.active_size_field = field
@@ -211,6 +217,7 @@ class App:
             self.size_error = ""
 
     def _open_size_dialog(self) -> None:
+        """Abre o diálogo com as dimensões atuais quando a edição é permitida."""
         if not self._can_edit():
             self.notice = "Reinicie a execução antes de alterar o tamanho."
             return
@@ -221,6 +228,7 @@ class App:
         self.size_dialog_open = True
 
     def _apply_custom_size(self) -> None:
+        """Valida o tamanho e regenera o cenário ou mostra o erro no diálogo."""
         if not self.size_inputs["rows"] or not self.size_inputs["cols"]:
             self.size_error = "Preencha os dois campos numéricos."
             return
@@ -240,6 +248,7 @@ class App:
         )
 
     def _cycle_heuristic(self) -> None:
+        """Alterna a heurística e descarta resultados da configuração anterior."""
         if not self._can_edit():
             self.notice = "Reinicie a execução antes de trocar a heurística."
             return
@@ -255,10 +264,12 @@ class App:
         self.notice = f"Heurística {self.heuristic.value} selecionada."
 
     def _sync_size_inputs(self) -> None:
+        """Atualiza os campos de tamanho conforme a grade atual."""
         self.size_inputs["rows"] = str(self.grid.rows)
         self.size_inputs["cols"] = str(self.grid.cols)
 
     def _update(self, delta: float) -> None:
+        """Avança as simulações visíveis no ritmo escolhido, limitado por quadro."""
         active = self._visible_simulations()
         if not any(simulation.active for simulation in active):
             self._capture_results()
@@ -276,6 +287,7 @@ class App:
         self._capture_results()
 
     def _capture_results(self) -> None:
+        """Guarda métricas finais e anuncia o resultado das buscas visíveis."""
         for algorithm, simulation in self.simulations.items():
             if simulation.terminal:
                 self.history[algorithm] = simulation.metrics
@@ -302,11 +314,13 @@ class App:
                     )
 
     def _visible_simulations(self) -> list[Simulation]:
+        """Retorna uma simulação no modo individual ou ambas no duelo."""
         if self.mode == "Duelo":
             return [self.simulations[SearchAlgorithm.GREEDY], self.simulations[SearchAlgorithm.ASTAR]]
         return [self.simulations[self.algorithm]]
 
     def _run_or_pause(self) -> None:
+        """Inicia, pausa ou retoma as simulações visíveis conforme seu estado."""
         visible = self._visible_simulations()
         if any(sim.state is SimulationState.PAUSED for sim in visible):
             for simulation in visible:
@@ -328,12 +342,14 @@ class App:
             self.notice = "Busca em andamento: fronteira e visitados são atualizados em tempo real."
 
     def _reset_visualization(self) -> None:
+        """Limpa as simulações e o histórico sem alterar o mapa."""
         for simulation in self.simulations.values():
             simulation.reset(self.grid)
         self.history.clear()
         self.notice = "Visualização reiniciada; o mapa foi preservado."
 
     def _clear_grid(self) -> None:
+        """Substitui o mapa por uma grade vazia com o mesmo tamanho."""
         if not self._can_edit():
             self.notice = "Pause não libera a edição; reinicie a simulação primeiro."
             return
@@ -342,6 +358,7 @@ class App:
         self._map_changed("Grade limpa.")
 
     def _change_mode(self) -> None:
+        """Alterna entre execução individual e duelo e limpa os resultados."""
         if not self._can_edit():
             self.notice = "Reinicie a execução antes de trocar o modo."
             return
@@ -350,12 +367,14 @@ class App:
         self.notice = f"Modo {self.mode} selecionado."
 
     def _select_algorithm(self, algorithm: SearchAlgorithm) -> None:
+        """Seleciona a busca do modo individual quando a edição é permitida."""
         if self.mode != "Individual" or not self._can_edit():
             return
         self.algorithm = algorithm
         self.notice = f"{algorithm.value} selecionado."
 
     def _cycle_scenario(self) -> None:
+        """Carrega o próximo cenário mantendo as dimensões da grade."""
         if not self._can_edit():
             self.notice = "Reinicie a execução antes de trocar o cenário."
             return
@@ -371,6 +390,7 @@ class App:
         self._map_changed(f"Cenário “{name}” carregado.")
 
     def _map_changed(self, message: str) -> None:
+        """Invalida resultados após uma mudança no mapa e exibe o aviso."""
         for simulation in self.simulations.values():
             simulation.reset(self.grid)
         self.history.clear()
@@ -379,6 +399,7 @@ class App:
         self.notice = message
 
     def _can_edit(self) -> bool:
+        """Permite edição somente quando nenhuma simulação está ativa ou pausada."""
         return all(
             simulation.state not in (
                 SimulationState.SEARCHING,
@@ -389,6 +410,7 @@ class App:
         )
 
     def _click_button(self, position: tuple[int, int]) -> bool:
+        """Aciona o botão habilitado sob o clique e informa se o consumiu."""
         for button in self.buttons:
             if button.enabled and button.rect.collidepoint(position):
                 actions: dict[str, Callable[[], None]] = {
@@ -417,6 +439,7 @@ class App:
         return False
 
     def _edit_at(self, mouse: tuple[int, int], erase: bool) -> None:
+        """Aplica a ferramenta na célula clicada e limpa resultados se mudar."""
         if not self._can_edit():
             return
         position = self._position_at(mouse)
@@ -435,6 +458,7 @@ class App:
             self._map_changed("Mapa alterado; resultados anteriores foram limpos.")
 
     def _position_at(self, mouse: tuple[int, int]) -> Position | None:
+        """Converte o ponto da tela em célula de uma das grades visíveis."""
         for rect, _ in self.grid_views:
             if rect.collidepoint(mouse):
                 cell_size = min(rect.width // self.grid.cols, rect.height // self.grid.rows)
@@ -445,6 +469,7 @@ class App:
         return None
 
     def _draw(self) -> None:
+        """Desenha a grade, a barra lateral e o diálogo ou dica de contexto."""
         self.screen.fill(BG)
         width, height = self.screen.get_size()
         content, sidebar = self._layout_rects(width, height)
@@ -461,6 +486,7 @@ class App:
 
     @staticmethod
     def _layout_rects(width: int, height: int) -> tuple[pygame.Rect, pygame.Rect]:
+        """Calcula as áreas de conteúdo e barra lateral da janela."""
         sidebar_width = max(
             SIDEBAR_MIN_WIDTH,
             min(SIDEBAR_MAX_WIDTH, width // 5),
@@ -480,6 +506,7 @@ class App:
         return content, sidebar
 
     def _draw_individual(self, area: pygame.Rect) -> None:
+        """Desenha a busca selecionada em uma única grade."""
         simulation = self.simulations[self.algorithm]
         self._panel(area)
         label = f"EXECUÇÃO INDIVIDUAL  /  {self.algorithm.value.upper()}"
@@ -498,6 +525,7 @@ class App:
         self._draw_grid(grid_rect, simulation)
 
     def _draw_duel(self, area: pygame.Rect) -> None:
+        """Desenha Gulosa e A* lado a lado sobre o mesmo mapa."""
         self._panel(area)
         available_width = area.width - 2 * CONTENT_PADDING - DUEL_GAP
         half = available_width // 2
@@ -539,6 +567,7 @@ class App:
         horizontal_alignment: str = "center",
         vertical_alignment: str = "center",
     ) -> pygame.Rect:
+        """Calcula o retângulo da grade com o alinhamento pedido."""
         size = max(2, min(area.width // self.grid.cols, area.height // self.grid.rows))
         width, height = size * self.grid.cols, size * self.grid.rows
         if horizontal_alignment == "left":
@@ -556,6 +585,7 @@ class App:
         return pygame.Rect(x, y, width, height)
 
     def _draw_grid(self, rect: pygame.Rect, simulation: Simulation) -> None:
+        """Pinta células, estado da busca, marcadores e agente da simulação."""
         cell_size = rect.width // self.grid.cols
         path_cells = set(simulation.path)
         for row in range(self.grid.rows):
@@ -590,6 +620,7 @@ class App:
     def _cell_outline(
         self, rect: pygame.Rect, position: Position, color: tuple[int, int, int], width: int
     ) -> None:
+        """Contorna uma célula para destacar a posição atual da busca."""
         size = rect.width // self.grid.cols
         row, col = position
         target = pygame.Rect(rect.x + col * size, rect.y + row * size, size, size)
@@ -598,6 +629,7 @@ class App:
     def _draw_marker(
         self, rect: pygame.Rect, position: Position, label: str, color: tuple[int, int, int]
     ) -> None:
+        """Desenha o marcador circular de origem ou destino."""
         size = rect.width // self.grid.cols
         row, col = position
         center = rect.x + col * size + size // 2, rect.y + row * size + size // 2
@@ -607,6 +639,7 @@ class App:
             self.screen.blit(text, text.get_rect(center=center))
 
     def _draw_agent(self, rect: pygame.Rect, position: Position) -> None:
+        """Desenha o agente na rota, com contorno ao chegar ao destino."""
         size = rect.width // self.grid.cols
         row, col = position
         center = rect.x + col * size + size // 2, rect.y + row * size + size // 2
@@ -618,6 +651,7 @@ class App:
             pygame.draw.circle(self.screen, TEXT, center, radius, 2)
 
     def _draw_sidebar(self, rect: pygame.Rect) -> None:
+        """Monta controles, telemetria e avisos na barra lateral."""
         self._panel(rect)
         self.buttons.clear()
         x, y = rect.x + 16, rect.y + 14
@@ -738,6 +772,7 @@ class App:
         simulation: Simulation,
         compact: bool = False,
     ) -> int:
+        """Desenha as métricas da busca e retorna a coordenada após o cartão."""
         height = 91 if compact else 112
         card = pygame.Rect(x, y, width, height)
         pygame.draw.rect(self.screen, PANEL_LIGHT, card, border_radius=8)
@@ -767,6 +802,7 @@ class App:
         return y + height
 
     def _draw_history(self, x: int, y: int, width: int) -> None:
+        """Mostra os últimos resultados de cada algoritmo no mapa atual."""
         self.screen.blit(self.fonts["small"].render("ÚLTIMOS RESULTADOS NO MAPA", True, MUTED), (x, y))
         y += 22
         for algorithm in (SearchAlgorithm.GREEDY, SearchAlgorithm.ASTAR):
@@ -782,6 +818,7 @@ class App:
             y += 21
 
     def _draw_notice(self, sidebar: pygame.Rect) -> None:
+        """Quebra e mostra o aviso de estado no rodapé da barra lateral."""
         box = pygame.Rect(sidebar.x + 16, sidebar.bottom - 79, sidebar.width - 32, 62)
         pygame.draw.rect(self.screen, (15, 23, 39), box, border_radius=7)
         lines = self._wrap_text(self.notice, box.width - 18, self.fonts["small"])
@@ -792,6 +829,7 @@ class App:
             )
 
     def _draw_hover_tooltip(self) -> None:
+        """Mostra coordenadas e valores da busca na célula sob o cursor."""
         mouse = pygame.mouse.get_pos()
         position = self._position_at(mouse)
         if position is None:
@@ -823,6 +861,7 @@ class App:
         self.screen.blit(rendered, (box.x + 8, box.y + 5))
 
     def _draw_size_dialog(self) -> None:
+        """Desenha o diálogo modal e atualiza suas áreas clicáveis."""
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((3, 7, 15, 190))
         self.screen.blit(overlay, (0, 0))
@@ -900,6 +939,7 @@ class App:
         label: str,
         accent: tuple[int, int, int],
     ) -> None:
+        """Desenha um botão do diálogo com destaque ao passar o mouse."""
         hovered = rect.collidepoint(pygame.mouse.get_pos())
         color = PANEL_LIGHT if not hovered else tuple(
             min(255, channel + 14) for channel in PANEL_LIGHT
@@ -920,6 +960,7 @@ class App:
         enabled: bool = True,
         accent: tuple[int, int, int] = BLUE,
     ) -> None:
+        """Registra e desenha um botão da barra lateral."""
         button = Button(pygame.Rect(x, y, width, 32), label, action, active, enabled, accent)
         self.buttons.append(button)
         mouse_over = button.rect.collidepoint(pygame.mouse.get_pos())
@@ -936,14 +977,17 @@ class App:
         self.screen.blit(text, text.get_rect(center=button.rect.center))
 
     def _section_label(self, label: str, x: int, y: int) -> None:
+        """Desenha o título de uma seção da barra lateral."""
         self.screen.blit(self.fonts["small"].render(label, True, MUTED), (x, y))
 
     def _panel(self, rect: pygame.Rect) -> None:
+        """Desenha o fundo e o contorno de um painel."""
         pygame.draw.rect(self.screen, PANEL, rect, border_radius=12)
         pygame.draw.rect(self.screen, BORDER, rect, 1, border_radius=12)
 
     @staticmethod
     def _wrap_text(text: str, width: int, font: pygame.font.Font) -> list[str]:
+        """Divide o texto em linhas que cabem na largura em pixels."""
         words = text.split()
         lines: list[str] = []
         current = ""
@@ -961,6 +1005,7 @@ class App:
 
     @staticmethod
     def _format_search_value(value: float | None) -> str:
+        """Formata valores da busca sem casas inúteis ou usa travessão."""
         if value is None:
             return "—"
         if float(value).is_integer():
@@ -969,4 +1014,5 @@ class App:
 
 
 def run() -> None:
+    """Cria e executa a janela principal da aplicação."""
     App().run()
