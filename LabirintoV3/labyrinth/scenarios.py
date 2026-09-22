@@ -26,6 +26,10 @@ SCENARIO_LABELS = {
     "Salas e portas": "Salas",
     "Espiral": "Espiral",
     "Duas rotas": "2 rotas",
+    "Ponte estreita": "Ponte",
+    "Becos sem saída": "Becos",
+    "Tabuleiro": "Tabuleiro",
+    "Arquipélago": "Ilhas",
 }
 SCENARIOS = tuple(SCENARIO_LABELS)
 
@@ -61,6 +65,10 @@ def create_scenario(
         "Salas e portas": lambda: _rooms_and_doors(rows, cols),
         "Espiral": lambda: _spiral(rows, cols),
         "Duas rotas": lambda: _two_routes(rows, cols),
+        "Ponte estreita": lambda: _narrow_bridge(rows, cols),
+        "Becos sem saída": lambda: _dead_ends(rows, cols),
+        "Tabuleiro": lambda: _checkerboard(rows, cols),
+        "Arquipélago": lambda: _archipelago(rows, cols),
     }
     try:
         grid = builders[name]()
@@ -271,6 +279,74 @@ def _two_routes(rows: int, cols: int) -> Grid:
             for col in range(barrier_col + 1, pocket_end + 1)
         )
         grid.walls.discard((pocket_row, pocket_end))
+    return grid
+
+
+def _narrow_bridge(rows: int, cols: int) -> Grid:
+    grid = create_empty_grid(rows, cols)
+    band_width = max(1, min(5, cols // 12))
+    band_start = cols // 2 - band_width // 2
+    gate_row = max(1, min(rows - 2, rows // 4))
+    for col in range(band_start, band_start + band_width):
+        grid.walls.update((row, col) for row in range(rows) if row != gate_row)
+    return grid
+
+
+def _dead_ends(rows: int, cols: int) -> Grid:
+    grid = create_empty_grid(rows, cols)
+    span = grid.goal[1] - grid.start[1]
+    if span < 6 or rows < 7:
+        barrier_col = (grid.start[1] + grid.goal[1]) // 2
+        grid.walls.update((row, barrier_col) for row in range(1, rows))
+        return grid
+
+    spine_col = grid.goal[1] - max(2, cols // 12)
+    gate_row = max(1, rows // 8)
+    grid.walls.update((row, spine_col) for row in range(rows) if row != gate_row)
+
+    tooth_start = max(grid.start[1] + 1, cols // 5)
+    spacing = max(3, rows // 6)
+    for row in range(gate_row + spacing, rows - 1, spacing):
+        grid.walls.update((row, col) for col in range(tooth_start, spine_col + 1))
+    return grid
+
+
+def _checkerboard(rows: int, cols: int) -> Grid:
+    grid = create_empty_grid(rows, cols)
+    block_size = max(1, min(rows, cols) // 8)
+    gap = max(2, block_size)
+    stride = block_size + gap
+    for block_row, top in enumerate(range(1, rows - 1, stride)):
+        for block_col, left in enumerate(range(1, cols - 1, stride)):
+            if (block_row + block_col) % 2:
+                continue
+            for row in range(top, min(rows - 1, top + block_size)):
+                for col in range(left, min(cols - 1, left + block_size)):
+                    grid.walls.add((row, col))
+    return grid
+
+
+def _archipelago(rows: int, cols: int) -> Grid:
+    grid = create_empty_grid(rows, cols)
+    island_height = max(2, rows // 6)
+    island_width = max(2, cols // 10)
+    centers = (
+        (0.45, 0.22),
+        (0.55, 0.36),
+        (0.45, 0.50),
+        (0.55, 0.64),
+        (0.45, 0.78),
+    )
+    for row_ratio, col_ratio in centers:
+        center_row = round((rows - 1) * row_ratio)
+        center_col = round((cols - 1) * col_ratio)
+        top = max(1, center_row - island_height // 2)
+        left = max(1, center_col - island_width // 2)
+        bottom = min(rows - 1, top + island_height)
+        right = min(cols - 1, left + island_width)
+        for row in range(top, bottom):
+            for col in range(left, right):
+                grid.walls.add((row, col))
     return grid
 
 

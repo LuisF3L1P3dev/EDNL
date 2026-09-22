@@ -67,7 +67,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(SCENARIOS[self.app.scenario_index], "Armadilha Gulosa")
         self.assertEqual((self.app.grid.rows, self.app.grid.cols), (17, 29))
 
-    def test_scenario_selector_cycles_through_all_eight_entries(self) -> None:
+    def test_scenario_selector_cycles_through_full_catalog(self) -> None:
         self.app.grid = create_scenario("Mundo aberto", rows=17, cols=29)
         self.app.scenario_index = 0
         visited = []
@@ -169,6 +169,24 @@ class AppTests(unittest.TestCase):
                 self.app.mode = mode
                 self.app._draw()
                 self.assertEqual(len(self.app.grid_views), expected_views)
+
+    def test_new_scenarios_render_in_both_modes(self) -> None:
+        names = (
+            "Ponte estreita",
+            "Becos sem saída",
+            "Tabuleiro",
+            "Arquipélago",
+        )
+        for name in names:
+            self.app.grid = create_scenario(name)
+            self.app.scenario_index = SCENARIOS.index(name)
+            for simulation in self.app.simulations.values():
+                simulation.reset(self.app.grid)
+            for mode, expected_views in (("Individual", 1), ("Duelo", 2)):
+                with self.subTest(name=name, mode=mode):
+                    self.app.mode = mode
+                    self.app._draw()
+                    self.assertEqual(len(self.app.grid_views), expected_views)
 
     def test_layout_uses_full_height_without_header_band(self) -> None:
         width, height = self.app.screen.get_size()

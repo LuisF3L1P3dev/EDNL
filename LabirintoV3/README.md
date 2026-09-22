@@ -13,9 +13,9 @@ pontos A e B.
 - editor de paredes, Borracha e reposicionamento dos pontos A e B;
 - escolha entre as heurísticas Manhattan e Euclidiana;
 - mapas retangulares personalizados de 5–61 linhas por 7–81 colunas;
-- oito cenários responsivos ao tamanho atual: Mundo aberto, Armadilha Gulosa,
-  Labirinto clássico, Aleatório, Zigue-zague, Salas e portas, Espiral e Duas
-  rotas;
+- doze cenários responsivos ao tamanho atual: Mundo aberto, Armadilha Gulosa,
+  Labirinto clássico, Aleatório, Zigue-zague, Salas e portas, Espiral, Duas
+  rotas, Ponte estreita, Becos sem saída, Tabuleiro e Arquipélago;
 - inspeção de `g`, `h` e prioridade ao passar o mouse sobre uma célula.
 
 O movimento é ortogonal e cada passo custa 1. A heurística pode ser Manhattan

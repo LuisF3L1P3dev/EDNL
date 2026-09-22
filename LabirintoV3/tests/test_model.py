@@ -32,7 +32,7 @@ class GridTests(unittest.TestCase):
         clone.set_wall((2, 2))
         self.assertNotIn((2, 2), grid.walls)
 
-    def test_catalog_has_all_eight_scenarios_in_selector_order(self) -> None:
+    def test_catalog_has_all_twelve_scenarios_in_selector_order(self) -> None:
         self.assertEqual(
             SCENARIOS,
             (
@@ -44,6 +44,10 @@ class GridTests(unittest.TestCase):
                 "Salas e portas",
                 "Espiral",
                 "Duas rotas",
+                "Ponte estreita",
+                "Becos sem saída",
+                "Tabuleiro",
+                "Arquipélago",
             ),
         )
         self.assertEqual(tuple(SCENARIO_LABELS), SCENARIOS)
@@ -58,6 +62,7 @@ class GridTests(unittest.TestCase):
                     self.assertTrue(grid.in_bounds(grid.start))
                     self.assertTrue(grid.in_bounds(grid.goal))
                     self.assertNotEqual(grid.start, grid.goal)
+                    self.assertTrue(all(grid.in_bounds(wall) for wall in grid.walls))
                     self.assertNotIn(grid.start, grid.walls)
                     self.assertNotIn(grid.goal, grid.walls)
                     self.assertTrue(grid.has_path())
@@ -77,6 +82,21 @@ class GridTests(unittest.TestCase):
         other = create_scenario("Aleatório", seed=43, rows=17, cols=29)
         self.assertEqual(first.walls, second.walls)
         self.assertNotEqual(first.walls, other.walls)
+
+    def test_new_scenarios_have_distinct_obstacle_patterns(self) -> None:
+        names = (
+            "Ponte estreita",
+            "Becos sem saída",
+            "Tabuleiro",
+            "Arquipélago",
+        )
+        patterns = []
+        for name in names:
+            with self.subTest(name=name):
+                grid = create_scenario(name)
+                self.assertTrue(grid.walls)
+                patterns.append(frozenset(grid.walls))
+        self.assertEqual(len(set(patterns)), len(names))
 
     def test_custom_grid_accepts_boundary_sizes(self) -> None:
         for rows, cols in ((MIN_ROWS, MIN_COLS), (MAX_ROWS, MAX_COLS)):

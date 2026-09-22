@@ -38,6 +38,30 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(greedy.metrics.path_cost, 58)
         self.assertLess(astar.metrics.path_cost, greedy.metrics.path_cost)
 
+    def test_new_educational_scenarios_are_solved_by_both_algorithms(self) -> None:
+        names = (
+            "Ponte estreita",
+            "Becos sem saída",
+            "Tabuleiro",
+            "Arquipélago",
+        )
+        for name in names:
+            grid = create_scenario(name)
+            for algorithm in (SearchAlgorithm.GREEDY, SearchAlgorithm.ASTAR):
+                with self.subTest(name=name, algorithm=algorithm):
+                    result = solve(grid, algorithm)
+                    self.assertEqual(result.kind, EventKind.FOUND)
+                    self.assertEqual(result.path[0], grid.start)
+                    self.assertEqual(result.path[-1], grid.goal)
+
+    def test_tabuleiro_and_archipelago_expose_greedy_suboptimality(self) -> None:
+        for name in ("Tabuleiro", "Arquipélago"):
+            with self.subTest(name=name):
+                grid = create_scenario(name)
+                greedy = solve(grid, SearchAlgorithm.GREEDY)
+                astar = solve(grid, SearchAlgorithm.ASTAR)
+                self.assertLess(astar.metrics.path_cost, greedy.metrics.path_cost)
+
     def test_scores_follow_each_algorithm_definition(self) -> None:
         grid = Grid(rows=5, cols=7, start=(2, 1), goal=(2, 5))
         for heuristic in HeuristicType:
