@@ -7,7 +7,9 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
+from labyrinth.scenarios import MAX_COLS, MAX_ROWS, SCENARIOS, create_scenario
 from labyrinth.search import HeuristicType, SearchAlgorithm, SearchMetrics
+from labyrinth.simulation import SimulationState
 from labyrinth.ui import App
 
 
@@ -28,6 +30,71 @@ class AppTests(unittest.TestCase):
         self.assertFalse(self.app.grid.walls)
         self.assertFalse(self.app.history)
         self.assertFalse(self.app.size_dialog_open)
+
+    def test_custom_size_preserves_scenario_and_resets_all_results(self) -> None:
+        self.app.scenario_index = SCENARIOS.index("Zigue-zague")
+        self.app.grid = create_scenario("Zigue-zague")
+        for simulation in self.app.simulations.values():
+            simulation.start(self.app.grid)
+            simulation.advance()
+        self.app.history[SearchAlgorithm.ASTAR] = SearchMetrics(path_cost=3)
+        self.app.step_accumulator = 0.75
+        self.app.size_inputs = {"rows": "17", "cols": "29"}
+        self.app.size_dialog_open = True
+
+        self.app._apply_custom_size()
+
+        self.assertEqual(SCENARIOS[self.app.scenario_index], "Zigue-zague")
+        self.assertEqual((self.app.grid.rows, self.app.grid.cols), (17, 29))
+        self.assertTrue(self.app.grid.walls)
+        self.assertFalse(self.app.history)
+        self.assertEqual(self.app.step_accumulator, 0.0)
+        self.assertTrue(
+            all(
+                simulation.state is SimulationState.IDLE
+                and not simulation.frontier
+                and not simulation.explored
+                and not simulation.path
+                and simulation.metrics == SearchMetrics()
+                for simulation in self.app.simulations.values()
+            )
+        )
+
+    def test_changing_scenario_preserves_current_size(self) -> None:
+        self.app.grid = create_scenario("Mundo aberto", rows=17, cols=29)
+        self.app.scenario_index = SCENARIOS.index("Mundo aberto")
+        self.app._cycle_scenario()
+        self.assertEqual(SCENARIOS[self.app.scenario_index], "Armadilha Gulosa")
+        self.assertEqual((self.app.grid.rows, self.app.grid.cols), (17, 29))
+
+    def test_scenario_selector_cycles_through_all_eight_entries(self) -> None:
+        self.app.grid = create_scenario("Mundo aberto", rows=17, cols=29)
+        self.app.scenario_index = 0
+        visited = []
+        for _ in SCENARIOS:
+            self.app._cycle_scenario()
+            visited.append(SCENARIOS[self.app.scenario_index])
+            self.assertEqual((self.app.grid.rows, self.app.grid.cols), (17, 29))
+        self.assertEqual(tuple(visited), (*SCENARIOS[1:], SCENARIOS[0]))
+
+    def test_selecting_random_scenario_generates_a_new_variation(self) -> None:
+        before_random = SCENARIOS.index("Aleatório") - 1
+        self.app.grid = create_scenario("Mundo aberto", rows=17, cols=29)
+        self.app.scenario_index = before_random
+        with patch("labyrinth.ui.random.randrange", side_effect=(101, 202)):
+            self.app._cycle_scenario()
+            first_walls = set(self.app.grid.walls)
+            self.app.scenario_index = before_random
+            self.app._cycle_scenario()
+        self.assertNotEqual(first_walls, self.app.grid.walls)
+
+    def test_clear_selects_open_world_and_preserves_current_size(self) -> None:
+        self.app.grid = create_scenario("Espiral", rows=17, cols=29)
+        self.app.scenario_index = SCENARIOS.index("Espiral")
+        self.app._clear_grid()
+        self.assertEqual(SCENARIOS[self.app.scenario_index], "Mundo aberto")
+        self.assertEqual((self.app.grid.rows, self.app.grid.cols), (17, 29))
+        self.assertFalse(self.app.grid.walls)
 
     def test_invalid_size_keeps_current_map(self) -> None:
         original = self.app.grid
@@ -90,6 +157,18 @@ class AppTests(unittest.TestCase):
             self.app._handle_events()
         set_mode.assert_not_called()
         self.assertIs(self.app.screen, self.app.window.get_surface())
+
+    def test_graphical_smoke_in_individual_and_duel_modes(self) -> None:
+        self.app.grid = create_scenario(
+            "Espiral", rows=MAX_ROWS, cols=MAX_COLS
+        )
+        for simulation in self.app.simulations.values():
+            simulation.reset(self.app.grid)
+        for mode, expected_views in (("Individual", 1), ("Duelo", 2)):
+            with self.subTest(mode=mode):
+                self.app.mode = mode
+                self.app._draw()
+                self.assertEqual(len(self.app.grid_views), expected_views)
 
 
 if __name__ == "__main__":

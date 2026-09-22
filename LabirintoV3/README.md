@@ -13,7 +13,9 @@ pontos A e B.
 - editor de paredes, Borracha e reposicionamento dos pontos A e B;
 - escolha entre as heurísticas Manhattan e Euclidiana;
 - mapas retangulares personalizados de 5–61 linhas por 7–81 colunas;
-- cenários aberto, armadilha para a Gulosa, labirinto clássico e aleatório;
+- oito cenários responsivos ao tamanho atual: Mundo aberto, Armadilha Gulosa,
+  Labirinto clássico, Aleatório, Zigue-zague, Salas e portas, Espiral e Duas
+  rotas;
 - inspeção de `g`, `h` e prioridade ao passar o mouse sobre uma célula.
 
 O movimento é ortogonal e cada passo custa 1. A heurística pode ser Manhattan
@@ -60,8 +62,9 @@ comparação nunca misture cenários diferentes.
 
 O botão com as dimensões atuais abre o diálogo de tamanho. Use clique ou
 `Tab` para alternar entre Linhas e Colunas, `Enter` para aplicar e `Esc` para
-cancelar. Aplicar cria um Mundo aberto vazio; cenários prontos mantêm seus
-próprios tamanhos.
+cancelar. Aplicar regenera o cenário selecionado nas novas dimensões e limpa
+busca, caminhada, métricas e histórico. Trocar de cenário preserva o tamanho
+atual; **Limpar mapa** seleciona Mundo aberto sem mudar linhas ou colunas.
 
 O tempo exibido mede somente o trabalho do algoritmo, sem incluir pausas ou o
 intervalo configurado para a animação.

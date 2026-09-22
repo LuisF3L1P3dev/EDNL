@@ -15,6 +15,7 @@ from .scenarios import (
     MIN_COLS,
     MIN_ROWS,
     SCENARIOS,
+    SCENARIO_LABELS,
     create_empty_grid,
     create_scenario,
 )
@@ -221,14 +222,17 @@ class App:
         try:
             rows = int(self.size_inputs["rows"])
             cols = int(self.size_inputs["cols"])
-            grid = create_empty_grid(rows, cols)
+            name = SCENARIOS[self.scenario_index]
+            seed = random.randrange(1_000_000) if name == "Aleatório" else None
+            grid = create_scenario(name, seed=seed, rows=rows, cols=cols)
         except (TypeError, ValueError) as error:
             self.size_error = str(error) or "Informe linhas e colunas válidas."
             return
         self.grid = grid
-        self.scenario_index = 0
         self.size_dialog_open = False
-        self._map_changed(f"Mapa vazio redimensionado para {rows} × {cols}.")
+        self._map_changed(
+            f"Cenário “{name}” regenerado em {rows} × {cols}."
+        )
 
     def _cycle_heuristic(self) -> None:
         if not self._can_edit():
@@ -353,13 +357,19 @@ class App:
         self.scenario_index = (self.scenario_index + 1) % len(SCENARIOS)
         name = SCENARIOS[self.scenario_index]
         seed = random.randrange(1_000_000) if name == "Aleatório" else None
-        self.grid = create_scenario(name, seed)
+        self.grid = create_scenario(
+            name,
+            seed=seed,
+            rows=self.grid.rows,
+            cols=self.grid.cols,
+        )
         self._map_changed(f"Cenário “{name}” carregado.")
 
     def _map_changed(self, message: str) -> None:
         for simulation in self.simulations.values():
             simulation.reset(self.grid)
         self.history.clear()
+        self.step_accumulator = 0.0
         self._sync_size_inputs()
         self.notice = message
 
@@ -592,18 +602,12 @@ class App:
         )
         y += 39
         scenario = SCENARIOS[self.scenario_index]
-        scenario_labels = {
-            "Mundo aberto": "Aberto",
-            "Armadilha Gulosa": "Armadilha",
-            "Labirinto clássico": "Clássico",
-            "Aleatório": "Aleatório",
-        }
         scenario_width = 186
         self._add_button(
             x,
             y,
             scenario_width,
-            f"Cenário: {scenario_labels[scenario]}",
+            f"Cenário: {SCENARIO_LABELS[scenario]}",
             "scenario",
             enabled=self._can_edit(),
         )
@@ -773,7 +777,7 @@ class App:
             self.fonts["heading"].render("Tamanho personalizado", True, TEXT),
             (dialog.x + 24, dialog.y + 20),
         )
-        help_text = "Digite as dimensões do novo mapa vazio."
+        help_text = "O cenário atual será regenerado no novo tamanho."
         self.screen.blit(
             self.fonts["small"].render(help_text, True, MUTED),
             (dialog.x + 24, dialog.y + 49),
