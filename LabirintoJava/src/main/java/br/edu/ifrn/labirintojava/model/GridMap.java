@@ -47,6 +47,7 @@ public final class GridMap {
     }
 
     public GridMap copy() {
+        // Cada busca recebe obstáculos próprios; editar uma cópia não altera as demais.
         GridMap copy = new GridMap(width, height);
         for (int y = 0; y < height; y++) System.arraycopy(walls[y], 0, copy.walls[y], 0, width);
         copy.start = start;

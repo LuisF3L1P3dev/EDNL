@@ -16,6 +16,8 @@ public enum MovementMode {
     public int heuristic(Position from, Position goal) {
         int dx = Math.abs(from.x() - goal.x());
         int dy = Math.abs(from.y() - goal.y());
+        // Manhattan vale para quatro direções; a distância octil usa diagonais de custo 14.
+        // Ambas estimam sem ultrapassar o custo real e são consistentes com esses movimentos.
         return this == FOUR ? 10 * (dx + dy) : 10 * Math.max(dx, dy) + 4 * Math.min(dx, dy);
     }
 
@@ -40,6 +42,7 @@ public enum MovementMode {
             int x = from.x() + direction[0];
             int y = from.y() + direction[1];
             if (!map.isFree(x, y)) continue;
+            // Para cruzar uma diagonal, as duas células que formam a quina precisam estar livres.
             if (direction[0] != 0 && direction[1] != 0
                     && (!map.isFree(x, from.y()) || !map.isFree(from.x(), y))) continue;
             result.add(new Position(x, y));

@@ -16,17 +16,20 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 final class PrioritySearchSession implements SearchSession {
+    // A versão distingue a entrada atual das entradas antigas da mesma célula na fila.
     private record Entry(Position position, int priority, int h, int version, long order) { }
 
     private final GridMap map;
     private final MovementMode movement;
     private final boolean astar;
+    // Depois da prioridade principal, H, coordenadas e ordem de inserção resolvem empates.
     private final PriorityQueue<Entry> queue = new PriorityQueue<>(Comparator
             .comparingInt(Entry::priority).thenComparingInt(Entry::h)
             .thenComparingInt(e -> e.position().y()).thenComparingInt(e -> e.position().x())
             .thenComparingLong(Entry::order));
     private final int[][] g;
     private final int[][] versions;
+    // Estas matrizes contam células únicas, mesmo quando a fila contém entradas repetidas.
     private final boolean[][] discoveredCells;
     private final boolean[][] frontierCells;
     private final boolean[][] closed;
@@ -66,6 +69,7 @@ final class PrioritySearchSession implements SearchSession {
 
     @Override public SearchStep step() {
         if (status != SearchStatus.RUNNING) return snapshot(null, Map.of());
+        // O cronômetro cobre apenas a expansão; pausas e renderização ocorrem fora daqui.
         long begin = System.nanoTime();
         Map<Position, NodeScore> changed = new HashMap<>();
         if (!startScoreSent) {
@@ -83,6 +87,8 @@ final class PrioritySearchSession implements SearchSession {
             frontier--;
             closed[expanded.y()][expanded.x()] = true;
             explored++;
+            // Com H consistente, o A* encontra o custo ótimo quando B sai da fila válida.
+            // A Busca Gulosa também só termina ao expandir B, mas não garante custo mínimo.
             if (expanded.equals(map.goal())) {
                 status = SearchStatus.FOUND;
                 routeCost = g[expanded.y()][expanded.x()];
@@ -93,6 +99,7 @@ final class PrioritySearchSession implements SearchSession {
                     int y = neighbor.y();
                     if (closed[y][x]) continue;
                     int candidate = g[expanded.y()][expanded.x()] + movement.cost(expanded, neighbor);
+                    // A* substitui G e pai se achou rota melhor; a Gulosa mantém a primeira descoberta.
                     if (astar ? candidate < g[y][x] : !discoveredCells[y][x]) {
                         g[y][x] = candidate;
                         parent[y][x] = expanded;
@@ -119,11 +126,13 @@ final class PrioritySearchSession implements SearchSession {
         int x = position.x();
         int y = position.y();
         int h = movement.heuristic(position, map.goal());
+        // A única prioridade da Gulosa é H; o A* soma o custo já percorrido G.
         int priority = astar ? g[y][x] + h : h;
         queue.add(new Entry(position, priority, h, ++versions[y][x], insertionOrder++));
     }
 
     private Entry nextValid() {
+        // PriorityQueue não remove uma entrada antiga quando G melhora; ignoramos sua versão.
         while (!queue.isEmpty()) {
             Entry entry = queue.remove();
             Position p = entry.position();
@@ -138,6 +147,7 @@ final class PrioritySearchSession implements SearchSession {
     }
 
     private List<Position> reconstruct(Position goal) {
+        // Os pais apontam para A; percorremos B -> A e invertemos para animar A -> B.
         List<Position> reversed = new ArrayList<>();
         Position p = goal;
         while (p != null) {
