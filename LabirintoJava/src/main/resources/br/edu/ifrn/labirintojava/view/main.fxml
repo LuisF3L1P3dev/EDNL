@@ -41,15 +41,20 @@
     </center>
     <bottom>
         <VBox spacing="7" styleClass="bottom-area">
-            <Label fx:id="inspectorLabel" text="Passe o mouse sobre uma célula para consultar G, H e F."/>
-            <HBox spacing="13" alignment="CENTER_LEFT">
-                <Label text="Início A" styleClass="legend-start"/><Label text="Destino B" styleClass="legend-goal"/>
-                <Label text="Obstáculo" styleClass="legend-wall"/><Label text="Fronteira" styleClass="legend-frontier"/>
-                <Label text="Explorado" styleClass="legend-explored"/><Label text="Caminho" styleClass="legend-path"/>
-                <Label text="Agente ●" styleClass="legend-agent"/>
+            <HBox spacing="16" alignment="TOP_LEFT">
+                <VBox spacing="8" minWidth="230" HBox.hgrow="ALWAYS">
+                    <Label fx:id="inspectorLabel" text="Passe o mouse sobre uma célula para consultar G, H e F." wrapText="true"/>
+                    <FlowPane hgap="8" vgap="6" alignment="CENTER_LEFT">
+                        <Label text="Início A" styleClass="legend-start"/><Label text="Destino B" styleClass="legend-goal"/>
+                        <Label text="Obstáculo" styleClass="legend-wall"/><Label text="Fronteira" styleClass="legend-frontier"/>
+                        <Label text="Explorado" styleClass="legend-explored"/><Label text="Caminho" styleClass="legend-path"/>
+                        <Label text="Agente ●" styleClass="legend-agent"/>
+                    </FlowPane>
+                    <Label text="Tempo computacional mede apenas os passos de busca. Uma execução isolada não é um benchmark conclusivo." styleClass="footnote" wrapText="true"/>
+                </VBox>
+                <HBox fx:id="metricsArea" spacing="8" alignment="TOP_RIGHT" visible="false" managed="false"/>
             </HBox>
             <TableView fx:id="comparisonTable" prefHeight="105" visible="false" managed="false"/>
-            <Label text="Tempo computacional mede apenas os passos de busca. Uma execução isolada não é um benchmark conclusivo." styleClass="footnote"/>
         </VBox>
     </bottom>
 </BorderPane>

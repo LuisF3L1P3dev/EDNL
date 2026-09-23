@@ -58,6 +58,7 @@ public final class MainController {
     @FXML private Button resumeButton;
     @FXML private Button stepButton;
     @FXML private HBox boards;
+    @FXML private HBox metricsArea;
     @FXML private Label speedLabel;
     @FXML private Label visualLabel;
     @FXML private Label noticeLabel;
@@ -164,6 +165,9 @@ public final class MainController {
         cancelRuns();
         editLocked = false;
         boards.getChildren().clear();
+        metricsArea.getChildren().clear();
+        metricsArea.setVisible(false);
+        metricsArea.setManaged(false);
         editorCanvas = new GridCanvas(editorMap, 29);
         editorCanvas.setEditable(true);
         editorCanvas.setOnEdit(this::editCell);
@@ -194,6 +198,9 @@ public final class MainController {
         cancelRuns();
         editLocked = true;
         boards.getChildren().clear();
+        metricsArea.getChildren().clear();
+        metricsArea.setVisible(true);
+        metricsArea.setManaged(true);
         // O destino e os obstáculos usados na busca ficam congelados nesta cópia.
         GridMap snapshot = editorMap.copy();
         MovementMode movement = movementBox.getValue();
@@ -216,6 +223,7 @@ public final class MainController {
         RunPanel panel = new RunPanel(algorithm, snapshot, movement, cell);
         panels.add(panel);
         boards.getChildren().add(panel.card);
+        metricsArea.getChildren().add(panel.metricsCard);
     }
 
     private void startTimeline() {
@@ -390,6 +398,7 @@ public final class MainController {
         private final MovementMode movement;
         private final GridCanvas canvas;
         private final VBox card;
+        private final VBox metricsCard;
         private final Label metrics = new Label();
         private final SimulationRunner runner;
         private SearchStep last;
@@ -406,7 +415,14 @@ public final class MainController {
             metrics.getStyleClass().add("board-metrics");
             metrics.setWrapText(true);
             metrics.setText("Aguardando primeira expansão...");
-            card = new VBox(8, heading(algorithm.name()), metrics, canvas);
+            Label metricsTitle = new Label(algorithm.name());
+            metricsTitle.getStyleClass().add("metrics-title");
+            metricsCard = new VBox(5, metricsTitle, metrics);
+            metricsCard.getStyleClass().add("metrics-card");
+            metricsCard.setMinWidth(205);
+            metricsCard.setPrefWidth(235);
+            metricsCard.setMaxWidth(245);
+            card = new VBox(8, heading(algorithm.name()), canvas);
             card.getStyleClass().add("board-card");
         }
 
@@ -443,12 +459,13 @@ public final class MainController {
                 case NO_PATH -> "sem caminho";
                 case CANCELLED -> "execução cancelada";
             };
-            String route = last.status() == SearchStatus.FOUND
-                    ? " | Custo: " + last.routeCost() + " | Movimentos: " + (last.path().size() - 1)
-                    : " | Custo: — | Movimentos: —";
-            metrics.setText("Estado: " + state + " | Explorados: " + last.explored()
-                    + " | Descobertos: " + last.discovered() + " | Fronteira: " + last.frontier()
-                    + route + " | Percorrido: " + walkedCost + " | CPU busca: " + formatNanos(last.computeNanos()));
+            String cost = last.status() == SearchStatus.FOUND ? Integer.toString(last.routeCost()) : "—";
+            String moves = last.status() == SearchStatus.FOUND ? Integer.toString(last.path().size() - 1) : "—";
+            metrics.setText("Estado: " + state
+                    + "\nExplorados: " + last.explored() + " | Descobertos: " + last.discovered()
+                    + "\nFronteira: " + last.frontier() + " | Custo: " + cost
+                    + "\nMovimentos: " + moves + " | Percorrido: " + walkedCost
+                    + "\nCPU busca: " + formatNanos(last.computeNanos()));
         }
     }
 }
