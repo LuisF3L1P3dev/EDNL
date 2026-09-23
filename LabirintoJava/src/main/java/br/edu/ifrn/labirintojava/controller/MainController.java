@@ -15,6 +15,8 @@ import br.edu.ifrn.labirintojava.service.SimulationRunner;
 import br.edu.ifrn.labirintojava.view.GridCanvas;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -26,7 +28,9 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
@@ -58,7 +62,10 @@ public final class MainController {
     @FXML private Button resumeButton;
     @FXML private Button stepButton;
     @FXML private HBox boards;
-    @FXML private HBox metricsArea;
+    @FXML private BorderPane rootPane;
+    @FXML private VBox bottomArea;
+    @FXML private VBox inspectorArea;
+    @FXML private FlowPane metricsArea;
     @FXML private Label speedLabel;
     @FXML private Label visualLabel;
     @FXML private Label noticeLabel;
@@ -78,8 +85,21 @@ public final class MainController {
     // O tempo visual acumula apenas períodos ativos, inclusive os intervalos da animação.
     private long visualActiveNanos;
     private long visualResumedAt;
+    private DoubleBinding availableFooterWidth;
 
     @FXML private void initialize() {
+        availableFooterWidth = Bindings.createDoubleBinding(
+                () -> Math.max(0, rootPane.getWidth() - bottomArea.getPadding().getLeft()
+                        - bottomArea.getPadding().getRight() - 12),
+                rootPane.widthProperty(), bottomArea.paddingProperty());
+        inspectorArea.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.min(290, availableFooterWidth.get()), availableFooterWidth));
+        metricsArea.prefWrapLengthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.min(406, availableFooterWidth.get()), availableFooterWidth));
+        comparisonTable.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.min(availableFooterWidth.get(),
+                        Math.max(440, availableFooterWidth.get() - 290 - 406 - 24)),
+                availableFooterWidth));
         settingDimensions = true;
         widthSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 50, 20));
         heightSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 50, 15));
@@ -110,10 +130,10 @@ public final class MainController {
 
     private void setupComparisonTable() {
         comparisonTable.getColumns().setAll(
-                column("Algoritmo", ComparisonRow::algorithm, 160),
-                column("Tempo computacional", ComparisonRow::time, 190),
-                column("Nós explorados", ComparisonRow::explored, 155),
-                column("Custo da rota", ComparisonRow::cost, 150));
+                column("Algoritmo", ComparisonRow::algorithm, 130),
+                column("Tempo CPU", ComparisonRow::time, 105),
+                column("Nós explorados", ComparisonRow::explored, 125),
+                column("Custo", ComparisonRow::cost, 80));
         comparisonTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
@@ -417,11 +437,12 @@ public final class MainController {
             metrics.setText("Aguardando primeira expansão...");
             Label metricsTitle = new Label(algorithm.name());
             metricsTitle.getStyleClass().add("metrics-title");
-            metricsCard = new VBox(5, metricsTitle, metrics);
+            metricsCard = new VBox(3, metricsTitle, metrics);
             metricsCard.getStyleClass().add("metrics-card");
-            metricsCard.setMinWidth(205);
-            metricsCard.setPrefWidth(235);
-            metricsCard.setMaxWidth(245);
+            metricsCard.setMinWidth(0);
+            metricsCard.prefWidthProperty().bind(Bindings.createDoubleBinding(
+                    () -> Math.min(200, availableFooterWidth.get()), availableFooterWidth));
+            metricsCard.setMaxWidth(210);
             card = new VBox(8, heading(algorithm.name()), canvas);
             card.getStyleClass().add("board-card");
         }
