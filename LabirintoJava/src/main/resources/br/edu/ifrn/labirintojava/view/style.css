@@ -1,17 +1,20 @@
 .root-pane { -fx-font-family: "Segoe UI", sans-serif; -fx-font-size: 13px; -fx-background-color: #edf2f8; }
-.toolbar-area, .bottom-area { -fx-padding: 14 18 12 18; -fx-background-color: white; }
-.toolbar-area { -fx-border-color: transparent transparent #d5dee9 transparent; }
-.bottom-area { -fx-border-color: #d5dee9 transparent transparent transparent; }
+.bottom-area { -fx-padding: 8 12 8 12; -fx-font-size: 12px; -fx-background-color: white; -fx-border-color: #d5dee9 transparent transparent transparent; }
+.bottom-area .button { -fx-padding: 3 7; }
+.bottom-area .button, .bottom-area .combo-box, .bottom-area .spinner { -fx-pref-height: 25; }
+.footer-details { -fx-padding: 4 0 0 0; -fx-border-color: #e4ebf3 transparent transparent transparent; }
 .title { -fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
 .primary-button { -fx-background-color: #3167a8; -fx-text-fill: white; -fx-font-weight: bold; }
 .board-scroll { -fx-background: #edf2f8; -fx-background-color: #edf2f8; }
 .board-card { -fx-padding: 12; -fx-spacing: 8; -fx-background-color: white; -fx-background-radius: 7; -fx-border-color: #d5dee9; -fx-border-radius: 7; }
 .board-heading { -fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
-.board-metrics { -fx-text-fill: #3f536a; -fx-font-size: 11.5px; }
-.metrics-card { -fx-padding: 8 10; -fx-background-color: #f4f7fb; -fx-background-radius: 6; -fx-border-color: #d5dee9; -fx-border-radius: 6; }
-.metrics-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
-.footnote { -fx-text-fill: #617087; -fx-font-size: 11px; }
-.legend-start, .legend-goal, .legend-wall, .legend-frontier, .legend-explored, .legend-path, .legend-agent { -fx-padding: 4 7; -fx-background-radius: 4; -fx-text-fill: white; }
+.board-metrics { -fx-text-fill: #3f536a; -fx-font-size: 11px; }
+.metrics-card { -fx-padding: 5 7; -fx-background-color: #f4f7fb; -fx-background-radius: 6; -fx-border-color: #d5dee9; -fx-border-radius: 6; }
+.metrics-title { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #26364b; }
+.comparison-table { -fx-font-size: 11px; }
+.comparison-table .table-cell { -fx-padding: 2 4; }
+.footnote { -fx-text-fill: #617087; -fx-font-size: 10.5px; }
+.legend-start, .legend-goal, .legend-wall, .legend-frontier, .legend-explored, .legend-path, .legend-agent { -fx-padding: 2 5; -fx-background-radius: 4; -fx-text-fill: white; }
 .legend-start { -fx-background-color: #27865d; }
 .legend-goal { -fx-background-color: #d45359; }
 .legend-wall { -fx-background-color: #27364a; }
