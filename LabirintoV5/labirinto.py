@@ -4,7 +4,7 @@ from guloso import busca_gulosa
 
 
 def main() -> None:
-    labirinto = maze(50,50)
+    labirinto = maze(25,25)
     labirinto.CreateMaze()
 
     agente = agent(labirinto, filled=True, footprints=True)
