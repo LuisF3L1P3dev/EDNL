@@ -1,6 +1,6 @@
 from pyamaze import agent, maze
 
-from astar import astar
+from guloso import busca_gulosa
 
 
 def main() -> None:
@@ -8,7 +8,7 @@ def main() -> None:
     labirinto.CreateMaze()
 
     agente = agent(labirinto, filled=True, footprints=True)
-    caminho = astar(labirinto)
+    caminho = busca_gulosa(labirinto)
     if caminho:
         labirinto.tracePath({agente: caminho}, delay=10)
     labirinto.run()
