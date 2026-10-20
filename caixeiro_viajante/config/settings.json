@@ -1,0 +1,15 @@
+{
+  "titulo": "TSP 3D — O Desafio da Rota Perfeita",
+  "quantidade_cidades": 15,
+  "semente": 42,
+  "limite_cidades": 100,
+  "limite_held_karp": 12,
+  "tempo_otimizacao_segundos": 3.0,
+  "velocidade_veiculo": 7.0,
+  "metros_por_unidade": 100.0,
+  "consumo_litros_por_km": 0.12,
+  "preco_litro": 6.2,
+  "tamanho_janela": [1600, 900],
+  "mostrar_grafo": false
+}
+
