@@ -35,6 +35,28 @@ e modelo. A integração ajusta escala, posição e orientação na cena e prese
 texturas e cores dos modelos. As ruas transitáveis continuam definidas pela
 geometria do grafo; os assets complementam sua apresentação.
 
+## Ruas e pontes — City Kit Roads 2.2
+
+A pasta `kenney/kenney_city-kit-roads/`, adicionada ao projeto localmente,
+fornece os módulos de rua, cruzamentos com faixas de pedestres, curvas, finais
+de via, tabuleiros, guarda-corpos e pilares. O pacote oferece GLB, OBJ e FBX;
+o jogo carrega somente os **GLB** de `Models/GLB format/` e sua textura
+`Textures/colormap.png`. Sua licença original, conferida em
+[`License.txt`](kenney/kenney_city-kit-roads/License.txt), é **CC0**.
+
+`graphics/ruas.py` encaixa os modelos nas conexões existentes. O perfil de altura
+compartilhado em `graphics/geometria_ruas.py` mantém os acessos e as rampas
+contínuos, sem alterar o grafo, as distâncias ou o percurso do veículo. O modelo
+`road-bridge` é um viaduto: a integração utiliza seu tabuleiro superior e
+substitui os suportes por pilares ajustados à altura do rio, descartando a rua
+inferior. Os GLB originais permanecem intactos.
+
+Os modelos são reutilizados pelo catálogo e as malhas adaptadas são agrupadas
+por região. Se o pacote completo não estiver presente, o cenário usa as ruas
+procedurais anteriores. O script `tools/baixar_assets.py` continua importando
+somente os 30 modelos da seleção original; preserve também esta pasta local
+ao distribuir o jogo.
+
 ## Áudio original
 
 `audio/entrega.wav` e `audio/conclusao.wav` são sinais musicais sintetizados

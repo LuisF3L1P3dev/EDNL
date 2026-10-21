@@ -12,6 +12,11 @@ grafia original. Os modelos e texturas gratuitos usados no cenário acompanham o
 projeto; não é preciso baixar pacotes gráficos separadamente. Consulte
 [assets/README.md](assets/README.md) para autoria, licenças e procedência.
 
+As ruas usam os módulos locais **Kenney City Kit Roads 2.2**, com cruzamentos,
+faixas de pedestres e pontes com guarda-corpos e pilares. O piso das pontes e
+dos acessos acompanha o percurso original do caminhão sem mudar as distâncias.
+Veja o [detalhe das pontes corrigidas](imgs/pontes_corrigidas.png).
+
 ## Instalação e execução
 
 Recomendado: **Python 3.12 de 64 bits**, Windows 10/11 e uma placa com suporte a
@@ -243,11 +248,16 @@ Os testes verificam ótimos pequenos contra força bruta, custo e distância de 
 rota, retorno à base, hipóteses de Christofides, trocas 2-opt, bloqueios, redes
 desconectadas, cache, geração reproduzível, trânsito sem entrega, pausa, posição
 física do veículo, reotimização e comunicação com o trabalhador.
+Também verificam as alturas das ruas e pontes, continuidade nos acessos,
+orientação dos cruzamentos e recorte das malhas sem modificar o grafo.
 
 A verificação gráfica exercita geração de missão, configurações, seleção manual,
 OR-Tools, câmeras, grafo, evento, reotimização, entrega de todos os destinos, retorno,
 reinício e comparação. Também mede a mediana de FPS de uma cena estável. Salva
 `resultados/verificacao_3d.png` e um relatório JSON. A pasta `resultados/` não é versionada.
+Com o novo pacote de ruas presente, lança raios contra o piso renderizado das
+três pontes, incluindo os encontros com os cruzamentos, e salva uma captura
+adicional com sufixo `_ponte.png`.
 
 ## Referências técnicas
 
