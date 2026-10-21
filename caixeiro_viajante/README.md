@@ -4,11 +4,13 @@ Jogo desktop educativo de logística em Python, inteiramente em português brasi
 Planeje as entregas da **NEXUS LOGISTICS**, compare algoritmos de verdade e acompanhe
 o caminhão percorrendo uma cidade 3D procedural até retornar ao depósito.
 
-![Cenário e interface do TSP 3D](imgs/tsp_3d.png)
+![Cenário e interface do TSP 3D](imgs/tsp_3d_redesign.png)
 
 O código usa nomes, comentários e explicações em português. Nomes exigidos pelas
 bibliotecas, como `update()`, `RoutingModel` e `GUIDED_LOCAL_SEARCH`, conservam sua
-grafia original. Não há dependência de modelos, texturas ou serviços pagos externos.
+grafia original. Os modelos e texturas gratuitos usados no cenário acompanham o
+projeto; não é preciso baixar pacotes gráficos separadamente. Consulte
+[assets/README.md](assets/README.md) para autoria, licenças e procedência.
 
 ## Instalação e execução
 
@@ -48,38 +50,76 @@ e usa a semente 42. São 14 entregas e um retorno ao depósito.
 
 ## Como jogar
 
-1. Escolha a dificuldade ou digite de 3 a 100 cidades e uma semente; clique em **Gerar mapa**.
+1. Abra **Nova missão**, escolha a dificuldade ou digite de 3 a 100 cidades e uma
+   semente; clique em **Gerar mapa**. As opções detalhadas ficam nessa janela para
+   deixar mais espaço para a cidade.
 2. No **Desafio Humano**, clique nos marcadores elevados ou nos destinos da lista.
    Cada clique acrescenta uma entrega; a última seleção fecha automaticamente o ciclo.
-3. Clique em **Iniciar simulação** para executar a rota ou em **Otimizar rota** para
+3. Clique em **Iniciar viagem** para executar a rota ou em **Otimizar rota** para
    calcular uma alternativa. Sua rota manual continua desenhada em laranja.
 4. No modo **Inteligência Artificial**, a otimização reproduz etapas realmente
    registradas pelo algoritmo e inicia a viagem quando a reprodução termina.
-   O botão Iniciar simulação permite pular a reprodução educativa.
+   O botão Iniciar viagem permite pular a reprodução educativa.
 5. **Comparar algoritmos** executa os métodos sobre os mesmos destinos e custos,
    abre o ranking e permite escolher qual rota desenhar no mapa.
-6. Use **Bloquear rua** ou **Obras: custo ×2** para experimentar uma reotimização.
+6. Em **Mais ações**, use **Bloquear uma rua** ou **Obras: custo ×2** para experimentar uma reotimização.
    Os eventos desta versão escolhem um trecho reproduzível. Um bloqueio não remove
    uma ligação que isolaria a rede naquele momento.
-7. **Salvar missão / JSON** exporta o grafo, os pesos, bloqueios, configurações e
+7. Em **Mais ações**, **Salvar missão / JSON** exporta o grafo, os pesos, bloqueios, configurações e
    resultados. O ranking também exporta um gráfico PNG com Matplotlib.
 
 A lista de destinos é paginada. Os seletores de modo, algoritmo, base, dificuldade,
 tempo de cálculo e velocidade alternam entre suas opções a cada clique.
+
+A HUD reúne planejamento, telemetria e sequência de entregas em painéis compactos.
+Os comandos de câmera, zoom e velocidade ficam junto à área do mapa. Use **Tab**
+para ocultar ou exibir a HUD durante a observação da viagem; os atalhos de teclado
+continuam disponíveis quando nenhum campo ou modal está em edição.
 
 | Controle | Ação |
 |---|---|
 | Mouse esquerdo | Selecionar um marcador ou comando |
 | Botão direito + arrastar | Girar a câmera |
 | Roda do mouse | Aproximar / afastar |
-| WASD / botão do meio + arrastar | Deslocar a câmera |
+| WASD / botão do meio + arrastar | Deslocar a câmera; as setas podem substituir WASD nas configurações |
 | C | Alternar isométrica, aérea e seguir veículo |
 | G | Exibir / ocultar nós e arestas |
 | Espaço | Pausar / continuar a viagem ou as etapas |
 | O / B | Otimizar / comparar |
 | N / R | Nova semente / reiniciar a mesma missão |
 | Backspace | Desfazer a última entrega planejada |
+| F10 | Abrir Configurações |
+| Tab | Exibir / ocultar a HUD |
 | H / Esc | Ajuda / fechar painel ou sair do jogo |
+
+## Configurações da experiência
+
+Abra **Configurações** pelo controle de engrenagem da HUD ou por **F10**. O modal
+possui cinco categorias:
+
+| Categoria | Opções |
+|---|---|
+| Geral | Nomes das cidades, rota do computador, unidade em km/m e dicas de navegação |
+| Gráficos | Densidade de decoração, sombras e brilho das rotas e entregas |
+| Áudio | Ativação e volume dos sinais de entrega e conclusão |
+| Câmera | Sensibilidade, suavização e inversão do giro horizontal |
+| Controles | Escolha entre WASD e setas para deslocamento; consulta dos demais atalhos |
+
+**Aplicar** confirma e salva as alterações. **Cancelar**, o botão de fechar e
+**Esc** descartam a edição. **Restaurar padrão** preenche os valores padrão no
+modal; use Aplicar para confirmá-los. Alterar a qualidade reconstrói a decoração,
+preservando a rede, as entregas e o planejamento da missão.
+
+As preferências são gravadas em `config/preferencias_usuario.json`, arquivo local
+ignorado pelo Git, separado dos valores iniciais de `config/settings.json`.
+Preferências ausentes ou inválidas utilizam os padrões do aplicativo. A seleção
+de unidade muda a apresentação das distâncias; os custos e algoritmos continuam
+usando os mesmos dados da missão.
+
+![Configurações da experiência](imgs/configuracoes_redesign.png)
+
+Os efeitos sonoros são sinais curtos originais incluídos em `assets/audio/`.
+Não há música de fundo. Eles podem ser desativados na categoria Áudio.
 
 ## Modelagem e correção matemática
 
@@ -157,12 +197,15 @@ tempo, distância, custo, economia e melhorias disponíveis são mostrados por m
 ```text
 main.py                    Entrada desktop e modo terminal
 config/settings.json       Valores iniciais e limites
+config/preferencias_usuario.json  Preferências locais (não versionadas)
+assets/                    Modelos GLB, texturas, licenças, manifesto e áudio
+tools/gerar_audio.py        Geração dos sinais sonoros originais
 tsp_3d_game/
   app.py                   Coordenação do jogo e eventos
   core/                    Grafo, geração, matrizes, validação, movimento e JSON
   algorithms/              Cinco estratégias e contrato de integração
   graphics/                Mundo procedural, câmera, veículo e rotas
-  ui/                      Dashboard, ranking, ajuda e gráficos
+  ui/                      HUD, configurações, ranking, ajuda e gráficos
 tests/                     Testes matemáticos, físicos e do processo trabalhador
 ```
 
@@ -173,9 +216,12 @@ mantém um cache limitado de matrizes e caminhos, cuja chave inclui os destinos,
 modalidade e uma assinatura dos pesos e bloqueios da rede.
 
 O `update()` consome resultados prontos e atualiza câmera, veículo e interface.
-Os cálculos combinatórios e Dijkstra ficam no trabalhador. Geometria estática é
-agrupada em uma malha para reduzir chamadas de renderização, e cenas substituídas
-são destruídas. O limite inicial de destinos é 100 para manter a primeira versão
+Os cálculos combinatórios e Dijkstra ficam no trabalhador. O catálogo de assets
+reutiliza os modelos GLB carregados e seus recursos. A geometria estática é agrupada
+em regiões de 3 × 3 quadras, com estados de renderização compartilhados para reduzir
+chamadas de desenho. Textos e objetos interativos permanecem independentes, e cenas
+substituídas são destruídas.
+O limite inicial de destinos é 100 para manter a primeira versão
 utilizável; o modo especialista começa em 50.
 
 Edite `config/settings.json` para ajustar cidades, semente, limite do método exato,
@@ -198,8 +244,9 @@ rota, retorno à base, hipóteses de Christofides, trocas 2-opt, bloqueios, rede
 desconectadas, cache, geração reproduzível, trânsito sem entrega, pausa, posição
 física do veículo, reotimização e comunicação com o trabalhador.
 
-A verificação gráfica exercita seleção manual, OR-Tools, câmeras, grafo, evento,
-reotimização, entrega de todos os destinos, retorno, reinício e comparação. Salva
+A verificação gráfica exercita geração de missão, configurações, seleção manual,
+OR-Tools, câmeras, grafo, evento, reotimização, entrega de todos os destinos, retorno,
+reinício e comparação. Também mede a mediana de FPS de uma cena estável. Salva
 `resultados/verificacao_3d.png` e um relatório JSON. A pasta `resultados/` não é versionada.
 
 ## Referências técnicas
