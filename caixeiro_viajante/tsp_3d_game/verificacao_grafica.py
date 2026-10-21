@@ -23,6 +23,68 @@ def instalar_verificacao(app, jogo, captura):
         app.graphicsEngine.renderFrame()
         assert app.win.saveScreenshot(Filename.fromOsSpecific(str(captura.with_stem(captura.stem + sufixo))))
 
+    def verificar_pontes():
+        if not hasattr(jogo.mundo, "vias"):
+            return
+        from ursina import Vec3
+        from panda3d.core import (BitMask32, CollisionNode, CollisionRay,
+                                 CollisionTraverser, CollisionHandlerQueue)
+        vias = jogo.mundo.vias
+        assert set(vias.pontes) == {(a, b) for a, b, d in jogo.cenario.grafo.edges(data=True) if d["ponte"]}
+        # Raios contra a malha efetivamente desenhada detectam frestas,
+        # rampas achatadas e desníveis entre tabuleiro e cruzamentos.
+        mascara = vias.raiz.get_collide_mask()
+        vias.raiz.set_collide_mask(BitMask32.bit(30))
+        sensor = CollisionNode("verificar_piso")
+        sensor.set_from_collide_mask(BitMask32.bit(30))
+        sensor.set_into_collide_mask(BitMask32.all_off())
+        raio = CollisionRay()
+        raio.set_direction(0, -1, 0)
+        sensor.add_solid(raio)
+        caminho_sensor = vias.raiz.attach_new_node(sensor)
+        fila, coletor = CollisionHandlerQueue(), CollisionTraverser()
+        coletor.add_collider(caminho_sensor, fila)
+        try:
+            for a, b in vias.pontes:
+                pontos = jogo.cenario.grafo[a][b]["pontos"]
+                for p, q in zip(pontos, pontos[1:]):
+                    for passo in range(13):
+                        t = passo / 12
+                        x, y, z = [v + (w - v) * t for v, w in zip(p, q)]
+                        for lateral in (-.5, 0, .5):
+                            # Evita ambiguidade numérica do CollisionRay
+                            # exatamente sobre arestas compartilhadas.
+                            sx, sz = x + .0001, z + lateral + .0001
+                            raio.set_origin(sx, 20, sz)
+                            fila.clear_entries()
+                            coletor.traverse(vias.raiz)
+                            fila.sort_entries()
+                            assert fila.get_num_entries(), f"Fresta na ponte {a}-{b}, posição {x, z + lateral}"
+                            piso = fila.get_entry(0).get_surface_point(vias.raiz).y
+                            previsto = vias.perfil.altura(sx, sz) + .08
+                            assert abs(piso - previsto) < .002, f"Piso desalinhado em {a}-{b} ({x}, {z + lateral}): {piso} / {previsto}"
+        finally:
+            caminho_sensor.remove_node()
+            vias.raiz.set_collide_mask(mascara)
+        estado["pontes_validadas"] = len(vias.pontes)
+        estado["amostras_piso_pontes"] = len(vias.pontes) * 2 * 13 * 3
+        controle = jogo.controle_camera
+        alvo, escala = Vec3(controle.alvo), controle.escala_desejada
+        a, b = vias.pontes[1]
+        centro = jogo.cenario.grafo[a][b]["pontos"][1]
+        controle.alvo = Vec3(*centro)
+        controle.escala_desejada = 12
+        controle.atualizar(0, None, False)
+        jogo.ui.alternar_hud()
+        for rotulo in jogo.mundo.rotulos.values():
+            rotulo.enabled = False
+        fotografar("_ponte")
+        for rotulo in jogo.mundo.rotulos.values():
+            rotulo.enabled = True
+        jogo.ui.alternar_hud()
+        controle.alvo, controle.escala_desejada = alvo, escala
+        controle.atualizar(0, None, False)
+
     def verificar_interface():
         from .graphics.catalogo_assets import CATALOGO
         from .graphics.estilo import VERDE
@@ -38,6 +100,7 @@ def instalar_verificacao(app, jogo, captura):
         assert min(frente) > max(tras), "A cabine deve apontar para o avanço do veículo."
         assert all(som.clip for som in jogo.audio.sons.values())
         assert CATALOGO.carregamentos < 40
+        verificar_pontes()
         jogo.ui.alternar_hud()
         assert not jogo.ui.esquerda.enabled and not jogo.ui.direita.enabled
         jogo.ui.alternar_hud()
@@ -211,6 +274,8 @@ def instalar_verificacao(app, jogo, captura):
                          "algoritmos": list(jogo.estado.resultados),
                          "frames": estado["frames"], "segundos": perf_counter() - inicio,
                          "hud_configuracoes": True, "assets_reutilizados": True,
+                         "pontes_validadas": estado.get("pontes_validadas", 0),
+                         "amostras_piso_pontes": estado.get("amostras_piso_pontes", 0),
                          "fps_mediana_cena": round(1 / median(amostras_quadros), 1),
                          "geometrias_decoracao": analisador.get_num_geoms(),
                          "triangulos_decoracao": analisador.get_num_tris(),
