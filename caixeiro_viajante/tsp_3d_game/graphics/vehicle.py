@@ -1,11 +1,15 @@
 """Caminhão construído com primitivas, com direção interpolada."""
 
 import math
+from panda3d.core import GeomNode
 
 from ursina import Entity, Vec3, color, lerp_angle, destroy
-from ursina.shaders import lit_with_shadows_shader, unlit_shader
+from ursina.shaders import unlit_shader
+from .materiais import shader_cidade as lit_with_shadows_shader
 
 from .estilo import CIANO, LARANJA
+from .catalogo_assets import CATALOGO
+from .ciclo_vida import destruir_arvore as destroy
 
 
 class Veiculo3D:
@@ -44,19 +48,45 @@ class Veiculo3D:
                 Entity(parent=self.drone, model="sphere", position=(x, .15, z),
                        scale=(.65, .025, .65), color=color.rgba32(0, 209, 255, 130), shader=unlit_shader)
         self.deslocamento_altura = 0
+        self.rodas = []
+        self.identidade = Entity(parent=self.raiz)
+        # glTF usa mão direita; a conversão para o Ursina inverte o eixo Z.
+        # A cabine deve apontar para +Z, direção usada pelo motor do percurso.
+        self.modelo_entrega = CATALOGO.criar("cars", "delivery", self.raiz, (0, .10, 0), 1.8, 180)
+        if self.modelo_entrega is not None:
+            destroy(self.carroceria)
+            self.carroceria = self.modelo_entrega
+            self.rodas = [no for no in self.carroceria.model.find_all_matches("**/wheel-*")
+                          if not isinstance(no.node(), GeomNode)]
+            # Identidade NEXUS no baú, em ambas as laterais.
+            for lado in (-1, 1):
+                Entity(parent=self.identidade, model="cube", position=(lado * .34, .64, -.28),
+                       scale=(.012, .12, .56), color=CIANO, shader=unlit_shader)
+        self.posicao_anterior = Vec3(*posicao)
+        self.giro_rodas = 0.
 
     def definir_modalidade(self, modo):
         abstrato = modo == "euclidiano"
         self.carroceria.enabled = not abstrato
         self.brisa.enabled = not abstrato
+        self.identidade.enabled = not abstrato
         self.drone.enabled = abstrato
         self.deslocamento_altura = 6 if abstrato else 0
 
     def atualizar(self, posicao, direcao, dt):
+        nova_posicao = Vec3(*posicao)
+        deslocamento = (nova_posicao - self.posicao_anterior).length()
+        self.posicao_anterior = nova_posicao
+        if dt > 0:
+            self.giro_rodas = (self.giro_rodas + deslocamento / .18 * 180 / math.pi) % 360
+            for roda in self.rodas:
+                roda.set_p(self.giro_rodas)
         self.raiz.position = Vec3(*posicao) + Vec3(0, self.deslocamento_altura, 0)
         if direcao[0] ** 2 + direcao[2] ** 2 > .00001:
             angulo = math.degrees(math.atan2(direcao[0], direcao[2]))
             self.raiz.rotation_y = lerp_angle(self.raiz.rotation_y, angulo, min(1, dt * 12))
+            inclinacao = -math.degrees(math.atan2(direcao[1], math.hypot(direcao[0], direcao[2])))
+            self.raiz.rotation_x += (inclinacao - self.raiz.rotation_x) * min(1, dt * 12)
 
     def destruir(self):
         destroy(self.raiz)

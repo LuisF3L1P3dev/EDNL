@@ -7,6 +7,7 @@ from ursina.shaders import unlit_shader
 
 from ..core.graph_manager import pontos_estrada
 from .estilo import CIANO, LARANJA, ROSA, VERDE
+from .ciclo_vida import destruir_arvore as destroy
 
 
 class RenderizadorRota:
@@ -15,6 +16,9 @@ class RenderizadorRota:
         self.raiz = Entity()
         self.camadas = {}
         self.animacao = None
+        self.brilho = True
+        self.mostrar_computador = True
+        self.reconstrucoes = 0
 
     def _pares(self, matriz, arestas, altura=.26, deslocamento=0):
         if matriz.modo == "euclidiano":
@@ -44,15 +48,37 @@ class RenderizadorRota:
         deslocamento = .14 if chave == "manual" else -.14 if chave == "ativa" else 0
         vertices = self._pares(matriz, arestas, altura, deslocamento)
         if vertices:
-            entidade = Entity(parent=self.raiz, model=Mesh(vertices=vertices, mode="line", thickness=espessura),
-                               color=cor, shader=unlit_shader)
+            entidade = self._criar_camada(chave, vertices, cor, espessura)
             self.camadas[chave] = entidade
+
+    def _criar_camada(self, chave, vertices, cor, espessura=4):
+        entidade = Entity(parent=self.raiz)
+        entidade.halo = Entity(parent=entidade, model=Mesh(vertices=vertices, mode="line", thickness=espessura + 7),
+                                color=color.rgba(cor.r, cor.g, cor.b, .20), shader=unlit_shader)
+        entidade.linha = Entity(parent=entidade, model=Mesh(vertices=vertices, mode="line", thickness=espessura),
+                                 color=cor, shader=unlit_shader)
+        entidade.halo.set_depth_write(False)
+        entidade.computador = chave in ("etapa", "removidas", "adicionadas") or chave == "ativa" and cor != LARANJA
+        entidade.halo.enabled = self.brilho
+        entidade.enabled = self.mostrar_computador or not entidade.computador
+        self.reconstrucoes += 1
+        return entidade
+
+    def aplicar_aparencia(self):
+        for entidade in self.camadas.values():
+            entidade.halo.enabled = self.brilho
+            entidade.enabled = self.mostrar_computador or not entidade.computador
 
     def desenhar(self, chave, matriz, ordem, cor=CIANO, progressiva=False, altura=.26):
         arestas = list(zip(ordem, ordem[1:]))
         if progressiva:
-            self.animacao = (chave, matriz, arestas, cor, altura, 0.0)
             self.limpar(chave)
+            deslocamento = .14 if chave == "manual" else -.14 if chave == "ativa" else 0
+            vertices = self._pares(matriz, arestas, altura, deslocamento)
+            if not vertices:
+                return
+            self.camadas[chave] = self._criar_camada(chave, vertices[:2], cor)
+            self.animacao = {"chave": chave, "vertices": vertices, "tempo": 0., "quantidade": 2}
         else:
             self.desenhar_arestas(chave, matriz, arestas, cor, altura)
 
@@ -67,11 +93,19 @@ class RenderizadorRota:
     def atualizar(self, dt):
         if not self.animacao:
             return
-        chave, matriz, arestas, cor, altura, tempo = self.animacao
-        tempo += dt
-        quantidade = min(len(arestas), int(tempo * max(5, len(arestas) / 1.5)) + 1)
-        self.desenhar_arestas(chave, matriz, arestas[:quantidade], cor, altura)
-        self.animacao = None if quantidade == len(arestas) else (chave, matriz, arestas, cor, altura, tempo)
+        animacao = self.animacao
+        animacao["tempo"] += dt
+        vertices = animacao["vertices"]
+        quantidade = min(len(vertices), (int(animacao["tempo"] / 2.2 * len(vertices) / 2) + 1) * 2)
+        if quantidade != animacao["quantidade"]:
+            entidade = self.camadas.get(animacao["chave"])
+            if entidade:
+                for parte in (entidade.linha, entidade.halo):
+                    parte.model.vertices = vertices[:quantidade]
+                    parte.model.generate()
+            animacao["quantidade"] = quantidade
+        if quantidade == len(vertices):
+            self.animacao = None
 
     def limpar(self, chave=None):
         if chave is None:
@@ -81,6 +115,8 @@ class RenderizadorRota:
             self.animacao = None
         elif chave in self.camadas:
             destroy(self.camadas.pop(chave))
+        if chave is not None and self.animacao and self.animacao["chave"] == chave:
+            self.animacao = None
 
     def destruir(self):
         self.animacao = None
