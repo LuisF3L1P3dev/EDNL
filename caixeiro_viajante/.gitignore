@@ -5,4 +5,6 @@ __pycache__/
 .cache/
 resultados/
 *.log
+config/preferencias_usuario.json
+config/preferencias_usuario.tmp
 
