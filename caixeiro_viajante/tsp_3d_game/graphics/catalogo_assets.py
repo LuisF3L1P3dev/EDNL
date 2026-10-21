@@ -6,6 +6,7 @@ from ursina import Entity, color
 from .materiais import shader_cidade as lit_with_shadows_shader
 
 RAIZ_ASSETS = Path(__file__).resolve().parents[2] / "assets" / "kenney"
+PASTAS_MODELOS = {"vias": RAIZ_ASSETS / "kenney_city-kit-roads" / "Models" / "GLB format"}
 
 
 class CatalogoAssets:
@@ -18,7 +19,7 @@ class CatalogoAssets:
     def carregar(self, pacote, nome):
         chave = (pacote, nome)
         if chave not in self.modelos:
-            caminho = RAIZ_ASSETS / pacote / f"{nome}.glb"
+            caminho = PASTAS_MODELOS.get(pacote, RAIZ_ASSETS / pacote) / f"{nome}.glb"
             if not caminho.is_file():
                 return None
             opcoes = gltf.GltfSettings()

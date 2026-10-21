@@ -1,4 +1,4 @@
-"""Cidade low-poly procedural; nenhum modelo externo é necessário."""
+"""Cidade low-poly com assets locais e alternativa procedural."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from .decoracao import DecoracaoCidade
 from .efeitos import malha_anel
 from .ciclo_vida import destruir_arvore as destroy
 from .lotes_estaticos import agrupar_estatico
+from .ruas import Ruas3D
 
 
 def barra(parent, a, b, cor, largura=.12, altura=.06, shader=unlit_shader):
@@ -83,6 +84,17 @@ class Mundo3D:
             self.cubo((0, -.4, eixo * tamanho / 2), (tamanho, .06, .09), CIANO.tint(-.45))
 
     def _ruas(self):
+        if Ruas3D.disponivel():
+            self.vias = Ruas3D(self.cenario, self.raiz)
+            for no in self.cenario.grafo:
+                if no % 3 == 0:
+                    p = self.cenario.posicao(no)
+                    CATALOGO.criar("roads", "traffic-light" if no % 2 else "light-curved", self.mobiliario,
+                                   (p[0] - 1.15, p[1], p[2] - 1.15), .42, 90)
+            return
+        self._ruas_procedurais()
+
+    def _ruas_procedurais(self):
         for a, b, dados in self.cenario.grafo.edges(data=True):
             pontos = pontos_estrada(self.cenario, a, b)
             for p, q in zip(pontos, pontos[1:]):
