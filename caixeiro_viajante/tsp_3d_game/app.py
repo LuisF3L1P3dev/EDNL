@@ -17,6 +17,7 @@ from .core.game_state import EstadoJogo, SimulacaoPercurso, pontuar
 from .core.graph_manager import alterar_estrada, grafo_transitavel
 from .core.modelos import ResultadoRota, custo_rota
 from .core.persistencia import salvar_sessao
+from .core.preferencias import carregar_preferencias, salvar_preferencias, validar_preferencias
 from .core.route_validator import validar_resultado
 from .core.scenario_generator import gerar_cenario
 from .core.servico_otimizacao import ServicoOtimizacao
@@ -25,7 +26,11 @@ from .graphics.estilo import CIANO, FUNDO, LARANJA, ROSA, SUAVE, VERDE
 from .graphics.route_renderer import RenderizadorRota
 from .graphics.vehicle import Veiculo3D
 from .graphics.world import Mundo3D
-from .ui.dashboard import Dashboard, km
+from .graphics.efeitos import EfeitosEntrega
+from .graphics.audio import AudioMissao
+from .ui.dashboard import km
+from .ui.hud import HUDCompacta
+from .ui.configuracoes import JanelaConfiguracoes
 from .ui.results import JanelaResultados
 
 
@@ -33,6 +38,7 @@ class JogoTSP(Entity):
     def __init__(self, config, cenario=None):
         super().__init__()
         self.config = config
+        self.preferencias = carregar_preferencias()
         self.estado = EstadoJogo()
         self.servico = ServicoOtimizacao()
         self.fechado = False
@@ -45,6 +51,7 @@ class JogoTSP(Entity):
         self.custo_inicial = None
         self.pontos = 0
         self.janela_resultados = None
+        self.janela_configuracoes = None
         self.evento_pendente = None
         self.contexto_dinamico = None
         self.etapas = []
@@ -56,11 +63,14 @@ class JogoTSP(Entity):
         self.horario_calculo = 0.0
         self.finalidade = "preparar"
         self.erro_trabalhador = None
-        window.color = FUNDO
+        window.color = color.hex("#99C1CB")
         AmbientLight(color=color.rgba32(155, 173, 192, 255))
         self.sol = DirectionalLight(shadows=True, shadow_map_resolution=(2048, 2048),
                                     rotation=(55, -35, 0), color=color.rgba32(245, 237, 211, 255))
-        self.ui = Dashboard(self)
+        self.efeitos = EfeitosEntrega()
+        self.efeitos.ativo = self.preferencias["brilho_rotas"]
+        self.audio = AudioMissao(self.preferencias)
+        self.ui = HUDCompacta(self)
         self._carregar_missao(cenario or gerar_cenario(config["quantidade_cidades"],
                               config["semente"], config["metros_por_unidade"]))
 
@@ -80,14 +90,18 @@ class JogoTSP(Entity):
         self.pontos = 0
         self.etapas = []
         self.evento_pendente = self.contexto_dinamico = None
-        self.mundo = Mundo3D(cenario, self.selecionar_cidade)
+        self.mundo = Mundo3D(cenario, self.selecionar_cidade, self.preferencias)
         if self.config["mostrar_grafo"]:
             self.mundo.alternar_grafo()
         self.rotas = RenderizadorRota(cenario)
+        self.rotas.brilho = self.preferencias["brilho_rotas"]
+        self.rotas.mostrar_computador = self.preferencias["mostrar_rota_computador"]
         self.veiculo = Veiculo3D(cenario.posicao(cenario.deposito))
         self.veiculo.definir_modalidade(self.estado.modalidade)
         self.veiculo.atualizar(cenario.posicao(cenario.deposito), (0, 0, 1), 0)
-        self.controle_camera = CameraMissao(cenario.lado * cenario.espacamento)
+        self.controle_camera = CameraMissao(cenario.lado * cenario.espacamento, self.preferencias)
+        self.sol.shadows = self.preferencias["sombras"]
+        self.veiculo.raiz.setShaderInput("sombra_ativa", float(self.preferencias["sombras"]), 10)
         self.sol.update_bounds(self.mundo.raiz)
         self.ui.quantidade.text = str(len(cenario.cidades))
         self.ui.semente.text = str(cenario.semente)
@@ -160,7 +174,7 @@ class JogoTSP(Entity):
         self.notificar("MODALIDADE", "Distâncias diretas: abstração matemática, não representa ruas." if nova == "euclidiano" else "Caminhos mínimos restritos às ruas transitáveis.")
 
     def selecionar_cidade(self, no):
-        if self.janela_resultados or self.estado.ocupada:
+        if self.modal_aberto or self.estado.ocupada:
             return
         if self.estado.modo != "Desafio Humano":
             self.notificar("DESTINO", self.cenario.nome(no) + " · altere para Desafio Humano para montar uma rota.")
@@ -474,11 +488,51 @@ class JogoTSP(Entity):
         self.ui.camera.text = modo + " · C"
 
     def abrir_resultados(self, ajuda=False):
+        if self.janela_configuracoes or self.ui.janela_missao.enabled:
+            return
         if self.janela_resultados:
             self.janela_resultados.fechar()
         if self.simulacao:
             self.simulacao.pausada = True
         self.janela_resultados = JanelaResultados(self, ajuda)
+
+    @property
+    def modal_aberto(self):
+        return bool(self.janela_resultados or self.janela_configuracoes or
+                    (hasattr(self, "ui") and self.ui.janela_missao.enabled))
+
+    def abrir_configuracoes(self):
+        if not self.modal_aberto:
+            self.ui.acoes.enabled = False
+            self.janela_configuracoes = JanelaConfiguracoes(self)
+
+    def aplicar_preferencias(self, dados):
+        novas = validar_preferencias(dados)
+        salvar_preferencias(novas, getattr(self, "arquivo_preferencias", None))
+        reconstruir = novas["qualidade"] != self.preferencias["qualidade"]
+        self.preferencias = novas
+        self.controle_camera.preferencias = novas
+        self.audio.preferencias = novas
+        self.efeitos.ativo = novas["brilho_rotas"]
+        self.sol.shadows = novas["sombras"]
+        if reconstruir:
+            grafo_visivel = self.mundo.grafo_visivel
+            self.mundo.destruir()
+            self.mundo = Mundo3D(self.cenario, self.selecionar_cidade, novas)
+            if grafo_visivel:
+                self.mundo.alternar_grafo()
+            self.mundo.atualizar_bloqueios()
+            self.sol.update_bounds(self.mundo.raiz)
+        self.mundo.preferencias = novas
+        self.mundo.definir_aparencia()
+        self.veiculo.raiz.setShaderInput("sombra_ativa", float(novas["sombras"]), 10)
+        ordem = self.estado.ativa.ordem if self.estado.ativa else self.estado.ordem_manual
+        self.mundo.atualizar_cidades(ordem, self.simulacao.entregues if self.simulacao else set(), self.cenario.deposito)
+        self.rotas.brilho = novas["brilho_rotas"]
+        self.rotas.mostrar_computador = novas["mostrar_rota_computador"]
+        self.rotas.aplicar_aparencia()
+        self.ui.atualizar()
+        self.notificar("PREFERÊNCIAS APLICADAS", "Configurações salvas para a próxima sessão.")
 
     def exportar(self):
         resultados = list(self.estado.resultados.values())
@@ -506,22 +560,27 @@ class JogoTSP(Entity):
         if not hasattr(self, "ui"):
             return
         if key == "escape":
-            if self.janela_resultados:
+            if self.janela_configuracoes:
+                self.janela_configuracoes.fechar()
+            elif self.ui.janela_missao.enabled:
+                self.ui.fechar_missao()
+            elif self.janela_resultados:
                 self.janela_resultados.fechar()
             else:
                 application.quit()
             return
-        if self.ui.editando or self.janela_resultados:
+        if self.modal_aberto:
             return
         atalhos = {"g": self.alternar_grafo, "c": self.trocar_camera, "o": self.otimizar,
                    "b": self.comparar, "space": self.pausar, "r": self.reiniciar,
-                   "h": lambda: self.abrir_resultados(ajuda=True), "backspace": self.desfazer}
+                   "h": lambda: self.abrir_resultados(ajuda=True), "backspace": self.desfazer,
+                   "tab": self.ui.alternar_hud, "f10": self.abrir_configuracoes}
         if key == "n":
             self.ui.semente.text = str(self.cenario.semente + 1)
             self.gerar_mapa()
         elif key in atalhos:
             atalhos[key]()
-        self.controle_camera.entrada(key, abs(mouse.x) < .51)
+        self.controle_camera.entrada(key, not self.ui.sobre_interface())
 
     def update(self):
         dt = min(time.dt, .1)
@@ -529,17 +588,22 @@ class JogoTSP(Entity):
         if not self.servico.processo.is_alive() and self.estado.ocupada:
             self.estado.ocupada = False
             self.notificar("PROCESSO INTERROMPIDO", "O trabalhador de otimização foi encerrado. Feche e abra o jogo novamente.", erro=True)
-        self.controle_camera.atualizar(dt, self.simulacao.posicao if self.simulacao else None,
-                                      not self.ui.editando and not self.janela_resultados)
-        self.rotas.atualizar(dt * self.estado.velocidade)
-        if not self.janela_resultados:
+        self.controle_camera.atualizar(dt, self.veiculo.raiz.world_position if self.simulacao else None,
+                                      not self.modal_aberto and not self.ui.sobre_interface())
+        self.efeitos.atualizar(dt)
+        self.mundo.animar(dt)
+        if not self.modal_aberto:
+            self.rotas.atualizar(dt * self.estado.velocidade)
             self._animar_etapas(dt)
         sim = self.simulacao
-        if sim and not self.etapas and not self.janela_resultados and not self.estado.ocupada:
+        if sim and not self.etapas and not self.modal_aberto and not self.estado.ocupada:
             concluida_antes = sim.concluida
             novas = sim.avancar(dt, self.config["velocidade_veiculo"] * self.estado.velocidade)
             self.veiculo.atualizar(sim.posicao, sim.direcao, dt)
             if novas:
+                for no in novas:
+                    self.efeitos.emitir(self.cenario.posicao(no))
+                self.audio.tocar("entrega")
                 self.mundo.atualizar_cidades(self.estado.ativa.ordem, sim.entregues, self.cenario.deposito)
                 self.ui.atualizar_lista()
             if sim.aguardando_evento and self.evento_pendente:
@@ -549,6 +613,7 @@ class JogoTSP(Entity):
                 else:
                     self._aplicar_evento()
             if sim is self.simulacao and sim.concluida and not concluida_antes and self.estado.ativa:
+                self.audio.tocar("conclusao")
                 referencia = self.estado.referencia
                 rota = self.estado.ativa
                 if not rota.reotimizacao:
@@ -561,10 +626,12 @@ class JogoTSP(Entity):
             self.tempo_atualizacao = 0
             self.ui.atualizar()
             self.ui.redimensionar()
+            proxima = next((s.entrega for s in sim.segmentos[sim.indice:] if s.entrega is not None), None) if sim and not sim.concluida else None
+            self.mundo.destacar_proxima(proxima)
             if self.estado.ocupada:
                 self.ui.status.text = self.estado.status[:74] + f"  ·  {perf_counter() - self.horario_calculo:.1f}s"
             no_hover = next((no for no, marcador in self.mundo.marcadores.items() if marcador.hovered), None)
-            self.ui.dica_cidade.text = self.cenario.nome(no_hover) if no_hover is not None else ""
+            self.ui.dica_cidade.text = self.cenario.nome(no_hover) if no_hover is not None and not self.modal_aberto else ""
 
     def fechar(self):
         if self.fechado:

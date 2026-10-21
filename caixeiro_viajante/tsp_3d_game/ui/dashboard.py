@@ -16,9 +16,10 @@ def texto(parent, conteudo, x, y, escala=.65, cor=TEXTO, **kwargs):
                 origin=(-.5, .5), z=-.06, **kwargs)
 
 
-def painel(parent, x, y, largura, altura, cor=PAINEL, z=.04):
+def painel(parent, x, y, largura, altura, cor=PAINEL, z=.04, bloquear=False):
     return Entity(parent=parent, model="quad", position=(x, y, z),
-                  scale=(largura, altura), color=cor, shader=unlit_shader)
+                  scale=(largura, altura), color=cor, shader=unlit_shader,
+                  collider="box" if bloquear else None)
 
 
 def botao(parent, rotulo, x, y, largura, altura, acao, cor=SUPERFICIE, cor_texto=TEXTO):
@@ -199,7 +200,15 @@ class Dashboard:
         rota = e.ativa
         self.distancia.text = km(rota.distancia) if rota else km(j.distancia_manual())
         self.nome_algoritmo.text = rota.algoritmo if rota else "Planejamento manual"
-        self.prova.text = "ÓTIMO COMPROVADO" if rota and rota.otima_comprovada else "REOTIMIZAÇÃO DINÂMICA" if rota and rota.reotimizacao else "MELHOR SOLUÇÃO CONHECIDA" if rota and rota.algoritmo != "Rota do jogador" else "ROTA DO JOGADOR"
+        if rota and rota.otima_comprovada:
+            self.prova.text = "ÓTIMO COMPROVADO"
+        elif rota and rota.reotimizacao:
+            self.prova.text = "REOTIMIZAÇÃO DINÂMICA"
+        elif rota and rota.algoritmo != "Rota do jogador":
+            melhor = e.referencia and abs(rota.custo - e.referencia.custo) < 1e-6
+            self.prova.text = "MELHOR CONHECIDA · APROXIMADA" if melhor else "APROXIMADA · SEM PROVA DE ÓTIMO"
+        else:
+            self.prova.text = "ROTA DO JOGADOR"
         self.prova.color = VERDE if rota and rota.otima_comprovada else SUAVE
         sim = j.simulacao
         entregas = sim.entregas_realizadas if sim else 0

@@ -8,6 +8,7 @@ from ursina import Entity, Text, camera, color, destroy
 from ..core.game_state import economia_percentual
 from ..core.persistencia import RAIZ
 from ..graphics.estilo import CIANO, FUNDO, LARANJA, PAINEL, ROXO, SUAVE, VERDE
+from ..graphics.ciclo_vida import destruir_arvore as destroy
 from .dashboard import botao, km, painel, texto
 
 
