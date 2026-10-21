@@ -48,7 +48,9 @@ def executar_terminal(config, opcoes, cenario):
 
 def executar_janela(config, opcoes, cenario):
     from panda3d.core import loadPrcFileData
-    loadPrcFileData("", "framebuffer-multisample 1\nmultisamples 4\naudio-library-name null\nsync-video 1\nmodel-cache-dir")
+    loadPrcFileData("", "framebuffer-multisample 1\nmultisamples 4\nsync-video 1\nmodel-cache-dir")
+    if opcoes.teste_grafico:
+        loadPrcFileData("", "audio-library-name null")
     if sys.platform == "win32":
         # O NTFS não diferencia maiúsculas; o VFS do Panda pode rejeitar caminhos
         # válidos quando a grafia retornada pelo Windows difere da do ambiente.
