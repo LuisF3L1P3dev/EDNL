@@ -1,0 +1,92 @@
+{
+  "suburban": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/city-kit-suburban",
+    "download": "https://kenney.nl/media/pages/assets/city-kit-suburban/2c871b7af2-1745479373/kenney_city-kit-suburban_20.zip",
+    "sha256_zip": "5869c35cf30b1c87bdb2d197b6d325eebadd2ef08ea27f04797e8e08d77a9a39",
+    "formato": "GLB",
+    "modelos": [
+      "building-type-a",
+      "building-type-b",
+      "building-type-c",
+      "building-type-f",
+      "building-type-h",
+      "building-type-j"
+    ]
+  },
+  "commercial": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/city-kit-commercial",
+    "download": "https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip",
+    "sha256_zip": "f8b09b081c2bb88bcc126e2dec1cb40fd0dad7e7e591b6c26aaefe96fb35276b",
+    "formato": "GLB",
+    "modelos": [
+      "building-a",
+      "building-b",
+      "building-c",
+      "building-d",
+      "building-e",
+      "building-f"
+    ]
+  },
+  "industrial": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/city-kit-industrial",
+    "download": "https://kenney.nl/media/pages/assets/city-kit-industrial/0ec35b139d-1788171848/kenney_city-kit-industrial_2.0.zip",
+    "sha256_zip": "5b381164e5760f3830a2dbee43b972deee38b2a695d091b56e238ab2910c96d2",
+    "formato": "GLB",
+    "modelos": [
+      "building-a",
+      "building-b",
+      "building-c",
+      "building-e",
+      "shipping-container-a"
+    ]
+  },
+  "roads": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/city-kit-roads",
+    "download": "https://kenney.nl/media/pages/assets/city-kit-roads/74288c9459-1791628607/kenney_city-kit-roads.zip",
+    "sha256_zip": "374a4552115cbd11b4ec5c930ee31a533562dc78a09af249a655d03f7ea3b959",
+    "formato": "GLB",
+    "modelos": [
+      "construction-barrier",
+      "construction-cone",
+      "dumpster",
+      "light-curved",
+      "traffic-light"
+    ]
+  },
+  "cars": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/car-kit",
+    "download": "https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip",
+    "sha256_zip": "fac7dacac5c7874348cf19729af3ef205f3d366493edaf0a827d93f4fdf3d0c4",
+    "formato": "GLB",
+    "modelos": [
+      "delivery",
+      "sedan",
+      "van"
+    ]
+  },
+  "nature": {
+    "autor": "Kenney",
+    "licenca": "CC0-1.0",
+    "pagina": "https://kenney.nl/assets/nature-kit",
+    "download": "https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip",
+    "sha256_zip": "fa7974a0d342bfe63c38664ba9f8ec1a4aab8ea25f099bdc56870e33588c4d9d",
+    "formato": "GLB",
+    "modelos": [
+      "plant_bush",
+      "tree_default",
+      "tree_detailed",
+      "tree_detailed_dark",
+      "tree_oak"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+resultados/
+*.log
+config/preferencias_usuario.json
+config/preferencias_usuario.tmp
+
