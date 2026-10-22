@@ -29,14 +29,16 @@ class JanelaConfiguracoes:
         self.rascunho = deepcopy(jogo.preferencias)
         self.categoria = "Geral"
         self.raiz = Entity(parent=camera.ui, z=-3)
-        fundo = botao(self.raiz, "", 0, 0, camera.aspect_ratio, 1, lambda: None, color.rgba32(3, 9, 19, 210))
+        fundo = botao(self.raiz, "", 0, 0, camera.aspect_ratio, 1, lambda: None,
+                      color.rgba32(3, 9, 19, 210), raio=0)
+        fundo.moldura.enabled = False
         fundo.z = .3
         fundo.highlight_color = fundo.pressed_color = fundo.color
-        painel(self.raiz, 0, 0, 1.10, .72)
+        painel(self.raiz, 0, 0, 1.10, .72, bloquear=True)
         painel(self.raiz, -.548, 0, .004, .72, CIANO)
-        texto(self.raiz, "CONFIGURAÇÕES", -.495, .31, 1.0)
+        texto(self.raiz, "CONFIGURAÇÕES", -.495, .31, 1.0, titulo=True)
         texto(self.raiz, "Personalize sua operação", -.495, .268, .5, SUAVE)
-        botao(self.raiz, "×", .485, .30, .045, .035, self.fechar)
+        self.fechar_x = botao(self.raiz, "×", .485, .30, .045, .035, self.fechar)
         self.abas = {}
         for i, nome in enumerate(CATEGORIAS):
             self.abas[nome] = botao(self.raiz, nome, -.386, .178 - i * .071, .22, .050,

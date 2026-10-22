@@ -5,8 +5,10 @@ from time import perf_counter
 from copy import deepcopy
 from statistics import median
 import json
+from types import SimpleNamespace
 
 from panda3d.core import Filename, SceneGraphAnalyzer
+from ursina import Vec3, camera, color, window
 
 
 def instalar_verificacao(app, jogo, captura):
@@ -101,9 +103,98 @@ def instalar_verificacao(app, jogo, captura):
         assert all(som.clip for som in jogo.audio.sons.values())
         assert CATALOGO.carregamentos < 40
         verificar_pontes()
+        assert jogo.ui.lista.enabled and len(jogo.ui.destinos) == 7
+        assert not jogo.ui.acoes_abertas
+        jogo.ui.alternar_acoes()
+        assert jogo.ui.acoes_abertas
+        jogo.ui.alternar_acoes()
+        assert not jogo.ui.acoes_abertas
+        jogo.ui.acoes.enabled = False
+        jogo.ui.acoes.position = (0, jogo.ui.acoes_y, 0)
+        jogo.ui._acoes_fechar_ate = None
+        ordem_original = jogo.estado.ordem_manual.copy()
+        simulacao_original = jogo.simulacao
+        deposito = jogo.cenario.deposito
+        entregas = [no for no in jogo.cenario.cidades if no != deposito]
+        jogo.estado.ordem_manual = [deposito, entregas[0], entregas[1]]
+        jogo.simulacao = SimpleNamespace(entregues={entregas[0]}, concluida=False)
+        jogo.ui.atualizar_lista()
+        assert jogo.ui.destinos[0].color == color.hex("#9B72FF")
+        assert jogo.ui.destinos[1].color == color.hex("#40E39B")
+        assert jogo.ui.destinos[2].color == color.hex("#FFD34E")
+        assert jogo.ui.destinos[3].color == color.hex("#FFB020")
+        jogo.estado.ordem_manual = ordem_original
+        jogo.simulacao = simulacao_original
+        jogo.ui.atualizar_lista()
         jogo.ui.alternar_hud()
-        assert not jogo.ui.esquerda.enabled and not jogo.ui.direita.enabled
+        assert not jogo.ui.raiz.enabled
         jogo.ui.alternar_hud()
+        assert jogo.ui.raiz.enabled
+
+        controle = jogo.controle_camera
+        modo_original = controle.modo
+        modos = set()
+        for _ in range(4):
+            jogo.trocar_camera()
+            modos.add(controle.modo)
+            assert camera.orthographic == (controle.modo != "Perspectiva")
+        assert modos == {"Isométrica", "Aérea", "Seguir veículo", "Perspectiva"}
+        controle.escolher("Isométrica")
+        controle.atualizar(0, None, False)
+        distancia_inicial = (camera.position - controle.alvo).length()
+        controle.escolher("Perspectiva")
+        controle.zoom(.8)
+        controle.atualizar(0, None, False)
+        assert (camera.position - controle.alvo).length() < distancia_inicial
+        controle.escala_desejada = controle.escala_inicial
+        controle.atualizar(0, None, False)
+        controle.escolher("Isométrica")
+        controle.atualizar(0, None, False)
+        controle.alvo = Vec3(5, 0, -3)
+        controle.escala_desejada *= .8
+        jogo.centralizar_camera()
+        assert controle.alvo == Vec3(0, 0, 0)
+        assert controle.escala_desejada == controle.escala_inicial
+        controle.escolher(modo_original)
+        jogo.ui.camera.text = controle.modo
+
+        tamanho_original = tuple(window.size)
+        for largura_teste, altura_teste in ((1280, 720), (1440, 900), (1440, 1080), (2560, 1080)):
+            window.size = (largura_teste, altura_teste)
+            # A solicitação de tamanho é aplicada no próximo quadro; atualizar
+            # o lens antes disso deixa a proporção uma captura atrás.
+            app.graphicsEngine.renderFrame()
+            window.update_aspect_ratio()
+            jogo.ui.redimensionar()
+            app.graphicsEngine.renderFrame()
+            assert tuple(window.size) == (largura_teste, altura_teste)
+            assert abs(window.aspect_ratio - largura_teste / altura_teste) < .01
+            if camera.orthographic:
+                fov_esperado = jogo.controle_camera.escala * jogo.controle_camera.fator_enquadramento
+                assert abs(float(camera.fov) - fov_esperado) < .01
+            if largura_teste / altura_teste < 16 / 9:
+                assert jogo.controle_camera.fator_enquadramento > 1
+            else:
+                assert jogo.controle_camera.fator_enquadramento == 1
+            escala = jogo.ui.raiz.scale_x
+            margem = 10 * altura_teste / 900
+            meia_esquerda = 140 * altura_teste / 900
+            meia_direita = 145 * altura_teste / 900
+            borda_esquerda = largura_teste / 2 + jogo.ui.esquerda.x * escala * altura_teste - meia_esquerda
+            borda_direita = largura_teste / 2 + jogo.ui.direita.x * escala * altura_teste + meia_direita
+            assert abs(borda_esquerda - margem) < 1, ("borda esquerda", tuple(window.size), window.aspect_ratio,
+                                                       borda_esquerda, margem, jogo.ui.esquerda.x)
+            assert abs(borda_direita - (largura_teste - margem)) < 1, ("borda direita", tuple(window.size), window.aspect_ratio,
+                                                                       borda_direita, margem, jogo.ui.direita.x)
+            assert jogo.ui.lista.enabled and len(jogo.ui.destinos) == 7
+            fotografar(f"_hud_{largura_teste}x{altura_teste}")
+        window.size = tamanho_original
+        app.graphicsEngine.renderFrame()
+        window.update_aspect_ratio()
+        jogo.ui.redimensionar()
+        app.graphicsEngine.renderFrame()
+        assert abs(window.aspect_ratio - tamanho_original[0] / tamanho_original[1]) < .01
+
         jogo.ui.abrir_missao()
         jogo.ui.quantidade.text = "8"
         jogo.ui.semente.text = "123456"
@@ -120,7 +211,12 @@ def instalar_verificacao(app, jogo, captura):
         janela.mostrar("Geral")
         fotografar("_configuracoes")
         janela.rascunho["unidade"] = "m"
-        janela.fechar()
+        janela.fechar_x.on_click()
+        assert jogo.janela_configuracoes is None
+        assert jogo.preferencias == preferencias_originais
+        jogo.abrir_configuracoes()
+        jogo.input("escape")
+        assert jogo.janela_configuracoes is None
         assert jogo.preferencias == preferencias_originais
         jogo.abrir_configuracoes()
         janela = jogo.janela_configuracoes
@@ -149,11 +245,8 @@ def instalar_verificacao(app, jogo, captura):
         janela.fechar()
         jogo.aplicar_preferencias(preferencias_originais)
         assert jogo.matriz is matriz and jogo.cenario.assinatura == assinatura
-        jogo.ui.alternar_painel("lista")
         assert jogo.ui.lista.enabled
-        jogo.ui.alternar_painel("detalhes")
-        assert jogo.ui.detalhes.enabled and not jogo.ui.lista.enabled
-        jogo.ui.alternar_painel("detalhes")
+        assert all(b.enabled for b in jogo.ui.destinos)
 
     def verificar(tarefa):
         nonlocal ultimo_quadro
@@ -237,6 +330,12 @@ def instalar_verificacao(app, jogo, captura):
                     assert sim.entregas_realizadas == len(jogo.cenario.cidades) - 1
                     assert sim.ultimo_no == jogo.cenario.deposito
                     estado["entregas"] = sim.entregas_realizadas
+                    assinatura = jogo.cenario.assinatura
+                    rota = jogo.estado.ativa
+                    jogo.reiniciar_viagem()
+                    assert jogo.cenario.assinatura == assinatura
+                    assert jogo.estado.ativa is rota
+                    assert jogo.simulacao is not sim and not jogo.simulacao.concluida
                     jogo.reiniciar()
                     estado["fase"] = 6
             elif fase == 6:

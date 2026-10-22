@@ -58,7 +58,7 @@ def executar_janela(config, opcoes, cenario):
     from ursina import Ursina, application, window
     from tsp_3d_game.app import JogoTSP
     app = Ursina(title=config["titulo"], borderless=False, fullscreen=False,
-                 size=tuple(config["tamanho_janela"]), forced_aspect_ratio=16 / 9,
+                 size=tuple(config["tamanho_janela"]),
                  development_mode=False, show_ursina_splash=False, vsync=True)
     window.exit_button.visible = False
     window.fps_counter.enabled = False

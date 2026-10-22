@@ -22,7 +22,7 @@ from .core.route_validator import validar_resultado
 from .core.scenario_generator import gerar_cenario
 from .core.servico_otimizacao import ServicoOtimizacao
 from .graphics.camera_controller import CameraMissao
-from .graphics.estilo import CIANO, FUNDO, LARANJA, ROSA, SUAVE, VERDE
+from .graphics.estilo import CIANO, FUNDO, LARANJA, ROSA, SUAVE, SUPERFICIE, VERDE
 from .graphics.route_renderer import RenderizadorRota
 from .graphics.vehicle import Veiculo3D
 from .graphics.world import Mundo3D
@@ -137,6 +137,35 @@ class JogoTSP(Entity):
         cenario = gerar_cenario(len(self.cenario.cidades), self.cenario.semente, self.config["metros_por_unidade"])
         cenario.deposito = antigo_deposito
         self._carregar_missao(cenario)
+
+    def reiniciar_viagem(self):
+        """Reinicia o percurso ativo preservando cenário e resultados calculados."""
+        if self.estado.ocupada:
+            self.notificar("CÁLCULO EM ANDAMENTO", "A viagem poderá ser reiniciada quando o cálculo terminar.")
+            return
+        rota = self.estado.ativa
+        if rota is None:
+            self.notificar("ROTA NECESSÁRIA", "Calcule ou planeje uma rota antes de reiniciar a viagem.")
+            return
+        matriz = self.matriz_ativa if rota.reotimizacao else self.matriz
+        if matriz is None:
+            self.notificar("ROTA DESATUALIZADA", "Recalcule a rota antes de iniciar uma nova viagem.", erro=True)
+            return
+        try:
+            contexto = self.contexto_dinamico or {}
+            simulacao = SimulacaoPercurso(
+                self.cenario, matriz, rota.ordem, self.config["metros_por_unidade"],
+                entregar_origem=bool(contexto.get("entrega_origem")) if rota.reotimizacao else False)
+            if rota.reotimizacao:
+                simulacao.entregues.update(contexto.get("entregues", set()))
+            self.simulacao = simulacao
+            self.etapas = []
+            self.veiculo.atualizar(simulacao.posicao, simulacao.direcao, 0)
+            self.mundo.atualizar_cidades(rota.ordem, simulacao.entregues, self.cenario.deposito)
+            self.ui.atualizar_lista()
+            self.notificar("VIAGEM REINICIADA", "O percurso foi reiniciado; cenário e resultados continuam disponíveis.")
+        except ValueError as erro:
+            self.notificar("ROTA INVÁLIDA", str(erro), erro=True)
 
     def trocar_deposito(self):
         if self.estado.ocupada or (self.simulacao and not self.simulacao.concluida):
@@ -343,6 +372,7 @@ class JogoTSP(Entity):
             validar_resultado(resultado, self.matriz, self.cenario)
             self.simulacao = SimulacaoPercurso(self.cenario, self.matriz, resultado.ordem,
                                                self.config["metros_por_unidade"])
+            self.ui.pausa.text = "Pausar"
             self.pontos = 0
             self.mundo.atualizar_cidades(resultado.ordem, set(), self.cenario.deposito)
             self.notificar("VEÍCULO EM ROTA", "As entregas são confirmadas somente na ordem planejada.")
@@ -354,8 +384,10 @@ class JogoTSP(Entity):
             return
         if self.etapas:
             self.etapas_pausadas = not self.etapas_pausadas
+            self.ui.pausa.text = "Retomar" if self.etapas_pausadas else "Pausar"
         elif self.simulacao:
             self.simulacao.pausada = not self.simulacao.pausada
+            self.ui.pausa.text = "Retomar" if self.simulacao.pausada else "Pausar"
             self.notificar("PAUSADO" if self.simulacao.pausada else "VEÍCULO EM ROTA", "Espaço ou o botão pausa/continua a viagem.")
 
     def reproduzir_etapas(self, iniciar_depois=False):
@@ -369,6 +401,7 @@ class JogoTSP(Entity):
         self.indice_etapa = 0
         self.tempo_etapa = 1
         self.etapas_pausadas = False
+        self.ui.pausa.text = "Pausar"
         self.iniciar_apos_etapas = iniciar_depois
         self.notificar("REPRODUÇÃO EDUCATIVA", "Decisões reais registradas no cálculo; use a velocidade para acelerar.")
 
@@ -471,6 +504,7 @@ class JogoTSP(Entity):
                 simulacao.distancia = self.contexto_dinamico["distancia"]
                 simulacao.entregues.update(self.contexto_dinamico["entregues"])
             self.simulacao = simulacao
+            self.ui.pausa.text = "Pausar"
             self.mundo.atualizar_cidades(rota.ordem, simulacao.entregues, self.cenario.deposito)
             self.ui.atualizar_lista()
             self.notificar("VIAGEM RECALCULADA", "Entregas anteriores preservadas; o veículo segue pelas ruas liberadas.")
@@ -479,13 +513,18 @@ class JogoTSP(Entity):
 
     def alternar_grafo(self):
         self.mundo.alternar_grafo()
-        self.ui.grafo.text = "Grafo · ligado" if self.mundo.grafo_visivel else "Grafo · G"
+        self.ui.grafo.color = CIANO.tint(-.08) if self.mundo.grafo_visivel else SUPERFICIE
 
     def trocar_camera(self):
-        modos = ["Isométrica", "Aérea", "Seguir veículo"]
+        modos = ["Isométrica", "Aérea", "Seguir veículo", "Perspectiva"]
         modo = modos[(modos.index(self.controle_camera.modo) + 1) % len(modos)]
         self.controle_camera.escolher(modo)
-        self.ui.camera.text = modo + " · C"
+        self.ui.camera.text = modo
+
+    def centralizar_camera(self):
+        self.controle_camera.centralizar()
+        self.ui.camera.text = self.controle_camera.modo
+        self.notificar("CÂMERA CENTRALIZADA", "Mapa centralizado e zoom inicial restaurado.")
 
     def abrir_resultados(self, ajuda=False):
         if self.janela_configuracoes or self.ui.janela_missao.enabled:

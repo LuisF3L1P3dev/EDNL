@@ -1,8 +1,10 @@
-"""Órbita isométrica, vista aérea e acompanhamento do caminhão."""
+"""Câmeras de apresentação e navegação do cenário."""
 
 import math
 
 from ursina import Entity, Vec3, camera, held_keys, lerp, mouse, time
+from ..ui.tema import (ALTURA_REFERENCIA, LARGURA_DIREITA,
+                       LARGURA_ESQUERDA, MARGEM)
 
 
 class CameraMissao:
@@ -19,18 +21,48 @@ class CameraMissao:
         self.inclinacao_suave = self.inclinacao
         self.tamanho = tamanho
         self.modo = "Isométrica"
+        self.escala_inicial = self.escala
+        self.fator_enquadramento = 1.0
+        self.ajustar_enquadramento(camera.aspect_ratio)
         camera.orthographic = True
         camera.fov = self.escala
         self.atualizar(0, None)
 
     def escolher(self, modo):
         self.modo = modo
-        if modo == "Aérea":
+        camera.orthographic = modo != "Perspectiva"
+        if modo in ("Aérea", "Superior"):
             self.inclinacao = 89
         elif modo == "Isométrica":
             self.inclinacao = 48
+        elif modo == "Perspectiva":
+            self.inclinacao = 42
         else:
             self.inclinacao = 40
+
+    def centralizar(self):
+        """Retorna o alvo ao centro do mapa e recupera o zoom inicial."""
+        if self.modo == "Seguir veículo":
+            self.escolher("Isométrica")
+        self.alvo = Vec3(0, 0, 0)
+        self.yaw = -40.0
+        self.inclinacao = 89 if self.modo in ("Aérea", "Superior") else 48 if self.modo == "Isométrica" else 42
+        self.escala_desejada = self.escala_inicial
+
+    def ajustar_enquadramento(self, aspecto):
+        """Dá espaço ao mapa quando a HUD reduz a largura central disponível."""
+        faixa_lateral = (LARGURA_ESQUERDA + LARGURA_DIREITA + 2 * MARGEM) / ALTURA_REFERENCIA
+        largura_referencia = 16 / 9 - faixa_lateral
+        largura_util = max(.35, aspecto - faixa_lateral)
+        self.fator_enquadramento = max(1.0, largura_referencia / largura_util)
+        self._atualizar_fov()
+
+    def _atualizar_fov(self):
+        if camera.orthographic:
+            camera.fov = self.escala * self.fator_enquadramento * (.42 if self.modo == "Seguir veículo" else 1)
+        else:
+            semiangulo = math.radians(24) * self.fator_enquadramento
+            camera.fov = min(82, math.degrees(2 * math.atan(math.tan(semiangulo))))
 
     def entrada(self, tecla, sobre_mapa=True):
         if sobre_mapa and tecla in ("scroll up", "scroll down"):
@@ -46,7 +78,7 @@ class CameraMissao:
             if held_keys["right mouse"]:
                 sinal = -1 if self.preferencias.get("inverter_giro") else 1
                 self.yaw += mouse.velocity.x * 160 * sensibilidade * sinal
-                if self.modo != "Aérea":
+                if self.modo not in ("Aérea", "Superior"):
                     self.inclinacao = max(25, min(80, self.inclinacao - mouse.velocity.y * 110 * sensibilidade))
             velocidade = self.escala * .6 * dt * sensibilidade
             direita, esquerda, cima, baixo = ("right arrow", "left arrow", "up arrow", "down arrow") if self.preferencias.get("teclas_movimento") == "Setas" else ("d", "a", "w", "s")
@@ -68,7 +100,9 @@ class CameraMissao:
         inclinacao, angulo = math.radians(self.inclinacao_suave), math.radians(self.yaw_suave)
         deslocamento = Vec3(math.sin(angulo) * math.cos(inclinacao), math.sin(inclinacao),
                             -math.cos(angulo) * math.cos(inclinacao)) * self.distancia
+        if self.modo == "Perspectiva":
+            deslocamento *= self.escala / self.escala_inicial
         camera.position = self.alvo_suave + deslocamento
         camera.look_at(self.alvo_suave)
-        camera.fov = self.escala * (.42 if self.modo == "Seguir veículo" else 1)
+        self._atualizar_fov()
 

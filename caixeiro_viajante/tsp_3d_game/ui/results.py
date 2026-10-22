@@ -18,12 +18,14 @@ class JanelaResultados:
         self.raiz = Entity(parent=camera.ui, z=-1)
         # O fundo intercepta cliques antes que alcancem a cidade.
         cor_fundo = color.rgba32(6, 12, 24, 235)
-        bloqueador = botao(self.raiz, "", 0, 0, camera.aspect_ratio, 1, lambda: None, cor_fundo)
+        bloqueador = botao(self.raiz, "", 0, 0, camera.aspect_ratio, 1, lambda: None,
+                           cor_fundo, raio=0)
+        bloqueador.moldura.enabled = False
         bloqueador.z = .08
         bloqueador.highlight_color = bloqueador.pressed_color = cor_fundo
-        painel(self.raiz, 0, .01, 1.13, .81, PAINEL)
-        texto(self.raiz, "MANUAL DO OPERADOR" if ajuda else "BATALHA DE ALGORITMOS", -.51, .374, .96, CIANO)
-        botao(self.raiz, "FECHAR", .449, .358, .15, .035, self.fechar)
+        painel(self.raiz, 0, .01, 1.13, .81, PAINEL, bloquear=True)
+        texto(self.raiz, "MANUAL DO OPERADOR" if ajuda else "BATALHA DE ALGORITMOS", -.51, .374, .96, CIANO, titulo=True)
+        self.fechar_x = botao(self.raiz, "×", .49, .36, .05, .045, self.fechar)
         if ajuda:
             self._ajuda()
         else:
@@ -70,14 +72,15 @@ class JanelaResultados:
             "      A base abre a rota; o retorno é incluído após a última seleção.",
             "03  Otimizar calcula uma solução; comparar executa os cinco métodos.",
             "04  Iniciar simulação faz o caminhão percorrer as ruas da rota ativa.",
-            "05  G mostra o grafo. C alterna a câmera. Espaço pausa a viagem.",
+            "05  G mostra o grafo. C alterna isométrica, aérea, seguir e perspectiva.",
             "06  Botão direito gira, roda aproxima e WASD desloca a câmera.",
             "07  Rever etapas reproduz decisões realmente registradas no cálculo.",
             "08  Bloqueios e obras aguardam o próximo cruzamento e recalculam",
             "      somente as entregas restantes, terminando no depósito.",
             "09  Modo euclidiano é uma abstração: o veículo representa um drone.",
             "      Os segmentos diretos não representam ruas ou passagens físicas.",
-            "10  Held–Karp prova o ótimo até o limite configurado (12 por padrão).",
+            "10  Centralizar recupera o enquadramento; Reiniciar reinicia só a viagem.",
+            "11  Held–Karp prova o ótimo até o limite configurado (12 por padrão).",
             "      GLS e 2-opt não provam o ótimo. Christofides exige TSP métrico.",
             "Futuros: Concorde, LKH, genéticos, formigas e recozimento simulado.",
         ]
