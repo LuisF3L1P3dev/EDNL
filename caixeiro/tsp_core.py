@@ -272,6 +272,39 @@ def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
     return ResultadoTSP(melhor, melhor, custo_melhor, testados, validos)
 
 
+def fecho_metrico(grafo: Grafo) -> Mapping[tuple[int, int], ResultadoDijkstra]:
+    """Menores caminhos entre todos os pares; não modifica a malha original."""
+    grafo.exigir_validado()
+    return MappingProxyType({
+        (a, b): dijkstra(grafo, a, b) for a in sorted(grafo.ids) for b in sorted(grafo.ids)
+    })
+
+
+def tsp_dijkstra(grafo: Grafo, origem: int) -> ResultadoTSP:
+    """Busca exata (até 9 nós) nas distâncias mínimas, expandindo arestas reais.
+
+    A ordem é um ciclo no fecho métrico; o caminho físico pode repetir nós.
+    A instância original permanece intacta, inclusive suas arestas ausentes.
+    """
+    _validar_tsp(grafo, origem)
+    fecho = fecho_metrico(grafo)
+    ids = sorted(grafo.ids)
+    derivado = Grafo(
+        id=f"{grafo.id}_fecho", nome=f"Fecho métrico de {grafo.nome}",
+        direcionado=False, validado=True, referencia=grafo.referencia,
+        sistema_coordenadas=grafo.sistema_coordenadas, nos=grafo.nos,
+        arestas=tuple(Aresta(a, b, fecho[a, b].custo)
+                      for i, a in enumerate(ids) for b in ids[i + 1:]
+                      if fecho[a, b].caminho),
+    )
+    resultado = tsp_forca_bruta(derivado, origem)
+    fisico = [origem] if resultado.ordem else []
+    for a, b in zip(resultado.ordem, resultado.ordem[1:]):
+        fisico.extend(fecho[a, b].caminho[1:])
+    return ResultadoTSP(resultado.ordem, tuple(fisico), resultado.custo,
+                        resultado.estados_testados, resultado.ciclos_validos)
+
+
 def _campos(objeto: object, obrigatorios: tuple[str, ...], contexto: str) -> dict:
     if not isinstance(objeto, dict):
         raise GrafoInvalidoError(f"{contexto}: esperado objeto JSON.")

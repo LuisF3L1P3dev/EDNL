@@ -65,11 +65,12 @@
   - **Aceite:** mapa 5 tem custo ótimo 15; mapa 18 não tenta avaliar `17!` permutações.
   - **Conferido:** `tsp_forca_bruta()` enumera 24 ordens no mapa 5, retorna ciclo de custo 15 e impõe limite de 9 nós antes da enumeração. Testes em `tests/test_tsp.py`.
 
-- [ ] **TSP-009 — Implementar fecho métrico por Dijkstra + busca exata** · `P1 / High` · depende de TSP-007 e TSP-008
+- [x] **TSP-009 — Implementar fecho métrico por Dijkstra + busca exata** · `P1 / High` · depende de TSP-007 e TSP-008
   - Calcular caminhos mínimos entre todos os destinos.
   - Buscar a melhor ordem de entregas sobre a matriz de menores distâncias.
   - Reconstruir o percurso físico usando as arestas reais.
   - **Aceite:** no mapa 5, custo 15 e percurso físico com soma correta.
+  - **Conferido:** `fecho_metrico()` e `tsp_dijkstra()` calculam distâncias, buscam a ordem exata e expandem o percurso sobre arestas reais. Testes incluem custo 15, estrela sem ciclo Hamiltoniano, grafo desconectado e limite de 9 nós.
 
 - [ ] **TSP-010 — Registrar passos intermediários dos algoritmos** · `P2 / High` · depende de TSP-007, TSP-008
   - Dijkstra: fila, distâncias tentativas, nós visitados, relaxamentos e predecessores.
