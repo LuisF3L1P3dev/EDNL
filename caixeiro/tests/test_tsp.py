@@ -3,6 +3,7 @@ from dataclasses import replace
 import math
 from pathlib import Path
 import unittest
+from fixtures import mapa_18_pendente
 
 from tsp_core import (Aresta, Grafo, No, GrafoInvalidoError, LimiteTSPError,
                       MapaNaoValidadoError, carregar_mapa, tsp_forca_bruta)
@@ -58,6 +59,8 @@ class ForcaBrutaTests(unittest.TestCase):
 
     def test_mapa_real_18_pendente_e_recusado(self):
         with self.assertRaises(MapaNaoValidadoError):
+            tsp_forca_bruta(mapa_18_pendente(), 1)
+        with self.assertRaises(LimiteTSPError):
             tsp_forca_bruta(carregar_mapa(ROOT / "data/mapa_18.json"), 1)
 
     def test_origem_invalida_e_mapa_pendente(self):

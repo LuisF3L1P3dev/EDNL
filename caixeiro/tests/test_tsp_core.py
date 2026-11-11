@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 from tsp_core import Aresta, GrafoInvalidoError, MapaNaoValidadoError, No, carregar_mapa
+from fixtures import mapa_18_pendente
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +47,7 @@ class GrafoTests(unittest.TestCase):
         })
 
     def test_mapa_18_pode_ser_inspecionado_mas_bloqueia_calculos(self):
-        grafo = carregar_mapa(PROJECT_ROOT / "data" / "mapa_18.json")
+        grafo = mapa_18_pendente()
         self.assertEqual(len(grafo.nos), 18)
         self.assertEqual(len(grafo.arestas), 45)
         unknown = [a for a in grafo.arestas if a.peso is None]
@@ -56,6 +57,12 @@ class GrafoTests(unittest.TestCase):
             with self.subTest(operacao=operacao.__name__):
                 with self.assertRaisesRegex(MapaNaoValidadoError, "9-14"):
                     operacao()
+
+    def test_mapa_18_real_validado_tem_aresta_9_14_nos_dois_sentidos(self):
+        grafo = carregar_mapa(PROJECT_ROOT / "data" / "mapa_18.json")
+        self.assertTrue(grafo.validado)
+        self.assertEqual(grafo.adjacencia()[9][14], 1)
+        self.assertEqual(grafo.adjacencia()[14][9], 1)
 
     def test_nao_validado_bloqueia_mesmo_com_todos_os_pesos_conhecidos(self):
         self.dados["validado"] = False

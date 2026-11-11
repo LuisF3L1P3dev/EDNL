@@ -33,11 +33,11 @@
   - **Aceite:** JSON contém 18 nós; nenhuma aresta com valor incerto recebe peso inventado.
   - **Conferido:** `data/mapa_18.json` contém 18 IDs, coordenadas normalizadas e 45 ligações provisórias: 44 pesos transcritos e `9-14` com `null`. A associação `4-14:56` está explicitamente pendente. `validado` permanece `false`. Os 6 testes do cadastro em `tests/test_mapa_18.py` passaram; total de 12 testes aprovados no projeto. Esses testes não substituem a auditoria dos pesos da TSP-004.
 
-- [ ] **TSP-004 — Auditar integralmente o mapa de 18 nós** · `P0 / High` · **Bloqueante**
+- [x] **TSP-004 — Auditar integralmente o mapa de 18 nós** · `P0 / High`
   - Revisar a linha/peso `9-14`, o rótulo `56` associado a `4-14` e todas as demais conexões.
   - Preferir imagem ou fonte original de maior resolução.
   - **Aceite:** tabela definitiva de adjacência revisada; `data/mapa_18.json` passa a `validado: true`; testes automatizados cobrindo todos os pesos.
-  - **Avanço parcial:** fonte do próprio autor obtida em 1225 × 895 (pesos) e 1216 × 895 (ligações). As 45 conexões e os 44 pesos foram conferidos, incluindo `4-14:56`. A aresta `9-14` existe, mas não possui peso indicado nem nessa fonte. Tabela e evidências em `docs/auditoria_mapa_18.md`; regressão cobrindo os 44 pesos. `validado` permanece `false`; tarefa aberta até obter o custo faltante de fonte explícita ou definição do professor.
+  - **Conferido:** 45 conexões e 44 pesos revisados nas figuras do autor; o usuário complementou explicitamente `9–14 = 1`. JSON validado, sem pendências, tabela e proveniência atualizadas; todos os 45 pesos cobertos por testes. O rótulo 56 permanece em 4–14. As guardas de mapas incompletos continuam testadas com fixture em memória.
 
 - [x] **TSP-005 — Documentar as restrições acadêmicas** · `P0 / Low`
   - Esclarecer peso fixo ≠ distância em pixels.

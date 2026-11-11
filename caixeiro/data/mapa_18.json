@@ -1,16 +1,21 @@
 {
   "id": "mapa_18",
-  "nome": "Mapa 2 — 18 nós (peso 9-14 ausente)",
+  "nome": "Mapa 2 — 18 nós",
   "direcionado": false,
-  "validado": false,
+  "validado": true,
   "referencia": "assets/referencias/mapa_18_original.png",
   "sistema_coordenadas": "normalizadas_0_1",
-  "observacoes": "A auditoria nas figuras do autor confirmou 45 ligações não direcionadas e 44 pesos. A ligação 9-14 existe, mas não tem peso indicado na fonte. Coordenadas servem apenas ao desenho. Manter não validado até obter o peso faltante; não inferir custos nem excluir essa ligação.",
-  "pendencias": [
-    "Obter o peso da aresta 9-14 de uma fonte que o informe explicitamente ou de definição do professor; ausente inclusive na figura original do autor."
-  ],
+  "observacoes": "A auditoria nas figuras do autor confirmou 45 ligações não direcionadas e 44 pesos. O peso 9-14 = 1 foi definido explicitamente pelo usuário, complementando o rótulo ausente nas imagens. Coordenadas servem apenas ao desenho.",
+  "pendencias": [],
   "auditoria": {
-    "estado": "parcial_peso_ausente_na_fonte",
+    "estado": "validado_com_definicao_usuario",
+    "complemento_usuario": {
+      "origem": 9,
+      "destino": 14,
+      "peso": 1,
+      "tipo": "definicao_explicita_usuario",
+      "mensagem": "o peso da aresta 9 - 14 é 1"
+    },
     "relatorio": "docs/auditoria_mapa_18.md",
     "autor": "Dhiego Pardini",
     "publicacao": "https://otimizacaonapratica.wordpress.com/2015/11/09/o-problema-do-caixeiro-viajante/",
@@ -83,8 +88,8 @@
     { "origem": 9, "destino": 10, "peso": 26 },
     { "origem": 9, "destino": 13, "peso": 34 },
     {
-      "origem": 9, "destino": 14, "peso": null,
-      "observacao": "Existência confirmada nas duas figuras do autor; peso ausente na fonte. O rótulo 56 pertence a 4-14."
+      "origem": 9, "destino": 14, "peso": 1,
+      "observacao": "Peso 1 informado explicitamente pelo usuário. As imagens não apresentam rótulo nessa ligação; o rótulo 56 pertence a 4-14."
     },
     { "origem": 9, "destino": 16, "peso": 43 },
     { "origem": 10, "destino": 11, "peso": 24 },

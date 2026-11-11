@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 import unittest
+from fixtures import mapa_18_pendente
 from test_tsp import exemplo
 from busca_limitada import tsp_branch_bound
 from tsp_core import carregar_mapa, tsp_forca_bruta, MapaNaoValidadoError
@@ -40,8 +41,8 @@ class BuscaLimitadaTests(unittest.TestCase):
         self.assertTrue(r.otimo)
         self.assertEqual(tsp_branch_bound(exemplo((7,), ()), 7).custo, 0)
 
-    def test_mapa_real_18_continua_bloqueado(self):
-        mapa = carregar_mapa(Path(__file__).resolve().parents[1] / "data/mapa_18.json")
+    def test_fixture_de_mapa_18_pendente_continua_bloqueada(self):
+        mapa = mapa_18_pendente()
         with self.assertRaises(MapaNaoValidadoError):
             tsp_branch_bound(mapa, 1)
 

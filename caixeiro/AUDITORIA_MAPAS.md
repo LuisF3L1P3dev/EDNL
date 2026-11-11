@@ -2,7 +2,7 @@
 
 ## Regras
 
-**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 tem cadastro JSON e testes (TSP-002). O mapa 18 tem 45 conexões e 44 pesos revisados nas figuras do próprio autor; a TSP-004 permanece aberta pela ausência do peso de `9–14` na fonte. Ver [relatório completo](docs/auditoria_mapa_18.md).
+**Estado dos artefatos:** referências preservadas por SHA-256. Mapa 5 validado; mapa 18 validado com 44 pesos conferidos nas figuras e o peso `9–14 = 1` fornecido explicitamente pelo usuário. A proveniência consta no JSON e no [relatório completo](docs/auditoria_mapa_18.md).
 
 Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A transcrição para JSON não altera pesos, conectividade ou número de nós. Coordenadas normalizadas têm finalidade apenas visual; **não** representam distância.
 
@@ -18,28 +18,28 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 
 ## Mapa 2 — 18 nós
 
-- **Estado:** auditoria parcial, **não aprovado para cálculos** por faltar o peso de `9–14`.
-- **Cadastro:** `data/mapa_18.json`, com `validado: false`, coordenadas normalizadas e pendências explícitas. Não usar como instância validada de algoritmos.
-- **Bloqueio implementado (TSP-006):** `carregar_mapa()` preserva os nós, arestas e o peso desconhecido para inspeção/desenho; `Grafo.exigir_validado()` e `Grafo.adjacencia()` levantam `MapaNaoValidadoError` citando `9-14`. Não há conversão de `null` em custo numérico nem exclusão silenciosa da ligação.
+- **Estado:** validado com complemento do usuário; TSP-004 concluída.
+- **Cadastro:** `data/mapa_18.json`, com `validado: true`, pesos conhecidos e nenhuma pendência.
+- **Guardas preservadas:** instâncias não validadas continuam recusadas pelo núcleo, com testes em cópia sintética. O mapa real validado pode ser usado por Dijkstra e branch-and-bound; força bruta mantém o limite de 9 nós.
 - **Nós:** inteiros de `1` a `18` (18 no total).
-- **Arestas registradas:** 45, sendo 44 com pesos visíveis e uma com `null`.
-- **Ponto pendente:** existência de `9-14` confirmada nas figuras originais do autor, mas **não há peso indicado para essa linha**. O rótulo `56` foi confirmado em `4-14`; `43` pertence a `9-16`.
+- **Arestas registradas:** 45, todas com peso: 44 valores nas imagens e `9–14:1` informado pelo usuário.
+- **Complemento:** a mensagem “o peso da aresta 9 - 14 é 1” define esse custo. A imagem continua sem rótulo nessa ligação. `4–14:56` e `9–16:43` foram preservados.
 - **Conduta:** não adivinhar, não atribuir média de pesos, não substituir pela distância euclidiana.
 - **Demais arestas:** as 44 arestas ponderadas foram cotejadas visualmente com `mapa_18_pardini_pesos.png`; as 45 ligações também foram cotejadas com `mapa_18_pardini_ligacoes.png`. A tabela completa está no relatório.
-- **Testes:** 8 testes em `tests/test_mapa_18.py` verificam estrutura, todos os pesos conferidos, o custo ausente, metadados e integridade das fontes. Com os 6 testes do mapa 5, são 14 testes. Comando: `python -B -m unittest discover -s tests -v`.
+- **Testes:** `tests/test_mapa_18.py` cobre todos os 45 pesos e proveniência; os testes do núcleo e de Dijkstra conferem o novo custo em ambos os sentidos. Comando: `python -B -m unittest discover -s tests -v`.
 
 ## Checklist de validação obrigatória
 
 - [x] Obter figuras do autor em maior resolução para verificar as ligações.
 - [x] Confirmar que `9–14` é realmente uma aresta.
-- [ ] Obter o peso de `9–14`, ausente inclusive na figura original do autor.
+- [x] Obter o peso de `9–14`: 1, definido pelo usuário.
 - [x] Confirmar se `4–14` tem peso `56`.
 - [x] Verificar as 44 arestas ponderadas já listadas em `data/mapa_18.json`.
 - [x] Conferir os cruzamentos e as conexões nas duas figuras do autor; 45 ligações identificadas.
 - [x] Confirmar representação não direcionada: não há setas nas figuras.
-- [x] Criar testes para as 45 arestas e todos os 44 pesos conferidos, preservando o único custo ausente.
-- [ ] Somente após aprovação, atualizar `validado` para `true` em `data/mapa_18.json`.
-- [ ] Não habilitar solução do TSP por força bruta para 18 nós; usar método adequado à escala.
+- [x] Criar testes para as 45 arestas e pesos, incluindo a origem do complemento de 9–14.
+- [x] Atualizar `validado` para `true` após completar os dados e testes.
+- [x] Manter força bruta limitada a 9 nós e disponibilizar busca com orçamento para 18.
 
 ## Registro de mudanças
 
@@ -48,3 +48,4 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 | 2026-11-11 | Mapa 5 | Transcrito com 5 nós e 8 pesos | `assets/referencias/mapa_05_original.png` |
 | 2026-11-11 | Mapa 18 | 18 nós, 45 ligações provisórias, 1 peso não legível | `assets/referencias/mapa_18_original.png` |
 | 2026-11-11 | Mapa 18 | 45 ligações e 44 pesos conferidos; `4–14:56` confirmado; custo de `9–14` ausente também na fonte | Figuras do autor e `docs/auditoria_mapa_18.md` |
+| Complemento posterior | Mapa 18 | `9–14 = 1`, pendências encerradas e cadastro validado | Mensagem explícita do usuário, registrada em `auditoria.complemento_usuario` |

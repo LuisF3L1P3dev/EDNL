@@ -2,6 +2,7 @@
 import math
 from pathlib import Path
 import unittest
+from fixtures import mapa_18_pendente
 from test_tsp import exemplo
 from tsp_core import carregar_mapa, tsp_forca_bruta, tsp_dijkstra, dijkstra, MapaNaoValidadoError
 
@@ -36,7 +37,7 @@ class IntegracaoTests(unittest.TestCase):
             self.assertEqual(sum(adj[a][b] for a, b in zip(p.caminho, p.caminho[1:])), p.custo)
 
     def test_todos_os_algoritmos_recusam_instancia_pendente(self):
-        mapa = carregar_mapa(ROOT / "data/mapa_18.json")
+        mapa = mapa_18_pendente()
         for funcao, args in ((dijkstra, (1, 3)), (tsp_forca_bruta, (1,)), (tsp_dijkstra, (1,))):
             with self.subTest(algoritmo=funcao.__name__), self.assertRaises(MapaNaoValidadoError):
                 funcao(mapa, *args)

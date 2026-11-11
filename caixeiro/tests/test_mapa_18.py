@@ -1,4 +1,4 @@
-"""Regressão da auditoria: 44 pesos conferidos e um peso ausente na fonte."""
+"""Regressão: 44 pesos conferidos nas imagens e 9-14=1 definido pelo usuário."""
 
 import hashlib
 import json
@@ -10,7 +10,7 @@ import unittest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # Conferência visual de pcv-exemplo.png e pcv-grafo.png, do próprio autor.
-# A tabela completa e a limitação de 9-14 estão em docs/auditoria_mapa_18.md.
+# 9-14 complementado explicitamente pelo usuário; não foi lido da imagem.
 EXPECTED_WEIGHTS = {
     (1, 2): 20, (1, 8): 29, (1, 12): 29, (1, 13): 37,
     (2, 3): 25, (2, 8): 28, (2, 12): 39,
@@ -20,7 +20,7 @@ EXPECTED_WEIGHTS = {
     (5, 6): 12, (5, 7): 26, (5, 10): 19,
     (6, 7): 17, (6, 10): 35, (6, 11): 30, (7, 11): 38,
     (8, 12): 25, (8, 13): 22,
-    (9, 10): 26, (9, 13): 34, (9, 16): 43,
+    (9, 10): 26, (9, 13): 34, (9, 14): 1, (9, 16): 43,
     (10, 11): 24, (10, 14): 30, (10, 15): 19,
     (11, 15): 26, (11, 18): 36,
     (12, 13): 27, (12, 16): 43, (13, 14): 24, (13, 16): 19,
@@ -35,9 +35,9 @@ class Mapa18Tests(unittest.TestCase):
         with (PROJECT_ROOT / "data" / "mapa_18.json").open(encoding="utf-8") as source:
             cls.mapa = json.load(source)
 
-    def test_cadastro_permanece_nao_validado_com_referencia(self):
+    def test_cadastro_validado_com_referencia(self):
         self.assertEqual(self.mapa["id"], "mapa_18")
-        self.assertIs(self.mapa["validado"], False)
+        self.assertIs(self.mapa["validado"], True)
         self.assertIs(self.mapa["direcionado"], False)
         self.assertEqual(
             self.mapa["referencia"], "assets/referencias/mapa_18_original.png"
@@ -81,15 +81,19 @@ class Mapa18Tests(unittest.TestCase):
                     self.assertIs(type(edge["peso"]), int)
                     self.assertGreater(edge["peso"], 0)
                     known_weights += 1
-        self.assertEqual(known_weights, 44)
+        self.assertEqual(known_weights, 45)
 
-    def test_peso_desconhecido_9_14_nao_recebe_valor_inventado(self):
+    def test_peso_9_14_definido_pelo_usuario_com_proveniencia(self):
         unknown = [edge for edge in self.mapa["arestas"] if edge["peso"] is None]
-        self.assertEqual(len(unknown), 1)
-        self.assertEqual((unknown[0]["origem"], unknown[0]["destino"]), (9, 14))
-        self.assertIn("Existência confirmada", unknown[0]["observacao"])
-        self.assertIn("peso ausente na fonte", unknown[0]["observacao"])
-        self.assertTrue(any("9-14" in item for item in self.mapa["pendencias"]))
+        self.assertEqual(unknown, [])
+        edge = next(a for a in self.mapa["arestas"] if (a["origem"], a["destino"]) == (9, 14))
+        self.assertEqual(edge["peso"], 1)
+        self.assertIn("usuário", edge["observacao"])
+        complemento = self.mapa["auditoria"]["complemento_usuario"]
+        self.assertEqual((complemento["origem"], complemento["destino"], complemento["peso"]), (9, 14, 1))
+        self.assertEqual(complemento["tipo"], "definicao_explicita_usuario")
+        self.assertEqual(complemento["mensagem"], "o peso da aresta 9 - 14 é 1")
+        self.assertEqual(self.mapa["pendencias"], [])
 
     def test_rotulo_56_confirmado_em_4_14(self):
         edge = next(
@@ -98,19 +102,19 @@ class Mapa18Tests(unittest.TestCase):
         )
         self.assertEqual(edge["peso"], 56)
         self.assertIn("confirmado", edge["observacao"])
-        self.assertEqual(len(self.mapa["pendencias"]), 1)
+        self.assertEqual(len(self.mapa["pendencias"]), 0)
 
-    def test_todos_os_pesos_e_ligacoes_conferidos_na_fonte(self):
+    def test_todos_os_pesos_e_ligacoes_conferidos(self):
         actual = {
             tuple(sorted((edge["origem"], edge["destino"]))): edge["peso"]
             for edge in self.mapa["arestas"]
         }
-        self.assertEqual(len(EXPECTED_WEIGHTS), 44)
-        self.assertEqual(actual, {**EXPECTED_WEIGHTS, (9, 14): None})
+        self.assertEqual(len(EXPECTED_WEIGHTS), 45)
+        self.assertEqual(actual, EXPECTED_WEIGHTS)
 
     def test_fontes_da_auditoria_preservadas_com_hash_e_resolucao(self):
         audit = self.mapa["auditoria"]
-        self.assertEqual(audit["estado"], "parcial_peso_ausente_na_fonte")
+        self.assertEqual(audit["estado"], "validado_com_definicao_usuario")
         self.assertTrue((PROJECT_ROOT / audit["relatorio"]).is_file())
         self.assertEqual(len(audit["fontes"]), 2)
         for source in audit["fontes"]:

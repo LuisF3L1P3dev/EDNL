@@ -67,8 +67,13 @@ class InterfaceTests(unittest.TestCase):
         a.acao("mapa2")
         self.assertEqual(a.historico, [])
         a.acao("dijkstra")
+        a.futuro.result(timeout=10)
+        a.atualizar(0)
         self.assertIsNone(a.futuro)
-        self.assertIn("9-14", a.status)
+        self.assertEqual(a.resultados["dijkstra"].custo, 45)
+        a.acao("forca")
+        self.assertIsNone(a.futuro)
+        self.assertIn("9 nós", a.status)
         a.desenhar()
 
     def test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel(self):

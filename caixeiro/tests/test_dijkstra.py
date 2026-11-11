@@ -4,6 +4,7 @@ from dataclasses import FrozenInstanceError, replace
 import math
 from pathlib import Path
 import unittest
+from fixtures import mapa_18_pendente
 
 from tsp_core import (
     Aresta, ErroGrafo, Grafo, GrafoInvalidoError, MapaNaoValidadoError,
@@ -111,11 +112,18 @@ class DijkstraTests(unittest.TestCase):
                         dijkstra(self.mapa, origem, destino)
 
     def test_mapa_18_bloqueado_mesmo_com_origem_igual_destino(self):
-        mapa = carregar_mapa(PROJECT_ROOT / "data" / "mapa_18.json")
+        mapa = mapa_18_pendente()
         for origem, destino in ((1, 3), (1, 1), (9, 14)):
             with self.subTest(origem=origem, destino=destino):
                 with self.assertRaisesRegex(MapaNaoValidadoError, "9-14"):
                     dijkstra(mapa, origem, destino)
+
+    def test_mapa_18_real_usa_peso_1_no_caminho_minimo(self):
+        mapa = carregar_mapa(PROJECT_ROOT / "data" / "mapa_18.json")
+        for a, b in ((9, 14), (14, 9)):
+            resultado = dijkstra(mapa, a, b)
+            self.assertEqual(resultado.caminho, (a, b))
+            self.assertEqual(resultado.custo, 1)
 
     def test_mapa_nao_validado_com_pesos_conhecidos_tambem_bloqueia(self):
         mapa = replace(self.mapa, validado=False)

@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 import unittest
+from fixtures import mapa_18_pendente
 from test_tsp import exemplo
 from tsp_core import carregar_mapa, fecho_metrico, tsp_dijkstra, tsp_forca_bruta, MapaNaoValidadoError, LimiteTSPError
 
@@ -45,4 +46,6 @@ class FechoTests(unittest.TestCase):
         with self.assertRaises(LimiteTSPError):
             tsp_dijkstra(exemplo(range(1, 19), ()), 1)
         with self.assertRaises(MapaNaoValidadoError):
+            tsp_dijkstra(mapa_18_pendente(), 1)
+        with self.assertRaises(LimiteTSPError):
             tsp_dijkstra(carregar_mapa(ROOT / "data/mapa_18.json"), 1)
