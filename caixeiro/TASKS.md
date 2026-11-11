@@ -85,10 +85,11 @@
   - **Aceite:** código em `main.py` com UI separada do núcleo matemático.
   - **Conferido:** entrada em `main.py`, apresentação em `tsp_ui.py`, janela redimensionável com mapa, controle lateral e resultados. Ambiente virtual com pygame-ce 2.5.8 (API pygame) instalado; renderização inicial conferida com driver dummy. Smoke visual completo permanece na TSP-017.
 
-- [ ] **TSP-012 — Desenhar mapas, pesos e nós fixos** · `P1 / Medium` · depende de TSP-001, TSP-003
+- [x] **TSP-012 — Desenhar mapas, pesos e nós fixos** · `P1 / Medium` · depende de TSP-001, TSP-003
   - Renderizar nós e arestas sem recalcular pesos pela posição.
   - Permitir alternar os dois mapas e visualizar as referências originais.
   - **Aceite:** 5 ou 18 nós desenhados conforme o mapa escolhido; peso incerto apresentado como `?`.
+  - **Conferido:** renderiza os cadastros sem recalcular custos; botões/atalhos 1/2, O para referência original e P para pesos. O custo ausente de 9–14 é desenhado como `?`.
 
 - [ ] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
   - Clique em nós; botões para força bruta, Dijkstra, comparação e alternância de mapas.
