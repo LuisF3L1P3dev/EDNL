@@ -46,7 +46,7 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 | Mapa 18 real, TSP Hamiltoniano | Custo ótimo **391**, branch-and-bound com 1159 estados |
 | Controle independente do ótimo real | Held–Karp confirma **391**, com 153860 estados |
 
-**89 testes automáticos aprovados**, incluindo os 324 pares do mapa 18 contra Floyd–Warshall, ciclo real de custo 391, dados imutáveis, snapshots, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 15 casos, com capturas renderizadas. O controle independente é reproduzido por `python scripts/validar_mapa_18.py`; resultados e tempos em [resultados_mapa_18.json](resultados_mapa_18.json). A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
+**96 testes automáticos aprovados**, incluindo os 324 pares do mapa 18 contra Floyd–Warshall, ciclo real de custo 391, estados visuais, origem dos snapshots, foco de rota, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 20 casos, com capturas renderizadas. O controle independente é reproduzido por `python scripts/validar_mapa_18.py`; resultados e tempos em [resultados_mapa_18.json](resultados_mapa_18.json). A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
 
 ## Capturas da versão 2D
 
@@ -80,8 +80,8 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 2. **Mapa pequeno:** mostrar 5 cidades e 8 arestas. Alternar a referência com O. Destacar que 1–3 não é uma estrada direta.
 3. **Dijkstra:** manter origem 1/destino 3 e clicar D. Ler 1–2–3 e custo 6. Usar Play/Pausar/avançar para observar distâncias e relaxamentos.
 4. **Força bruta:** clicar F e apresentar o ciclo 1–2–3–5–4–1 de custo 15. Explicar as 24 ordens e o limite de 9 nós. Mudar a origem pelos cliques e repetir.
-5. **Comparação:** restaurar o mapa com 1 e clicar C. Os custos são 15 neste exemplo. Distinguir ordem de entregas e percurso físico, usando o triângulo de contraexemplo e o controle comum do relatório.
-6. **Animação:** testar Play/Pausar, `<`, `>`, velocidade e Final. Explicar histórico separado do relógio e cálculo em segundo plano.
+5. **Método combinado e comparação:** T executa Dijkstra + TSP isoladamente. A faixa informa método, modelo e etapa. Depois clicar C: ambos custam 15 neste exemplo. Clicar em cada resultado destaca sua rota. Distinguir ordem de entregas e percurso físico, usando o contraexemplo e o controle comum do relatório.
+6. **Animação:** testar Play/Pausar, `<`, `>`, velocidade e Final. Mostrar que uma etapa interna de Dijkstra mantém a identificação do método combinado que a produziu. Explicar histórico separado do relógio e cálculo em segundo plano.
 7. **Busca limitada:** clicar B no mapa pequeno e ler `otimo_comprovado`. Explicar os outros estados e que corte por tempo não prova ótimo ou inexistência.
 8. **Mapa grande:** escolher 2, usar zoom, pan, P e inspeção pelo cursor. Mostrar o peso 1 em 9–14, definido pelo usuário; a referência original continua sem esse rótulo. Selecionar origem 9/destino 14 e clicar D: custo 1. Restaurar a origem 1 e clicar B: ciclo ótimo de custo 391. F/C continuam recusados pelo limite didático de 9 nós.
 9. **Encerramento:** mostrar testes, relatório e controle Held–Karp do ótimo real. Distinguir os testes sintéticos dos resultados do mapa da aula. Explicar a inspeção manual nativa ainda pendente e a futura representação 3D sem mudar dados.

@@ -2,6 +2,8 @@
 
 Aplicativo acadêmico em **Python + Pygame** para explorar os dois grafos fixos da aula de Estrutura de Dados Não Linear. Permite escolher origem/destino, inspecionar pesos, calcular percursos e reproduzir os algoritmos passo a passo.
 
+A faixa **Algoritmo em foco** identifica método, estado, etapa e modelo do problema durante execução, resultado e reprodução. Na comparação, clique em um resultado para destacar somente sua rota. Veja a [identificação visual](docs/interface_algoritmos.md).
+
 ![Comparação dos métodos](docs/capturas/comparacao.png)
 
 ## Executar
@@ -24,10 +26,12 @@ Linux/macOS: usar `.venv/bin/python`. Não é necessário ativar o ambiente ou a
 | Clique nos nós | Definir origem e destino, alternadamente |
 | `D` | Dijkstra: menor caminho A→B |
 | `F` | TSP Hamiltoniano por força bruta, até 9 nós |
+| `T` | Dijkstra + TSP isoladamente: fecho métrico, busca exata e percurso físico |
 | `C` | Exibir TSP direto e TSP no fecho, com suas diferenças |
 | `B` | Branch-and-bound até 18 nós, com orçamento explícito |
 | Play / Pausar / `<` / `>` | Reproduzir histórico e navegar |
 | Velocidade / Final | Mudar velocidade ou exibir resultado final |
+| Clique no resultado | Destacar sua rota; clicar novamente restaura a comparação |
 | `O` | Exibir/ocultar a referência original |
 | `P` | Pesos: todos → do nó sob o cursor (ou origem) → ocultos |
 | Roda / `+` / `−` | Zoom; roda ancorada no cursor |
@@ -47,8 +51,8 @@ Os algoritmos rodam em um worker; a reprodução usa o tempo entre frames. Sele�
 | TSP direto e TSP no fecho, mapa 5 | Ambos com custo **15**; 24 ordens por origem fixa |
 | Branch-and-bound | Mapa 18 real: custo ótimo **391**, confirmado também por Held–Karp |
 | Mapa 18 real | Validado: 45 ligações e 45 pesos; **9–14 = 1** definido pelo usuário |
-| Testes automáticos | **89 aprovados**, incluindo os 324 pares do mapa 18 e integração SDL |
-| Roteiro SDL | **15 casos aprovados**, com capturas renderizadas |
+| Testes automáticos | **96 aprovados**, incluindo estados visuais, os 324 pares do mapa 18 e integração SDL |
+| Roteiro SDL | **20 casos aprovados**, com capturas renderizadas |
 | Inspeção manual nativa | Pendente de conclusão |
 
 **O mapa 18 está liberado para Dijkstra e para a busca limitada (B).** O usuário definiu explicitamente **9–14 = 1**, complementando o rótulo ausente nas imagens. O JSON registra a proveniência, todos os pesos e `validado: true`. A força bruta didática e o enumerador do fecho continuam limitados a 9 nós; no mapa 18 use B. Ver [auditoria](docs/auditoria_mapa_18.md) e [resultados reais](docs/resultados_mapa_18.json).
@@ -74,6 +78,7 @@ Use o ambiente com os requisitos para incluir os testes Pygame; sem Pygame, esse
 | Arquivo | Responsabilidade |
 |---|---|
 | `main.py` / `tsp_ui.py` | Entrada, desenho e eventos Pygame |
+| `identidade_algoritmos.py` | Nomes, modelos, cores, limites e garantias visíveis |
 | `tsp_core.py` | Grafo imutável, validação, Dijkstra, TSP direto/fecho e snapshots |
 | `reprodutor.py` | Relógio da animação, independente de Pygame |
 | `busca_limitada.py` | Branch-and-bound com orçamento |
@@ -99,3 +104,5 @@ Destino inalcançável retorna caminho vazio e custo infinito. `GrafoInvalidoErr
 [Relatório e roteiro da aula](docs/RELATORIO.md) · [Comparação](docs/comparacao.md) · [Auditoria](AUDITORIA_MAPAS.md) · [Checklist](TASKS.md).
 
 Há um commit por tarefa da TSP-008 à TSP-021, com commits posteriores concluindo as TSP-004 e TSP-020 após a definição do peso 1. Permanece aberta a TSP-017 (inspeção manual nativa). O relatório TSP-021 foi atualizado com os resultados do mapa real. A fase 3D (TSP-022 a TSP-024) não foi iniciada.
+
+A **TSP-025** acrescenta a identificação visual dos métodos atuais. As TSP-026 a TSP-032 planejam contrato comum, `nearest_neighbor`, `two_opt`, `held_karp`, `christofides`, `ortools_solver` e sua comparação. Esses novos solvers ainda não estão implementados na interface. Ver [planejamento dos novos algoritmos](docs/novos_algoritmos.md).

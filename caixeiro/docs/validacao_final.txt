@@ -38,6 +38,9 @@ test_estrela_distingue_ciclo_hamiltoniano_e_passeio (test_fecho.FechoTests.test_
 test_fecho_preserva_caminhos_e_distancias_sem_mudar_original (test_fecho.FechoTests.test_fecho_preserva_caminhos_e_distancias_sem_mudar_original) ... ok
 test_limites_e_mapa_pendente (test_fecho.FechoTests.test_limites_e_mapa_pendente) ... ok
 test_tsp_mapa_05_custo_e_expansao (test_fecho.FechoTests.test_tsp_mapa_05_custo_e_expansao) ... ok
+test_catalogo_distingue_caminho_hamiltoniano_e_fecho (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_catalogo_distingue_caminho_hamiltoniano_e_fecho) ... ok
+test_progresso_informa_as_fases_reais_do_metodo_composto (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_progresso_informa_as_fases_reais_do_metodo_composto) ... ok
+test_rotulo_nao_chama_busca_cortada_de_otima_ou_inexistente (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_rotulo_nao_chama_busca_cortada_de_otima_ou_inexistente) ... ok
 test_eventos_do_fecho_sao_expandidos_somente_em_arestas_reais (test_integracao.IntegracaoTests.test_eventos_do_fecho_sao_expandidos_somente_em_arestas_reais) ... ok
 test_execucoes_nao_modificam_os_arquivos_de_dados (test_integracao.IntegracaoTests.test_execucoes_nao_modificam_os_arquivos_de_dados) ... ok
 test_passeio_no_fecho_nao_e_mesmo_problema_que_hamiltoniano (test_integracao.IntegracaoTests.test_passeio_no_fecho_nao_e_mesmo_problema_que_hamiltoniano) ... ok
@@ -89,11 +92,15 @@ test_rejeita_metadados_invalidos (test_tsp_core.GrafoTests.test_rejeita_metadado
 test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos (test_tsp_core.GrafoTests.test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos) ... ok
 test_validado_com_peso_desconhecido_ou_pendencias_e_invalido (test_tsp_core.GrafoTests.test_validado_com_peso_desconhecido_ou_pendencias_e_invalido) ... ok
 test_cliques_teclado_worker_e_bloqueio (test_ui.InterfaceTests.test_cliques_teclado_worker_e_bloqueio) ... ok
+test_comparacao_permite_identificar_e_focar_uma_rota (test_ui.InterfaceTests.test_comparacao_permite_identificar_e_focar_uma_rota) ... ok
+test_fase_em_execucao_erro_e_limpeza_nao_se_confundem (test_ui.InterfaceTests.test_fase_em_execucao_erro_e_limpeza_nao_se_confundem) ... ok
+test_fecho_sozinho_identifica_origem_dos_passos_e_reproducao (test_ui.InterfaceTests.test_fecho_sozinho_identifica_origem_dos_passos_e_reproducao) ... ok
 test_pesos_referencia_e_resize (test_ui.InterfaceTests.test_pesos_referencia_e_resize) ... ok
+test_selecao_indisponivel_e_layout_minimo (test_ui.InterfaceTests.test_selecao_indisponivel_e_layout_minimo) ... ok
 test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel (test_ui.InterfaceTests.test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel) ... ok
 test_zoom_ancorado_reset_e_custos_preservados (test_ui.InterfaceTests.test_zoom_ancorado_reset_e_custos_preservados) ... ok
 
 ----------------------------------------------------------------------
-Ran 89 tests in 0.595s
+Ran 96 tests in 0.802s
 
 OK

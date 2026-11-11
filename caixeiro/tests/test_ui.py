@@ -89,3 +89,68 @@ class InterfaceTests(unittest.TestCase):
         self.assertIsNone(a.futuro)
         self.assertIn("erro simulado", a.status)
         a.desenhar()
+
+    def test_fecho_sozinho_identifica_origem_dos_passos_e_reproducao(self):
+        a = self.app
+        a.processar_evento(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_t))
+        self.assertEqual(a.identidade_visual()["estado"], "Em execução")
+        a.futuro.result(timeout=10)
+        a.atualizar(0)
+        self.assertEqual(set(a.resultados), {"fecho"})
+        self.assertEqual(a.resultados["fecho"].custo, 15)
+        self.assertEqual({p.metodo_origem for p in a.historico}, {"fecho"})
+        a.player.indice = next(i for i, p in enumerate(a.historico) if p.algoritmo == "dijkstra")
+        estado = a.identidade_visual()
+        self.assertEqual(estado["metodo"], "fecho")
+        self.assertIn("Caixeiro viajante + Dijkstra", estado["titulo"])
+        self.assertEqual(estado["estado"], "Pausado")
+        self.assertIn("Dijkstra", estado["fase"])
+        a.acao("reproduzir")
+        self.assertEqual(a.identidade_visual()["estado"], "Reproduzindo")
+        a.desenhar()
+
+    def test_comparacao_permite_identificar_e_focar_uma_rota(self):
+        a = self.app
+        a.iniciar("comparar")
+        a.futuro.result(timeout=10)
+        a.atualizar(0)
+        self.assertEqual({p.metodo_origem for p in a.historico}, {"forca", "fecho"})
+        for chave in ("fecho", "forca"):
+            a.desenhar()
+            rect, _ = a.botoes[f"rota_{chave}"]
+            a.processar_evento(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=rect.center))
+            self.assertEqual(a.identidade_visual()["metodo"], chave)
+            self.assertEqual(len(a.rotas_exibidas()), 1)
+        a.acao("rota_forca")
+        self.assertEqual(len(a.rotas_exibidas()), 2)
+        self.assertEqual(a.identidade_visual()["metodo"], "comparar")
+
+    def test_fase_em_execucao_erro_e_limpeza_nao_se_confundem(self):
+        a = self.app
+        a.metodo_selecionado = "comparar"
+        a.futuro = Future()
+        a.progresso.put(("fecho", "Dijkstra: calculando menores caminhos"))
+        a.atualizar(0)
+        painel = a.identidade_visual()
+        self.assertEqual(painel["estado"], "Em execução")
+        self.assertEqual(painel["metodo"], "comparar")
+        self.assertIn("Dijkstra + TSP", painel["fase"])
+        a.futuro.set_exception(ValueError("Falha de teste"))
+        a.atualizar(0)
+        self.assertEqual(a.identidade_visual()["estado"], "Erro")
+        a.acao("limpar")
+        self.assertEqual(a.identidade_visual()["estado"], "Pronto")
+
+    def test_selecao_indisponivel_e_layout_minimo(self):
+        a = self.app
+        a.acao("mapa2")
+        self.assertEqual(a.identidade_visual()["estado"], "Indisponível")
+        a.acao("fecho")
+        self.assertIsNone(a.futuro)
+        self.assertIn("9 nós", a.identidade_visual()["fase"])
+        a.processar_evento(pygame.event.Event(pygame.VIDEORESIZE, w=1000, h=760))
+        a.desenhar()
+        self.assertTrue(a.mapa_rect.contains(a.faixa_algoritmo))
+        self.assertGreater(a.viewport.top, a.faixa_algoritmo.bottom)
+        for chave in ("dijkstra", "forca", "fecho", "limitada", "comparar"):
+            self.assertTrue(a.lateral.contains(a.botoes[chave][0]))

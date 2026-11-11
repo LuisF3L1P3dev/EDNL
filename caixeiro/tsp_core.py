@@ -11,7 +11,7 @@ import json
 import math
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
+from typing import Callable, Mapping
 
 
 Peso = int | float
@@ -176,6 +176,7 @@ class Passo:
     melhor_custo: Peso = math.inf
     contador: int = 0
     caminho: tuple[int, ...] = ()
+    metodo_origem: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,13 +326,16 @@ def fecho_metrico(grafo: Grafo, *, eventos: list[Passo] | None = None) -> Mappin
     })
 
 
-def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None) -> ResultadoTSP:
+def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None,
+                 ao_progresso: Callable[[str], None] | None = None) -> ResultadoTSP:
     """Busca exata (até 9 nós) nas distâncias mínimas, expandindo arestas reais.
 
     A ordem é um ciclo no fecho métrico; o caminho físico pode repetir nós.
     A instância original permanece intacta, inclusive suas arestas ausentes.
     """
     _validar_tsp(grafo, origem)
+    if ao_progresso:
+        ao_progresso("Dijkstra: calculando menores caminhos")
     fecho = fecho_metrico(grafo, eventos=eventos)
     ids = sorted(grafo.ids)
     derivado = Grafo(
@@ -343,7 +347,11 @@ def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = Non
                       if fecho[a, b].caminho),
     )
     candidatos = [] if eventos is not None else None
+    if ao_progresso:
+        ao_progresso("Caixeiro: buscando a melhor ordem de visitas")
     resultado = tsp_forca_bruta(derivado, origem, eventos=candidatos)
+    if ao_progresso:
+        ao_progresso("Expandindo o percurso nas arestas reais")
     if eventos is not None:
         for passo in candidatos:
             expandido = [origem] if passo.candidato else []

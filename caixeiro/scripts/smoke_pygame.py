@@ -70,6 +70,19 @@ def main():
         aguardar()
         assert app.resultados["forca"].custo == 15
         registrar("Força bruta por botão: custo 15", "forca_bruta.png")
+        app.processar_evento(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_t))
+        app.desenhar()
+        assert app.identidade_visual()["estado"] == "Em execução"
+        registrar("Primeiro frame identifica o método em execução", "algoritmo_em_execucao.png")
+        aguardar()
+        assert set(app.resultados) == {"fecho"} and app.resultados["fecho"].custo == 15
+        registrar("T executa Dijkstra + TSP separadamente", "tsp_dijkstra.png")
+        while app.player.passo is None or app.player.passo.tipo != "relaxamento":
+            clicar("proximo")
+        assert app.identidade_visual()["metodo"] == "fecho"
+        assert "Dijkstra" in app.identidade_visual()["fase"]
+        registrar("Etapa de Dijkstra preserva identidade do TSP composto", "tsp_dijkstra_etapa_dijkstra.png")
+        clicar("fim")
         clicar("limitada")
         aguardar()
         assert app.resultados["limitada"].custo == 15 and app.resultados["limitada"].otimo
@@ -79,6 +92,12 @@ def main():
         aguardar()
         assert app.resultados["fecho"].custo == app.resultados["forca"].custo == 15
         registrar("Comparação por teclado: ambos custam 15", "comparacao.png")
+        for chave in ("fecho", "forca"):
+            clicar(f"rota_{chave}")
+            assert app.resultado_focado == chave and len(app.rotas_exibidas()) == 1
+            registrar(f"Resultado {chave} destaca somente a própria rota", f"comparacao_foco_{chave}.png")
+        clicar("rota_forca")
+        assert app.resultado_focado is None
         for chave in ("reproduzir", "pausar", "proximo", "voltar", "velocidade"):
             clicar(chave)
         clicar("reproduzir")

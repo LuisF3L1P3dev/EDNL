@@ -17,11 +17,31 @@
       "resultado": "passou"
     },
     {
+      "caso": "Primeiro frame identifica o método em execução",
+      "resultado": "passou"
+    },
+    {
+      "caso": "T executa Dijkstra + TSP separadamente",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Etapa de Dijkstra preserva identidade do TSP composto",
+      "resultado": "passou"
+    },
+    {
       "caso": "Busca limitada por botão: ótimo comprovado 15",
       "resultado": "passou"
     },
     {
       "caso": "Comparação por teclado: ambos custam 15",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Resultado fecho destaca somente a própria rota",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Resultado forca destaca somente a própria rota",
       "resultado": "passou"
     },
     {

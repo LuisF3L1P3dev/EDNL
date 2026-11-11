@@ -8,15 +8,20 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 ```
 
-**15 casos passaram**, via eventos Pygame/SDL dummy, incluindo o mapa 18 validado com `9–14 = 1`. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas visualmente as telas de comparação, animação, janela mínima e os novos resultados do mapa 18.
+**20 casos passaram**, via eventos Pygame/SDL dummy, incluindo o mapa 18 validado e a identificação visual da TSP-025. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas as telas de comparação, animação, janela mínima, método composto e foco de resultado. A captura "Em execução" representa o primeiro frame após disparar o worker, antes de receber o resultado, sem atrasos artificiais.
 
 | Caso executado | Resultado |
 |---|---|
 | Dijkstra pelo botão | Caminho 1–2–3, custo 6 |
 | Clique nos nós | Origem 2 e destino 5 selecionados alternadamente |
 | Força bruta pelo botão | Custo 15 |
+| Primeiro frame de execução | Faixa identifica Dijkstra + TSP e o estado Em execução |
+| Método composto pela tecla T | Executa sozinho e retorna custo 15 |
+| Reprodução interna de Dijkstra | Mantém o método de origem Dijkstra + TSP na faixa |
 | Busca limitada pelo botão B | Custo 15, ótimo comprovado no mapa 5 |
 | Comparação pela tecla C | Dois TSP com custo 15 |
+| Clique no resultado do fecho | Destaca somente a rota de Dijkstra + TSP |
+| Clique no resultado direto | Destaca somente a rota de força bruta; novo clique restaura ambas |
 | Play, pausar, avançar, voltar, velocidade e final | Índice do histórico muda e pausa; retorno ao resultado final |
 | Referência do mapa 5 | Imagem original carregada |
 | Mapa 18, Dijkstra 1→3 | Custo 45 |
