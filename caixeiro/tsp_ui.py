@@ -101,12 +101,14 @@ class Aplicacao:
             for nome in metodos:
                 inicio = perf_counter()
                 if nome == "dijkstra":
-                    r = dijkstra(mapa, origem, destino, eventos=eventos)
+                    funcao, args = dijkstra, (mapa, origem, destino)
                 elif nome == "forca":
-                    r = tsp_forca_bruta(mapa, origem, eventos=eventos)
+                    funcao, args = tsp_forca_bruta, (mapa, origem)
                 else:
-                    r = tsp_dijkstra(mapa, origem, eventos=eventos)
+                    funcao, args = tsp_dijkstra, (mapa, origem)
+                r = funcao(*args)
                 tempos[nome] = (perf_counter() - inicio) * 1000
+                funcao(*args, eventos=eventos)
                 resultados[nome] = r
             return resultados, tempos, eventos
 
@@ -202,7 +204,7 @@ class Aplicacao:
         self.botao("limpar", "L  Limpar resultados", (42, 596, 216, 38), MUTED, livre)
         passo = self.player.passo
         if passo is None:
-            self.linhas("Dijkstra calcula A → B. O caixeiro visita todas as cidades e retorna à origem.",
+            self.linhas("Hamiltoniano usa arestas diretas. No fecho, o passeio pode repetir cidades. São problemas distintos na malha original.",
                         (42, 660), 210, tamanho=13)
         else:
             self.linhas(f"{passo.algoritmo}: {passo.tipo}", (42, 650), 210, 13, INK, 1)
@@ -313,7 +315,7 @@ class Aplicacao:
             self.texto(titulos[nome], (cx, y + 49), 15, cor, True)
             custo = resultado.custo if resultado.caminho else "sem percurso"
             self.texto(f"Custo: {custo}", (cx, y + 75), 21, INK, True)
-            self.texto(f"{self.tempos.get(nome, 0):.3f} ms · com histórico", (cx, y + 106), 12, MUTED)
+            self.texto(f"{self.tempos.get(nome, 0):.3f} ms · sem histórico", (cx, y + 106), 12, MUTED)
             rota = " → ".join(map(str, resultado.caminho)) or "Não existe percurso viável."
             self.linhas(rota, (cx, y + 130), largura, 14, cor, max_linhas=2)
             if hasattr(resultado, "estados_testados"):

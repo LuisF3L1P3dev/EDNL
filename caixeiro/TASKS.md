@@ -124,11 +124,12 @@
   - **Aceite:** `python -m unittest discover -s tests -v` executa sem falhas.
   - **Conferido:** suíte cobre cadastros, núcleo, Dijkstra, TSP direto/fecho, históricos, reprodução, câmera e integração da interface. Acrescentados testes da diferença entre Hamiltoniano e passeio, expansão física, imutabilidade dos arquivos, worker, cliques e bloqueio do mapa pendente. Executar no ambiente com requirements instalados para incluir os testes SDL.
 
-- [ ] **TSP-019 — Publicar comparação formal entre métodos** · `P1 / Medium` · depende de TSP-017
+- [x] **TSP-019 — Publicar comparação formal entre métodos** · `P1 / Medium` · depende de TSP-017
   - Apresentar Dijkstra sozinho como caminho mínimo A→B, e não como TSP.
   - Comparar corretamente dois métodos completos para o mesmo TSP: força bruta direta × Dijkstra + busca exata no fecho métrico.
   - Medir custo, tempo e nós visitados/estados testados, sem misturar grandezas.
   - **Aceite:** tela/relatório esclarece por que os problemas comparados são distintos.
+  - **Conferido:** `comparacao.py` e script geram relatório/JSON com mediana sem histórico, contadores separados e um controle em que ambos recebem a mesma instância métrica. UI identifica Hamiltoniano versus passeio. Contraexemplos testados. A publicação do núcleo independe da inspeção manual nativa pendente na TSP-017.
 
 - [ ] **TSP-020 — Definir estratégia segura para o mapa de 18 nós** · `P1 / High` · depende de TSP-004
   - Dijkstra em pares funciona após validação; **não** executar força bruta ingênua de 18 nós.

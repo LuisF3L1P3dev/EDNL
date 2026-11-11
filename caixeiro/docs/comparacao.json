@@ -1,0 +1,126 @@
+{
+  "mapa": "mapa_05",
+  "origem": 1,
+  "destino_dijkstra": 3,
+  "malha_original": {
+    "dijkstra_A_B": {
+      "custo": 6,
+      "caminho": [
+        1,
+        2,
+        3
+      ],
+      "ordem": [],
+      "tempo_ms_mediana": 0.009399838745594025,
+      "repeticoes": 7,
+      "ordens_testadas": 0,
+      "nos_finalizados_dijkstra": 4,
+      "execucoes_dijkstra": 1
+    },
+    "hamiltoniano_direto": {
+      "custo": 15,
+      "caminho": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "ordem": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "tempo_ms_mediana": 0.020300038158893585,
+      "repeticoes": 7,
+      "ordens_testadas": 24,
+      "nos_finalizados_dijkstra": 0,
+      "execucoes_dijkstra": 0
+    },
+    "passeio_no_fecho": {
+      "custo": 15,
+      "caminho": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "ordem": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "tempo_ms_mediana": 0.30170008540153503,
+      "repeticoes": 7,
+      "ordens_testadas": 24,
+      "nos_finalizados_dijkstra": 75,
+      "execucoes_dijkstra": 25
+    }
+  },
+  "comparacao_original_mesmo_problema": false,
+  "controle_mesma_instancia_metrica": {
+    "instancia": "mapa_05_controle_metrico",
+    "preparacao_da_instancia_fora_do_cronometro_para_ambos": true,
+    "forca_bruta": {
+      "custo": 15,
+      "caminho": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "ordem": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "tempo_ms_mediana": 0.022300053387880325,
+      "repeticoes": 7,
+      "ordens_testadas": 24,
+      "nos_finalizados_dijkstra": 0,
+      "execucoes_dijkstra": 0
+    },
+    "dijkstra_mais_busca_exata": {
+      "custo": 15,
+      "caminho": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "ordem": [
+        1,
+        2,
+        3,
+        5,
+        4,
+        1
+      ],
+      "tempo_ms_mediana": 0.25170017033815384,
+      "repeticoes": 7,
+      "ordens_testadas": 24,
+      "nos_finalizados_dijkstra": 75,
+      "execucoes_dijkstra": 25
+    }
+  },
+  "ambiente": {
+    "python": "3.14.0",
+    "plataforma": "Windows-11-10.0.26200-SP0"
+  }
+}
