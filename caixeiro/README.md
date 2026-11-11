@@ -4,7 +4,7 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 
 > **Escopo inicial: 2D.** A migração para 3D será uma etapa posterior, preservando os dados dos grafos e o código dos algoritmos. **Não gerar cidades, arestas ou pesos aleatórios.**
 
-> **Andamento real:** TSP-001 a TSP-003 concluídas. As referências originais estão em `assets/referencias/` (SHA-256 conferido); os dois mapas têm cadastro JSON, com 12 testes aprovados. O mapa 18 permanece provisório e não validado. O núcleo matemático, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
+> **Andamento real:** TSP-001 a TSP-003 concluídas; TSP-004 parcialmente realizada. As referências originais e as figuras do próprio autor estão em `assets/referencias/`; os dois mapas têm cadastro JSON, com 14 testes. As 45 ligações e os 44 pesos do mapa 18 foram conferidos, mas falta o peso de `9–14` inclusive na fonte do autor; o mapa permanece não validado. O núcleo matemático, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
 
 ## Situação atual
 
@@ -12,8 +12,8 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 |---|---|
 | Referências dos mapas 1 e 2 | ✅ Organizadas e conferidas em `assets/referencias/` |
 | Mapa 1 — 5 nós, 8 arestas | ✅ JSON cadastrado e 6 testes aprovados |
-| Mapa 2 — 18 nós | ⚠️ Cadastro provisório criado; auditoria pendente |
-| Mapa 2 — 45 ligações transcritas | ⚠️ Uma ligação está sem peso legível (9–14); outras devem ser cotejadas com a fonte original |
+| Mapa 2 — 18 nós | ⚠️ Auditoria parcial registrada; falta o custo de 9–14 |
+| Mapa 2 — 45 ligações transcritas | ✅ Conexões e 44 pesos conferidos nas figuras do autor; 1 peso ausente |
 | Dijkstra no mapa 1 | ⏳ Implementação pendente |
 | Força bruta Hamiltoniana no mapa 1 | ⏳ Implementação pendente |
 | Dijkstra + força bruta no fecho métrico | ⏳ Implementação pendente |
@@ -39,9 +39,9 @@ O pequeno grafo foi transcrito com os seguintes pesos, **sem completar artificia
 
 O cadastro em [`data/mapa_05.json`](data/mapa_05.json) lista cada aresta não direcionada uma única vez, com `origem`, `destino` e `peso`. Os nós têm `id`, `x` e `y`; as coordenadas normalizadas entre 0 e 1 preservam a disposição da figura apenas para desenho. As arestas ausentes `1–3` e `2–5` não constam do cadastro.
 
-O grafo grande contém **18 nós numerados de 1 a 18**, com posição e ligações conforme a figura. Os **44 pesos identificados** estão em [`data/mapa_18.json`](data/mapa_18.json), junto de uma conexão `9–14` com `peso: null`. **Não substitua `null` por um valor suposto.** Por causa da resolução da imagem, a base do mapa grande foi marcada como `"validado": false` e nenhuma solução é declarada correta até uma auditoria dos dados.
+O grafo grande contém **18 nós numerados de 1 a 18**, com posição e ligações conforme a figura. Os **44 pesos conferidos** estão em [`data/mapa_18.json`](data/mapa_18.json), junto de uma conexão `9–14` com `peso: null`. **Não substitua `null` por um valor suposto.** A auditoria encontrou a figura original em maior resolução e confirmou essa ligação, mas o autor também não indica seu peso. Por isso a base permanece com `"validado": false`.
 
-O JSON também registra a dúvida sobre a associação do rótulo `56` a `4–14`. As pendências gerais e as observações nessas duas ligações devem ser preservadas até a TSP-004. Os testes do cadastro verificam estrutura e registro das dúvidas; não certificam a transcrição integral dos pesos.
+O rótulo `56` foi confirmado em `4–14`. A tabela de adjacência, as figuras do autor, os hashes e a pendência de aceite estão no [relatório da TSP-004](docs/auditoria_mapa_18.md). A única pendência de custo é `9–14`; os testes agora cobrem todos os 44 pesos conferidos e preservam essa ausência.
 
 ## Por que Dijkstra não resolve o TSP sozinho?
 
@@ -97,7 +97,7 @@ python main.py
 
 ## Testes
 
-Os 12 testes atuais verificam os dados do mapa 5 e o cadastro provisório do mapa 18, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
+Os 14 testes atuais verificam os dados do mapa 5 e a auditoria parcial do mapa 18, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
 
 ```bash
 python -m unittest discover -s tests -v
@@ -112,13 +112,15 @@ Casos implementados em [`tests/test_mapa_05.py`](tests/test_mapa_05.py) (6 teste
 - ausência das ligações `1–3` e `2–5`;
 - ciclo de referência e seu inverso com custo 15.
 
-Casos implementados em [`tests/test_mapa_18.py`](tests/test_mapa_18.py) (6 testes):
+Casos implementados em [`tests/test_mapa_18.py`](tests/test_mapa_18.py) (8 testes):
 
 - estado não validado e referência original;
 - 18 IDs únicos e coordenadas normalizadas distintas;
 - 45 ligações sem duplicatas, com extremos válidos e 44 pesos numéricos positivos;
 - peso desconhecido de `9–14` preservado como `null`;
-- associação provisória de `56` a `4–14` documentada.
+- associação de `56` a `4–14` confirmada;
+- conjunto completo de ligações e dos 44 pesos conferidos;
+- fontes da auditoria preservadas, com SHA-256 e resolução verificados.
 
 Casos previstos para as tarefas do núcleo matemático:
 

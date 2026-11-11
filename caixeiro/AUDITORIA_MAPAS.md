@@ -2,7 +2,7 @@
 
 ## Regras
 
-**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 tem cadastro JSON e testes (TSP-002). O mapa 18 tem cadastro provisório e testes estruturais (TSP-003); sua auditoria integral permanece pendente (TSP-004).
+**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 tem cadastro JSON e testes (TSP-002). O mapa 18 tem 45 conexões e 44 pesos revisados nas figuras do próprio autor; a TSP-004 permanece aberta pela ausência do peso de `9–14` na fonte. Ver [relatório completo](docs/auditoria_mapa_18.md).
 
 Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A transcrição para JSON não altera pesos, conectividade ou número de nós. Coordenadas normalizadas têm finalidade apenas visual; **não** representam distância.
 
@@ -18,24 +18,25 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 
 ## Mapa 2 — 18 nós
 
-- **Estado:** transcrição provisória, **não aprovada**.
+- **Estado:** auditoria parcial, **não aprovado para cálculos** por faltar o peso de `9–14`.
 - **Cadastro:** `data/mapa_18.json`, com `validado: false`, coordenadas normalizadas e pendências explícitas. Não usar como instância validada de algoritmos.
 - **Nós:** inteiros de `1` a `18` (18 no total).
 - **Arestas registradas:** 45, sendo 44 com pesos visíveis e uma com `null`.
-- **Ponto pendente:** ligação aparente `9-14` existe no desenho, mas **não foi possível ler seu peso**. A anotação `56` mais próxima parece pertencer a `4-14`; esse mapeamento exige conferência com uma versão mais nítida da figura.
+- **Ponto pendente:** existência de `9-14` confirmada nas figuras originais do autor, mas **não há peso indicado para essa linha**. O rótulo `56` foi confirmado em `4-14`; `43` pertence a `9-16`.
 - **Conduta:** não adivinhar, não atribuir média de pesos, não substituir pela distância euclidiana.
-- **Demais arestas:** ainda precisam de uma auditoria independente por comparação lado a lado com a imagem de alta qualidade; não considerar a transcrição inteira definitiva.
-- **Testes do cadastro:** 6 testes em `tests/test_mapa_18.py` verificam IDs, coordenadas, extremos, duplicatas, 44 pesos numéricos e preservação das dúvidas. Não certificam os pesos da figura. Junto dos testes do mapa 5, 12 testes passaram com `python -B -m unittest discover -s tests -v`.
+- **Demais arestas:** as 44 arestas ponderadas foram cotejadas visualmente com `mapa_18_pardini_pesos.png`; as 45 ligações também foram cotejadas com `mapa_18_pardini_ligacoes.png`. A tabela completa está no relatório.
+- **Testes:** 8 testes em `tests/test_mapa_18.py` verificam estrutura, todos os pesos conferidos, o custo ausente, metadados e integridade das fontes. Com os 6 testes do mapa 5, são 14 testes. Comando: `python -B -m unittest discover -s tests -v`.
 
 ## Checklist de validação obrigatória
 
-- [ ] Obter a figura original do mapa 18 em resolução que permita verificar todas as ligações.
-- [ ] Confirmar se `9–14` é realmente uma aresta e identificar seu peso.
-- [ ] Confirmar se `4–14` tem peso `56`.
-- [ ] Verificar as 44 arestas ponderadas já listadas em `data/mapa_18.json`.
-- [ ] Confirmar que não existe qualquer outra aresta que ficou oculta por cruzamentos.
-- [ ] Confirmar se o grafo é não direcionado, como as figuras sugerem (não há setas).
-- [ ] Criar testes para o número final de arestas e todos os pesos conferidos.
+- [x] Obter figuras do autor em maior resolução para verificar as ligações.
+- [x] Confirmar que `9–14` é realmente uma aresta.
+- [ ] Obter o peso de `9–14`, ausente inclusive na figura original do autor.
+- [x] Confirmar se `4–14` tem peso `56`.
+- [x] Verificar as 44 arestas ponderadas já listadas em `data/mapa_18.json`.
+- [x] Conferir os cruzamentos e as conexões nas duas figuras do autor; 45 ligações identificadas.
+- [x] Confirmar representação não direcionada: não há setas nas figuras.
+- [x] Criar testes para as 45 arestas e todos os 44 pesos conferidos, preservando o único custo ausente.
 - [ ] Somente após aprovação, atualizar `validado` para `true` em `data/mapa_18.json`.
 - [ ] Não habilitar solução do TSP por força bruta para 18 nós; usar método adequado à escala.
 
@@ -45,3 +46,4 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 |---|---|---|---|
 | 2026-11-11 | Mapa 5 | Transcrito com 5 nós e 8 pesos | `assets/referencias/mapa_05_original.png` |
 | 2026-11-11 | Mapa 18 | 18 nós, 45 ligações provisórias, 1 peso não legível | `assets/referencias/mapa_18_original.png` |
+| 2026-11-11 | Mapa 18 | 45 ligações e 44 pesos conferidos; `4–14:56` confirmado; custo de `9–14` ausente também na fonte | Figuras do autor e `docs/auditoria_mapa_18.md` |

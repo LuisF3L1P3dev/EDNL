@@ -37,6 +37,7 @@
   - Revisar a linha/peso `9-14`, o rótulo `56` associado a `4-14` e todas as demais conexões.
   - Preferir imagem ou fonte original de maior resolução.
   - **Aceite:** tabela definitiva de adjacência revisada; `data/mapa_18.json` passa a `validado: true`; testes automatizados cobrindo todos os pesos.
+  - **Avanço parcial:** fonte do próprio autor obtida em 1225 × 895 (pesos) e 1216 × 895 (ligações). As 45 conexões e os 44 pesos foram conferidos, incluindo `4-14:56`. A aresta `9-14` existe, mas não possui peso indicado nem nessa fonte. Tabela e evidências em `docs/auditoria_mapa_18.md`; regressão cobrindo os 44 pesos. `validado` permanece `false`; tarefa aberta até obter o custo faltante de fonte explícita ou definição do professor.
 
 - [x] **TSP-005 — Documentar as restrições acadêmicas** · `P0 / Low`
   - Esclarecer peso fixo ≠ distância em pixels.

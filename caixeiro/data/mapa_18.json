@@ -1,16 +1,36 @@
 {
   "id": "mapa_18",
-  "nome": "Mapa 2 — 18 nós (transcrição provisória)",
+  "nome": "Mapa 2 — 18 nós (peso 9-14 ausente)",
   "direcionado": false,
   "validado": false,
   "referencia": "assets/referencias/mapa_18_original.png",
   "sistema_coordenadas": "normalizadas_0_1",
-  "observacoes": "Cadastro provisório para desenho. Coordenadas não determinam pesos. Todas as conexões e pesos precisam de auditoria antes de executar algoritmos; não completar arestas nem substituir pesos desconhecidos.",
+  "observacoes": "A auditoria nas figuras do autor confirmou 45 ligações não direcionadas e 44 pesos. A ligação 9-14 existe, mas não tem peso indicado na fonte. Coordenadas servem apenas ao desenho. Manter não validado até obter o peso faltante; não inferir custos nem excluir essa ligação.",
   "pendencias": [
-    "Confirmar a existência e o peso da ligação aparente 9-14; peso desconhecido representado por null.",
-    "Confirmar se o rótulo 56 pertence à aresta 4-14.",
-    "Revisar integralmente as conexões, os 44 pesos transcritos e a ausência de setas na fonte original (TSP-004)."
+    "Obter o peso da aresta 9-14 de uma fonte que o informe explicitamente ou de definição do professor; ausente inclusive na figura original do autor."
   ],
+  "auditoria": {
+    "estado": "parcial_peso_ausente_na_fonte",
+    "relatorio": "docs/auditoria_mapa_18.md",
+    "autor": "Dhiego Pardini",
+    "publicacao": "https://otimizacaonapratica.wordpress.com/2015/11/09/o-problema-do-caixeiro-viajante/",
+    "fontes": [
+      {
+        "arquivo": "assets/referencias/mapa_18_pardini_pesos.png",
+        "url": "https://otimizacaonapratica.wordpress.com/wp-content/uploads/2015/11/pcv-exemplo.png",
+        "largura": 1225,
+        "altura": 895,
+        "sha256": "ada90739e682474072701df4da460b04414ef4c818ea267c4740a2e1edede27e"
+      },
+      {
+        "arquivo": "assets/referencias/mapa_18_pardini_ligacoes.png",
+        "url": "https://otimizacaonapratica.wordpress.com/wp-content/uploads/2015/11/pcv-grafo.png",
+        "largura": 1216,
+        "altura": 895,
+        "sha256": "ca42f5d66f22f3ca505423187ba342ae2965ce3e6d8ec0520e533c57cccd5fc4"
+      }
+    ]
+  },
   "nos": [
     { "id": 1, "x": 0.070, "y": 0.469 },
     { "id": 2, "x": 0.122, "y": 0.278 },
@@ -49,7 +69,7 @@
     { "origem": 4, "destino": 10, "peso": 33 },
     {
       "origem": 4, "destino": 14, "peso": 56,
-      "observacao": "Associação provisória do rótulo 56 a 4-14; confirmar na auditoria."
+      "observacao": "Peso 56 confirmado na figura de custos do autor (pcv-exemplo.png)."
     },
     { "origem": 5, "destino": 6, "peso": 12 },
     { "origem": 5, "destino": 7, "peso": 26 },
@@ -64,7 +84,7 @@
     { "origem": 9, "destino": 13, "peso": 34 },
     {
       "origem": 9, "destino": 14, "peso": null,
-      "observacao": "Ligação aparente: existência e peso a confirmar. Não atribuir o rótulo 56 por suposição."
+      "observacao": "Existência confirmada nas duas figuras do autor; peso ausente na fonte. O rótulo 56 pertence a 4-14."
     },
     { "origem": 9, "destino": 16, "peso": 43 },
     { "origem": 10, "destino": 11, "peso": 24 },
