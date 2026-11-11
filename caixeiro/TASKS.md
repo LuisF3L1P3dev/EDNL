@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis e o cadastro/testes do mapa 5 já estão presentes; o núcleo matemático, o mapa 18 e a interface ainda serão implementados.
+**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON e seus testes já estão presentes; o mapa 18 ainda requer auditoria, e o núcleo matemático e a interface serão implementados nas tarefas seguintes.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -27,10 +27,11 @@
   - **Aceite:** ciclo de referência `1-2-3-5-4-1` tem custo 15.
   - **Conferido:** `data/mapa_05.json` preserva os 5 IDs, as 8 arestas e seus pesos. Os 6 testes em `tests/test_mapa_05.py` passaram com `python -B -m unittest discover -s tests -v`; cobrem também as ligações ausentes e o ciclo inverso.
 
-- [ ] **TSP-003 — Preparar o cadastro do mapa de 18 nós** · `P0 / Medium`
+- [x] **TSP-003 — Preparar o cadastro do mapa de 18 nós** · `P0 / Medium`
   - Preservar os 18 IDs, coordenadas para desenho e pesos identificáveis.
   - Marcar explicitamente a dúvida sobre `9-14`.
   - **Aceite:** JSON contém 18 nós; nenhuma aresta com valor incerto recebe peso inventado.
+  - **Conferido:** `data/mapa_18.json` contém 18 IDs, coordenadas normalizadas e 45 ligações provisórias: 44 pesos transcritos e `9-14` com `null`. A associação `4-14:56` está explicitamente pendente. `validado` permanece `false`. Os 6 testes do cadastro em `tests/test_mapa_18.py` passaram; total de 12 testes aprovados no projeto. Esses testes não substituem a auditoria dos pesos da TSP-004.
 
 - [ ] **TSP-004 — Auditar integralmente o mapa de 18 nós** · `P0 / High` · **Bloqueante**
   - Revisar a linha/peso `9-14`, o rótulo `56` associado a `4-14` e todas as demais conexões.
@@ -157,4 +158,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-003: preparar o cadastro do mapa de 18 nós.** A auditoria do mapa de 18 nós (TSP-004) continua bloqueando seus cálculos até confirmar todos os pesos. A interface e o smoke test serão executados após implementar suas dependências.
+**TSP-004: auditar integralmente o mapa de 18 nós.** Confirmar todas as ligações e pesos, especialmente `9-14` e a associação de `56` a `4-14`, preferindo uma fonte de maior resolução. O cadastro permanece não validado até essa confirmação. A interface e o smoke test serão executados após implementar suas dependências.

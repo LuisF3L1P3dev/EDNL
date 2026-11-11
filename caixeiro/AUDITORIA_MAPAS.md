@@ -2,7 +2,7 @@
 
 ## Regras
 
-**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 já tem cadastro JSON e testes (TSP-002). A transcrição do mapa 18 continua provisória; seu JSON e sua auditoria serão tratados nas próximas tarefas.
+**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 tem cadastro JSON e testes (TSP-002). O mapa 18 tem cadastro provisório e testes estruturais (TSP-003); sua auditoria integral permanece pendente (TSP-004).
 
 Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A transcrição para JSON não altera pesos, conectividade ou número de nós. Coordenadas normalizadas têm finalidade apenas visual; **não** representam distância.
 
@@ -19,11 +19,13 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 ## Mapa 2 — 18 nós
 
 - **Estado:** transcrição provisória, **não aprovada**.
+- **Cadastro:** `data/mapa_18.json`, com `validado: false`, coordenadas normalizadas e pendências explícitas. Não usar como instância validada de algoritmos.
 - **Nós:** inteiros de `1` a `18` (18 no total).
 - **Arestas registradas:** 45, sendo 44 com pesos visíveis e uma com `null`.
 - **Ponto pendente:** ligação aparente `9-14` existe no desenho, mas **não foi possível ler seu peso**. A anotação `56` mais próxima parece pertencer a `4-14`; esse mapeamento exige conferência com uma versão mais nítida da figura.
 - **Conduta:** não adivinhar, não atribuir média de pesos, não substituir pela distância euclidiana.
 - **Demais arestas:** ainda precisam de uma auditoria independente por comparação lado a lado com a imagem de alta qualidade; não considerar a transcrição inteira definitiva.
+- **Testes do cadastro:** 6 testes em `tests/test_mapa_18.py` verificam IDs, coordenadas, extremos, duplicatas, 44 pesos numéricos e preservação das dúvidas. Não certificam os pesos da figura. Junto dos testes do mapa 5, 12 testes passaram com `python -B -m unittest discover -s tests -v`.
 
 ## Checklist de validação obrigatória
 

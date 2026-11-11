@@ -4,7 +4,7 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 
 > **Escopo inicial: 2D.** A migração para 3D será uma etapa posterior, preservando os dados dos grafos e o código dos algoritmos. **Não gerar cidades, arestas ou pesos aleatórios.**
 
-> **Andamento real:** TSP-001 e TSP-002 concluídas. As referências originais estão em `assets/referencias/` (SHA-256 conferido); o mapa de 5 nós está em `data/mapa_05.json`, com 6 testes aprovados. O núcleo matemático, o mapa 18, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
+> **Andamento real:** TSP-001 a TSP-003 concluídas. As referências originais estão em `assets/referencias/` (SHA-256 conferido); os dois mapas têm cadastro JSON, com 12 testes aprovados. O mapa 18 permanece provisório e não validado. O núcleo matemático, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
 
 ## Situação atual
 
@@ -12,7 +12,7 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 |---|---|
 | Referências dos mapas 1 e 2 | ✅ Organizadas e conferidas em `assets/referencias/` |
 | Mapa 1 — 5 nós, 8 arestas | ✅ JSON cadastrado e 6 testes aprovados |
-| Mapa 2 — 18 nós | ⚠️ Cadastro e auditoria pendentes |
+| Mapa 2 — 18 nós | ⚠️ Cadastro provisório criado; auditoria pendente |
 | Mapa 2 — 45 ligações transcritas | ⚠️ Uma ligação está sem peso legível (9–14); outras devem ser cotejadas com a fonte original |
 | Dijkstra no mapa 1 | ⏳ Implementação pendente |
 | Força bruta Hamiltoniana no mapa 1 | ⏳ Implementação pendente |
@@ -40,6 +40,8 @@ O pequeno grafo foi transcrito com os seguintes pesos, **sem completar artificia
 O cadastro em [`data/mapa_05.json`](data/mapa_05.json) lista cada aresta não direcionada uma única vez, com `origem`, `destino` e `peso`. Os nós têm `id`, `x` e `y`; as coordenadas normalizadas entre 0 e 1 preservam a disposição da figura apenas para desenho. As arestas ausentes `1–3` e `2–5` não constam do cadastro.
 
 O grafo grande contém **18 nós numerados de 1 a 18**, com posição e ligações conforme a figura. Os **44 pesos identificados** estão em [`data/mapa_18.json`](data/mapa_18.json), junto de uma conexão `9–14` com `peso: null`. **Não substitua `null` por um valor suposto.** Por causa da resolução da imagem, a base do mapa grande foi marcada como `"validado": false` e nenhuma solução é declarada correta até uma auditoria dos dados.
+
+O JSON também registra a dúvida sobre a associação do rótulo `56` a `4–14`. As pendências gerais e as observações nessas duas ligações devem ser preservadas até a TSP-004. Os testes do cadastro verificam estrutura e registro das dúvidas; não certificam a transcrição integral dos pesos.
 
 ## Por que Dijkstra não resolve o TSP sozinho?
 
@@ -95,7 +97,7 @@ python main.py
 
 ## Testes
 
-Os testes atuais validam os dados do mapa 5, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
+Os 12 testes atuais verificam os dados do mapa 5 e o cadastro provisório do mapa 18, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
 
 ```bash
 python -m unittest discover -s tests -v
@@ -109,6 +111,14 @@ Casos implementados em [`tests/test_mapa_05.py`](tests/test_mapa_05.py) (6 teste
 - exatamente 8 arestas e todos os pesos conferidos;
 - ausência das ligações `1–3` e `2–5`;
 - ciclo de referência e seu inverso com custo 15.
+
+Casos implementados em [`tests/test_mapa_18.py`](tests/test_mapa_18.py) (6 testes):
+
+- estado não validado e referência original;
+- 18 IDs únicos e coordenadas normalizadas distintas;
+- 45 ligações sem duplicatas, com extremos válidos e 44 pesos numéricos positivos;
+- peso desconhecido de `9–14` preservado como `null`;
+- associação provisória de `56` a `4–14` documentada.
 
 Casos previstos para as tarefas do núcleo matemático:
 
@@ -131,13 +141,14 @@ tsp_grafos_2d/
 ├── tsp_core.py                 # Algoritmos e validação, sem UI
 ├── data/
 │   ├── mapa_05.json            # 5 nós, 8 arestas (validado)
-│   └── mapa_18.json            # 18 nós (pendente de conferência)
+│   └── mapa_18.json            # Cadastro provisório implementado; auditoria pendente
 ├── assets/
 │   └── referencias/
 │       ├── mapa_05_original.png
 │       └── mapa_18_original.png
 └── tests/
     ├── test_mapa_05.py         # Testes dos dados (implementado)
+    ├── test_mapa_18.py         # Testes do cadastro provisório (implementado)
     └── test_tsp_core.py
 ```
 
