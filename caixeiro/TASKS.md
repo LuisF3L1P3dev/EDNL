@@ -101,9 +101,10 @@
   - **Aceite:** caminho visual segue os IDs resultantes do algoritmo.
   - **Conferido:** caminhos físicos destacados nas arestas reais; força bruta em verde, Dijkstra em azul e fecho em roxo. Resultados exibem tipo do problema, custo, percurso e ordens testadas; limpar remove o destaque.
 
-- [ ] **TSP-015 — Criar animação passo a passo** · `P2 / High` · depende de TSP-010
+- [x] **TSP-015 — Criar animação passo a passo** · `P2 / High` · depende de TSP-010
   - Botões Reproduzir, Pausar, Próxima etapa, Voltar e Velocidade.
   - **Aceite:** animação não bloqueia processamento de eventos do Pygame.
+  - **Conferido:** `Reprodutor` desacoplado, controle por delta de tempo, Play/Pausar/Voltar/Próximo/Velocidade/Final. Mostra distâncias, fila, visitados, relaxamentos e candidatos; candidatos no fecho têm percurso físico expandido. Testes de relógio e histórico sem Pygame.
 
 - [ ] **TSP-016 — Melhorar responsividade e legibilidade do grafo de 18 nós** · `P2 / Medium` · depende de TSP-012, TSP-004
   - Zoom, pan, exibição seletiva de pesos e labels que evitem colisões.

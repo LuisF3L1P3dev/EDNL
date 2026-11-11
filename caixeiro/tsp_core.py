@@ -4,7 +4,7 @@ Mapas pendentes podem ser carregados para desenho. A adjacência numérica só
 é disponibilizada após exigir_validado(), sem inventar pesos ou ligações.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from heapq import heappop, heappush
 from itertools import permutations
 import json
@@ -175,6 +175,7 @@ class Passo:
     melhor: tuple[int, ...] = ()
     melhor_custo: Peso = math.inf
     contador: int = 0
+    caminho: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -341,7 +342,14 @@ def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = Non
                       for i, a in enumerate(ids) for b in ids[i + 1:]
                       if fecho[a, b].caminho),
     )
-    resultado = tsp_forca_bruta(derivado, origem, eventos=eventos)
+    candidatos = [] if eventos is not None else None
+    resultado = tsp_forca_bruta(derivado, origem, eventos=candidatos)
+    if eventos is not None:
+        for passo in candidatos:
+            expandido = [origem] if passo.candidato else []
+            for a, b in zip(passo.candidato, passo.candidato[1:]):
+                expandido.extend(fecho[a, b].caminho[1:])
+            eventos.append(replace(passo, algoritmo="tsp_fecho", caminho=tuple(expandido)))
     fisico = [origem] if resultado.ordem else []
     for a, b in zip(resultado.ordem, resultado.ordem[1:]):
         fisico.extend(fecho[a, b].caminho[1:])

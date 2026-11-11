@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from time import perf_counter
 import pygame
 from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra, ErroGrafo, LimiteTSPError
+from reprodutor import Reprodutor
 
 
 ROOT = Path(__file__).resolve().parent
@@ -39,6 +40,7 @@ class Aplicacao:
         self.resultados = {}
         self.tempos = {}
         self.historico = []
+        self.player = Reprodutor()
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.futuro = None
         self.layout()
@@ -59,6 +61,7 @@ class Aplicacao:
         self.resultados = {}
         self.tempos = {}
         self.historico = []
+        self.player.carregar(())
 
     def selecionar_no(self, node_id):
         if self.futuro is not None:
@@ -174,8 +177,23 @@ class Aplicacao:
         self.botao("original", "O  Referência original", (42, 504, 216, 38), MUTED)
         self.botao("pesos", "P  Mostrar / ocultar pesos", (42, 550, 216, 38), MUTED)
         self.botao("limpar", "L  Limpar resultados", (42, 596, 216, 38), MUTED, livre)
-        self.linhas("Dijkstra calcula A → B. O caixeiro visita todas as cidades e retorna à origem.",
-                    (42, 660), 210, tamanho=13)
+        passo = self.player.passo
+        if passo is None:
+            self.linhas("Dijkstra calcula A → B. O caixeiro visita todas as cidades e retorna à origem.",
+                        (42, 660), 210, tamanho=13)
+        else:
+            self.linhas(f"{passo.algoritmo}: {passo.tipo}", (42, 650), 210, 13, INK, 2)
+            dist = ", ".join(f"{i}:{d:g}" for i, d in passo.distancias)
+            self.linhas(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 695), 210, 12, max_linhas=2)
+            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 742), 210, 12, max_linhas=3)
+
+    def rotas_exibidas(self):
+        passo = self.player.passo
+        if passo is not None:
+            cor = BLUE if passo.algoritmo == "dijkstra" else PURPLE if passo.algoritmo == "tsp_fecho" else GREEN
+            return [(passo.caminho or passo.candidato, cor, 4)]
+        return [(r.caminho, CORES_METODOS[nome], 7 if nome == "forca" else 3)
+                for nome, r in self.resultados.items()]
 
     def desenhar_mapa(self):
         self.painel(self.mapa_rect)
@@ -194,10 +212,13 @@ class Aplicacao:
                 a, b = pos[aresta.origem], pos[aresta.destino]
                 cor = LINE if aresta.peso is not None else ORANGE
                 pygame.draw.line(self.tela, cor, a, b, 2)
-                for nome, resultado in self.resultados.items():
-                    pares = {frozenset((i, j)) for i, j in zip(resultado.caminho, resultado.caminho[1:])}
+                for caminho, cor_rota, espessura in self.rotas_exibidas():
+                    pares = {frozenset((i, j)) for i, j in zip(caminho, caminho[1:])}
                     if frozenset((aresta.origem, aresta.destino)) in pares:
-                        pygame.draw.line(self.tela, CORES_METODOS[nome], a, b, 7 if nome == "forca" else 3)
+                        pygame.draw.line(self.tela, cor_rota, a, b, espessura)
+                passo = self.player.passo
+                if passo and passo.relaxamento and frozenset(passo.relaxamento) == frozenset((aresta.origem, aresta.destino)):
+                    pygame.draw.line(self.tela, ORANGE, a, b, 5)
                 delta = b - a
                 normal = pygame.Vector2(-delta.y, delta.x)
                 if normal.length():
@@ -211,19 +232,26 @@ class Aplicacao:
                     self.tela.blit(label, rect)
             for node_id, centro in pos.items():
                 cor = ORANGE if node_id == self.origem else BLUE if node_id == self.destino else GREEN
-                pygame.draw.circle(self.tela, WHITE, centro, 17)
+                fundo = (220, 233, 248) if self.player.passo and node_id in self.player.passo.visitados else WHITE
+                pygame.draw.circle(self.tela, fundo, centro, 17)
                 pygame.draw.circle(self.tela, cor, centro, 17, width=3)
                 label = self.fonte(15, True).render(str(node_id), True, INK)
                 self.tela.blit(label, label.get_rect(center=centro))
         self.texto(f"{len(self.mapa.arestas)} ligações · pesos fixos · não direcionado",
                    (self.mapa_rect.x + 22, self.mapa_rect.bottom - 28), 12, MUTED)
-        self.texto("Origem: laranja   Destino: azul   TSP direto: verde   Fecho: roxo",
+        legenda = f"Etapa {self.player.indice + 1}/{len(self.historico)} · {self.player.passo.tipo}" if self.player.passo else "Origem: laranja   Destino: azul   TSP direto: verde   Fecho: roxo"
+        self.texto(legenda,
                    (self.mapa_rect.x + 22, self.mapa_rect.bottom - 49), 12, MUTED)
 
     def desenhar_resultados(self):
         self.painel(self.resultados_rect)
         x, y = self.resultados_rect.topleft
         self.texto("02  RESULTADOS", (x + 22, y + 17), 12, GREEN, True)
+        if self.historico:
+            comandos = (("reproduzir", "Play"), ("pausar", "Pausar"), ("voltar", "<"),
+                        ("proximo", ">"), ("velocidade", f"{self.player.velocidade:g}x"), ("fim", "Final"))
+            for i, (chave, titulo) in enumerate(comandos):
+                self.botao(chave, titulo, (x + 190 + i * 73, y + 10, 66, 29), MUTED)
         if not self.resultados:
             self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 15, max_linhas=6)
             return
@@ -290,11 +318,15 @@ class Aplicacao:
         elif chave == "limpar":
             self.limpar()
             self.status = "Resultados limpos."
+        elif chave in ("reproduzir", "pausar", "proximo", "voltar", "velocidade", "fim"):
+            self.player.comando(chave)
 
     def atualizar(self, dt):
+        self.player.atualizar(dt)
         if self.futuro is not None and self.futuro.done():
             try:
                 self.resultados, self.tempos, self.historico = self.futuro.result()
+                self.player.carregar(self.historico)
                 self.status = "Cálculo concluído."
             except Exception as erro:
                 self.status = f"Falha no cálculo: {erro}"
