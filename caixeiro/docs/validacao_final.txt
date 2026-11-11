@@ -1,0 +1,95 @@
+Python: 3.14.0
+Plataforma: Windows-11-10.0.26200-SP0
+Comando: python -B -m unittest discover -s tests -v
+
+pygame-ce 2.5.8 (SDL 2.32.10, Python 3.14.0)
+test_concorda_com_forca_bruta_em_todas_as_origens (test_busca_limitada.BuscaLimitadaTests.test_concorda_com_forca_bruta_em_todas_as_origens) ... ok
+test_instancia_sintetica_de_18_nos_termina_com_prova (test_busca_limitada.BuscaLimitadaTests.test_instancia_sintetica_de_18_nos_termina_com_prova) ... ok
+test_limites_invalidos (test_busca_limitada.BuscaLimitadaTests.test_limites_invalidos) ... ok
+test_mapa_real_18_continua_bloqueado (test_busca_limitada.BuscaLimitadaTests.test_mapa_real_18_continua_bloqueado) ... ok
+test_orcamento_nao_declara_inexistencia_ou_otimo (test_busca_limitada.BuscaLimitadaTests.test_orcamento_nao_declara_inexistencia_ou_otimo) ... ok
+test_prova_de_ausencia_e_cidade_unica (test_busca_limitada.BuscaLimitadaTests.test_prova_de_ausencia_e_cidade_unica) ... ok
+test_metricas_distintas_e_controle_equivalente (test_comparacao.ComparacaoTests.test_metricas_distintas_e_controle_equivalente) ... ok
+test_repeticoes_invalidas (test_comparacao.ComparacaoTests.test_repeticoes_invalidas) ... ok
+test_caminho_inverso_no_grafo_nao_direcionado (test_dijkstra.DijkstraTests.test_caminho_inverso_no_grafo_nao_direcionado) ... ok
+test_caso_de_aceite_1_2_3_com_custo_6 (test_dijkstra.DijkstraTests.test_caso_de_aceite_1_2_3_com_custo_6) ... ok
+test_destino_inalcancavel_retorna_vazio_e_infinito (test_dijkstra.DijkstraTests.test_destino_inalcancavel_retorna_vazio_e_infinito) ... ok
+test_destino_so_e_aceito_ao_ser_retirado_com_menor_custo (test_dijkstra.DijkstraTests.test_destino_so_e_aceito_ao_ser_retirado_com_menor_custo) ... ok
+test_empates_sao_reproduziveis_independente_da_ordem_do_cadastro (test_dijkstra.DijkstraTests.test_empates_sao_reproduziveis_independente_da_ordem_do_cadastro) ... ok
+test_estouro_numerico_nao_e_reportado_como_destino_inalcancavel (test_dijkstra.DijkstraTests.test_estouro_numerico_nao_e_reportado_como_destino_inalcancavel) ... ok
+test_grafo_sem_arestas_e_grafo_de_um_no (test_dijkstra.DijkstraTests.test_grafo_sem_arestas_e_grafo_de_um_no) ... ok
+test_inteiros_grandes_nao_perdem_precisao (test_dijkstra.DijkstraTests.test_inteiros_grandes_nao_perdem_precisao) ... ok
+test_mapa_18_bloqueado_mesmo_com_origem_igual_destino (test_dijkstra.DijkstraTests.test_mapa_18_bloqueado_mesmo_com_origem_igual_destino) ... ok
+test_mapa_nao_validado_com_pesos_conhecidos_tambem_bloqueia (test_dijkstra.DijkstraTests.test_mapa_nao_validado_com_pesos_conhecidos_tambem_bloqueia) ... ok
+test_melhoria_de_distancia_substitui_predecessor (test_dijkstra.DijkstraTests.test_melhoria_de_distancia_substitui_predecessor) ... ok
+test_origem_igual_destino_retorna_um_no_e_zero (test_dijkstra.DijkstraTests.test_origem_igual_destino_retorna_um_no_e_zero) ... ok
+test_pesos_zero_ciclo_de_custo_zero_e_pesos_fracionarios (test_dijkstra.DijkstraTests.test_pesos_zero_ciclo_de_custo_zero_e_pesos_fracionarios) ... ok
+test_reconstrucao_longa_nao_depende_de_recursao (test_dijkstra.DijkstraTests.test_reconstrucao_longa_nao_depende_de_recursao) ... ok
+test_rejeita_entrada_que_nao_e_grafo (test_dijkstra.DijkstraTests.test_rejeita_entrada_que_nao_e_grafo) ... ok
+test_rejeita_ids_ausentes_e_tipos_invalidos_nas_duas_pontas (test_dijkstra.DijkstraTests.test_rejeita_ids_ausentes_e_tipos_invalidos_nas_duas_pontas) ... ok
+test_resultado_imutavel_e_grafo_preservado_entre_execucoes (test_dijkstra.DijkstraTests.test_resultado_imutavel_e_grafo_preservado_entre_execucoes) ... ok
+test_todos_os_pares_do_mapa_05_com_soma_das_arestas_reais (test_dijkstra.DijkstraTests.test_todos_os_pares_do_mapa_05_com_soma_das_arestas_reais) ... ok
+test_dijkstra_historico_reproduzivel_e_snapshot (test_eventos.EventosTests.test_dijkstra_historico_reproduzivel_e_snapshot) ... ok
+test_forca_bruta_registra_24_candidatos_e_melhor (test_eventos.EventosTests.test_forca_bruta_registra_24_candidatos_e_melhor) ... ok
+test_gravacao_nao_altera_resultado_e_fecho_e_reproduzivel (test_eventos.EventosTests.test_gravacao_nao_altera_resultado_e_fecho_e_reproduzivel) ... ok
+test_desconectado_e_cidade_unica (test_fecho.FechoTests.test_desconectado_e_cidade_unica) ... ok
+test_estrela_distingue_ciclo_hamiltoniano_e_passeio (test_fecho.FechoTests.test_estrela_distingue_ciclo_hamiltoniano_e_passeio) ... ok
+test_fecho_preserva_caminhos_e_distancias_sem_mudar_original (test_fecho.FechoTests.test_fecho_preserva_caminhos_e_distancias_sem_mudar_original) ... ok
+test_limites_e_mapa_pendente (test_fecho.FechoTests.test_limites_e_mapa_pendente) ... ok
+test_tsp_mapa_05_custo_e_expansao (test_fecho.FechoTests.test_tsp_mapa_05_custo_e_expansao) ... ok
+test_eventos_do_fecho_sao_expandidos_somente_em_arestas_reais (test_integracao.IntegracaoTests.test_eventos_do_fecho_sao_expandidos_somente_em_arestas_reais) ... ok
+test_execucoes_nao_modificam_os_arquivos_de_dados (test_integracao.IntegracaoTests.test_execucoes_nao_modificam_os_arquivos_de_dados) ... ok
+test_passeio_no_fecho_nao_e_mesmo_problema_que_hamiltoniano (test_integracao.IntegracaoTests.test_passeio_no_fecho_nao_e_mesmo_problema_que_hamiltoniano) ... ok
+test_todos_os_algoritmos_recusam_instancia_pendente (test_integracao.IntegracaoTests.test_todos_os_algoritmos_recusam_instancia_pendente) ... ok
+test_ciclo_de_referencia_e_inverso_custam_15 (test_mapa_05.Mapa05Tests.test_ciclo_de_referencia_e_inverso_custam_15) ... ok
+test_cinco_ids_unicos_preservados (test_mapa_05.Mapa05Tests.test_cinco_ids_unicos_preservados) ... ok
+test_coordenadas_normalizadas_preservam_disposicao_da_figura (test_mapa_05.Mapa05Tests.test_coordenadas_normalizadas_preservam_disposicao_da_figura) ... ok
+test_ligacoes_ausentes_nao_completam_o_grafo (test_mapa_05.Mapa05Tests.test_ligacoes_ausentes_nao_completam_o_grafo) ... ok
+test_metadata_e_referencia_original (test_mapa_05.Mapa05Tests.test_metadata_e_referencia_original) ... ok
+test_oito_arestas_com_todos_os_pesos_da_figura (test_mapa_05.Mapa05Tests.test_oito_arestas_com_todos_os_pesos_da_figura) ... ok
+test_cadastro_permanece_nao_validado_com_referencia (test_mapa_18.Mapa18Tests.test_cadastro_permanece_nao_validado_com_referencia) ... ok
+test_coordenadas_normalizadas_para_desenho (test_mapa_18.Mapa18Tests.test_coordenadas_normalizadas_para_desenho) ... ok
+test_dezoito_ids_unicos_preservados (test_mapa_18.Mapa18Tests.test_dezoito_ids_unicos_preservados) ... ok
+test_fontes_da_auditoria_preservadas_com_hash_e_resolucao (test_mapa_18.Mapa18Tests.test_fontes_da_auditoria_preservadas_com_hash_e_resolucao) ... ok
+test_ligacoes_sem_duplicatas_ou_extremos_invalidos (test_mapa_18.Mapa18Tests.test_ligacoes_sem_duplicatas_ou_extremos_invalidos) ... ok
+test_peso_desconhecido_9_14_nao_recebe_valor_inventado (test_mapa_18.Mapa18Tests.test_peso_desconhecido_9_14_nao_recebe_valor_inventado) ... ok
+test_rotulo_56_confirmado_em_4_14 (test_mapa_18.Mapa18Tests.test_rotulo_56_confirmado_em_4_14) ... ok
+test_todos_os_pesos_e_ligacoes_conferidos_na_fonte (test_mapa_18.Mapa18Tests.test_todos_os_pesos_e_ligacoes_conferidos_na_fonte) ... ok
+test_limites_e_limpeza (test_reprodutor.ReprodutorTests.test_limites_e_limpeza) ... ok
+test_play_pause_passos_velocidade_e_retorno (test_reprodutor.ReprodutorTests.test_play_pause_passos_velocidade_e_retorno) ... ok
+test_cidade_unica_e_ciclo_de_duas_cidades (test_tsp.ForcaBrutaTests.test_cidade_unica_e_ciclo_de_duas_cidades) ... ok
+test_limite_antes_de_enumerar_18_nos (test_tsp.ForcaBrutaTests.test_limite_antes_de_enumerar_18_nos) ... ok
+test_mapa_05_ciclo_otimo_e_24_ordens (test_tsp.ForcaBrutaTests.test_mapa_05_ciclo_otimo_e_24_ordens) ... ok
+test_mapa_real_18_pendente_e_recusado (test_tsp.ForcaBrutaTests.test_mapa_real_18_pendente_e_recusado) ... ok
+test_origem_invalida_e_mapa_pendente (test_tsp.ForcaBrutaTests.test_origem_invalida_e_mapa_pendente) ... ok
+test_peso_zero_e_fracionario (test_tsp.ForcaBrutaTests.test_peso_zero_e_fracionario) ... ok
+test_sem_ciclo_nao_cria_ligacao (test_tsp.ForcaBrutaTests.test_sem_ciclo_nao_cria_ligacao) ... ok
+test_todas_as_origens_preservam_ciclo_e_custo (test_tsp.ForcaBrutaTests.test_todas_as_origens_preservam_ciclo_e_custo) ... ok
+test_arquivo_inexistente_produz_erro_claro (test_tsp_core.GrafoTests.test_arquivo_inexistente_produz_erro_claro) ... ok
+test_construcao_direta_e_replace_tambem_validam_invariantes (test_tsp_core.GrafoTests.test_construcao_direta_e_replace_tambem_validam_invariantes) ... ok
+test_coordenadas_nao_alteram_peso_ou_criam_ligacoes (test_tsp_core.GrafoTests.test_coordenadas_nao_alteram_peso_ou_criam_ligacoes) ... ok
+test_dados_e_adjacencia_nao_podem_ser_mutados (test_tsp_core.GrafoTests.test_dados_e_adjacencia_nao_podem_ser_mutados) ... ok
+test_grafo_sem_arestas_e_nos_isolados_sao_representaveis (test_tsp_core.GrafoTests.test_grafo_sem_arestas_e_nos_isolados_sao_representaveis) ... ok
+test_mapa_05_adjacencia_completa_nos_dois_sentidos (test_tsp_core.GrafoTests.test_mapa_05_adjacencia_completa_nos_dois_sentidos) ... ok
+test_mapa_18_pode_ser_inspecionado_mas_bloqueia_calculos (test_tsp_core.GrafoTests.test_mapa_18_pode_ser_inspecionado_mas_bloqueia_calculos) ... ok
+test_nao_validado_bloqueia_mesmo_com_todos_os_pesos_conhecidos (test_tsp_core.GrafoTests.test_nao_validado_bloqueia_mesmo_com_todos_os_pesos_conhecidos) ... ok
+test_pendente_sem_descricao_ainda_bloqueia (test_tsp_core.GrafoTests.test_pendente_sem_descricao_ainda_bloqueia) ... ok
+test_pesos_zero_e_fracionario_preservados_e_no_isolado (test_tsp_core.GrafoTests.test_pesos_zero_e_fracionario_preservados_e_no_isolado) ... ok
+test_rejeita_arestas_duplicadas_inclusive_invertidas (test_tsp_core.GrafoTests.test_rejeita_arestas_duplicadas_inclusive_invertidas) ... ok
+test_rejeita_campos_obrigatorios_ausentes_e_estruturas_invalidas (test_tsp_core.GrafoTests.test_rejeita_campos_obrigatorios_ausentes_e_estruturas_invalidas) ... ok
+test_rejeita_coordenadas_invalidas (test_tsp_core.GrafoTests.test_rejeita_coordenadas_invalidas) ... ok
+test_rejeita_extremos_invalidos_e_lacos (test_tsp_core.GrafoTests.test_rejeita_extremos_invalidos_e_lacos) ... ok
+test_rejeita_ids_invalidos_e_duplicados (test_tsp_core.GrafoTests.test_rejeita_ids_invalidos_e_duplicados) ... ok
+test_rejeita_json_quebrado_chaves_duplicadas_e_utf8_invalido (test_tsp_core.GrafoTests.test_rejeita_json_quebrado_chaves_duplicadas_e_utf8_invalido) ... ok
+test_rejeita_metadados_invalidos (test_tsp_core.GrafoTests.test_rejeita_metadados_invalidos) ... ok
+test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos (test_tsp_core.GrafoTests.test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos) ... ok
+test_validado_com_peso_desconhecido_ou_pendencias_e_invalido (test_tsp_core.GrafoTests.test_validado_com_peso_desconhecido_ou_pendencias_e_invalido) ... ok
+test_cliques_teclado_worker_e_bloqueio (test_ui.InterfaceTests.test_cliques_teclado_worker_e_bloqueio) ... ok
+test_pesos_referencia_e_resize (test_ui.InterfaceTests.test_pesos_referencia_e_resize) ... ok
+test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel (test_ui.InterfaceTests.test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel) ... ok
+test_zoom_ancorado_reset_e_custos_preservados (test_ui.InterfaceTests.test_zoom_ancorado_reset_e_custos_preservados) ... ok
+
+----------------------------------------------------------------------
+Ran 85 tests in 0.687s
+
+OK

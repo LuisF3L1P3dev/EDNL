@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON, a representação/validação do grafo, Dijkstra e seus testes estão presentes; os algoritmos TSP e a interface serão implementados nas tarefas seguintes. O mapa 18 continua não validado pela falta do peso de `9–14`.
+**Execução autorizada:** o usuário autorizou implementar sequencialmente até a TSP-021 e fazer um commit por tarefa, sem pedir autorização entre etapas. Foram entregues algoritmos, eventos, Pygame, controles, animação, câmera, testes e relatórios. As TSP-004, TSP-017 e o aceite real da TSP-020 permanecem abertos pelos motivos registrados abaixo. A autorização não abrange iniciar a fase 3D.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -137,10 +137,11 @@
   - **Aceite:** algoritmo para o mapa 18 termina dentro de um limite razoável e identifica se a solução é ótima comprovada ou apenas conhecida.
   - **Avanço parcial:** branch-and-bound implementado com limite de 2 s/200 mil estados e estados de prova explícitos, integrado ao botão B. Testes cobrem anel sintético de 18 nós e cortes com/sem solução. O mapa real permanece recusado por faltar o peso de 9–14 (ausência confirmada pelo usuário). Estratégia em `docs/estrategia_18.md`; aceite de execução no mapa real depende da TSP-004.
 
-- [ ] **TSP-021 — Elaborar relatório e demonstração da aula** · `P2 / Medium` · depende de TSP-017 a TSP-020
+- [x] **TSP-021 — Elaborar relatório e demonstração da aula** · `P2 / Medium` · depende de TSP-017 a TSP-020
   - Explicar grafos incompletos, pesos, Dijkstra, força bruta, complexidade e resultados.
   - Incluir capturas da versão 2D, referências originais, limitações e casos de teste.
   - **Aceite:** roteiro permite apresentar o projeto do início ao fim.
+  - **Conferido:** `docs/RELATORIO.md` explica dados, algoritmos, complexidade, comparação, resultados, capturas, limitações e roteiro. README refeito para a aplicação executável; `scripts/verificar.py` registra a suíte. Entrega documental concluída com dependências manuais/de dados explicitamente abertas; não declara cálculo no mapa real ou smoke nativo concluídos.
 
 ## Epic 05 — Conversão futura para 3D (não iniciar antes de concluir o 2D)
 
@@ -173,4 +174,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-008: implementar TSP trivial por força bruta**, após autorização para a próxima etapa. A TSP-004 permanece aberta até obter o peso de `9-14`, ausente inclusive na fonte do autor. Dijkstra já bloqueia cálculos com esse mapa; o desenvolvimento prossegue com o mapa 5 validado.
+Concluir a inspeção manual nativa da **TSP-017** conforme `docs/smoke_pygame.md`. Para fechar **TSP-004** e o aceite real da **TSP-020**, é necessária definição do custo de `9-14`, cuja ausência foi confirmada pelo usuário. Nenhuma tarefa 3D foi iniciada. Resultados e apresentação estão em `docs/RELATORIO.md`.
