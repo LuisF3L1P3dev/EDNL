@@ -12,6 +12,7 @@ from types import MappingProxyType
 import math
 import sys
 import importlib.util
+from hashlib import sha256
 from fractions import Fraction
 
 from tsp_core import Aresta, Grafo, Passo, ErroGrafo, dijkstra
@@ -62,6 +63,7 @@ class ResultadoSolver:
     contadores: tuple[Contador, ...]
     eventos: tuple[Passo, ...] = ()
     parametros: tuple[tuple[str, str], ...] = ()
+    instancia: str = ""
 
     @property
     def caminho(self):
@@ -283,10 +285,12 @@ def executar(nome, grafo, origem, *, destino=None, variante=None, orcamento=None
     tempos = (("preparacao", ctx.preparacao_ms),
               ("otimizacao", max(0, total - ctx.preparacao_ms - ctx.reconstrucao_ms)),
               ("reconstrucao", ctx.reconstrucao_ms), ("total", total))
+    identidade = repr((grafo.direcionado, tuple(sorted(grafo.ids)),
+                      tuple(sorted((a.origem, a.destino, a.peso) for a in grafo.arestas))))
     return ResultadoSolver(nome, ctx.pipeline, variante, origem, tuple(ordem), tuple(fisico), custo,
                            garantia, termino, tempos,
                            tuple(ctx.contadores) + (Contador("trabalho", ctx.estados, "estados"),),
-                           tuple(ctx.eventos), tuple(ctx.parametros))
+                           tuple(ctx.eventos), tuple(ctx.parametros), sha256(identidade.encode()).hexdigest())
 
 
 def _forca(p, ctx):
@@ -439,7 +443,11 @@ def held_karp(p, ctx):
                             payload_proxima += sys.getsizeof(candidato)
                             estados_dp += 1
                         else:
-                            payload_proxima += sys.getsizeof(candidato) - sys.getsizeof(anterior)
+                            delta = sys.getsizeof(candidato) - sys.getsizeof(anterior)
+                            payload_proxima += delta
+                            proxima[chave], pais[chave] = candidato, atual
+                            if delta <= 0:
+                                continue
                         proxima[chave], pais[chave] = candidato, atual
                         memoria = (sys.getsizeof(camada) + sys.getsizeof(proxima) + sys.getsizeof(pais)
                                    + payload_atual + payload_proxima + payload_pais)

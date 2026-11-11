@@ -81,6 +81,50 @@
       "resultado": "passou"
     },
     {
+      "caso": "Novo método nearest_neighbor: custo 17, modelo e garantia visíveis",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Novo método two_opt: custo 15, modelo e garantia visíveis",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Novo método held_karp: custo 15, modelo e garantia visíveis",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Novo método christofides: custo 15, modelo e garantia visíveis",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Novo método ortools_solver: custo 15, modelo e garantia visíveis",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Comparação de seis métodos, paginação e ótimo certificado do mesmo fecho",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Held–Karp mapa 18 original: ciclo ótimo 391",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Orçamento esgotado aparece como limite, sem prova",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Cancelamento pelo botão mantém a janela responsiva",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Dependência OR-Tools ausente simulada: indisponibilidade explícita",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Mapa não validado continua bloqueando os novos métodos",
+      "resultado": "passou"
+    },
+    {
       "caso": "Escape encerra o loop",
       "resultado": "passou"
     }

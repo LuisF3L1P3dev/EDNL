@@ -33,11 +33,16 @@ Durante a reprodução do fecho, a faixa continua mostrando o método composto m
 - **Play/Pausar e navegação:** a faixa informa método, etapa interna e posição no histórico.
 - **Trocar mapa ou limpar:** remove histórico e resultados antigos; não mantém rótulo de execução concluída para uma seleção nova.
 
-Os métodos futuros não aparecem como se já estivessem disponíveis. O catálogo desta etapa contém apenas os quatro solvers atuais e a ação de comparação. O novo planejamento está em [novos_algoritmos.md](novos_algoritmos.md).
+Na entrega original TSP-025 o catálogo tinha quatro solvers. A TSP-032
+acrescentou os cinco métodos implementados, duas páginas de seleção, modelo,
+orçamento, cancelamento e comparação do mesmo problema. Os atalhos N/I/H/A/R
+e G estão documentados em [integração dos solvers](integracao_solvers.md).
+O estado de um resultado selecionado se refere àquele resultado, mesmo que
+outro método da comparação tenha atingido um limite.
 
 ## Verificação
 
-**96 testes aprovados**, incluindo estados do worker, execução isolada do fecho, fases, proveniência dos snapshots, foco de rotas, limites no mapa 18, garantias de buscas cortadas e layout 1000 × 760. O roteiro SDL passou em **20 casos**. Foram revisadas visualmente as capturas renderizadas; isso não encerra a inspeção manual nativa pendente da TSP-017.
+**129 testes aprovados**, incluindo estados do worker, execução isolada do fecho, fases, proveniência dos snapshots, foco de rotas, limites no mapa 18, garantias de buscas cortadas e layout 1000 × 760. O roteiro SDL passou em **31 casos**. Foram revisadas visualmente as capturas renderizadas; isso não encerra a inspeção manual nativa pendente da TSP-017.
 
 ![Método em execução, primeiro frame antes de receber o resultado](capturas/algoritmo_em_execucao.png)
 ![Método combinado concluído](capturas/tsp_dijkstra.png)

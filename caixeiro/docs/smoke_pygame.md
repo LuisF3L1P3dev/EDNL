@@ -8,7 +8,7 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 ```
 
-**20 casos passaram**, via eventos Pygame/SDL dummy, incluindo o mapa 18 validado e a identificação visual da TSP-025. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas as telas de comparação, animação, janela mínima, método composto e foco de resultado. A captura "Em execução" representa o primeiro frame após disparar o worker, antes de receber o resultado, sem atrasos artificiais.
+**31 casos passaram**, via eventos Pygame/SDL dummy, incluindo o mapa 18 validado e a identificação visual da TSP-025. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas as telas de comparação, animação, janela mínima, método composto e foco de resultado. A captura "Em execução" representa o primeiro frame após disparar o worker, antes de receber o resultado, sem atrasos artificiais.
 
 | Caso executado | Resultado |
 |---|---|
@@ -31,6 +31,13 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 | Zoom, pan e Z | Transformação visual e reset sem alterar custos |
 | Referência do mapa 18 | Imagem original carregada |
 | Redimensionamento | Renderização em 1000 × 760 |
+| N/I/H/A/R | Novos métodos no fecho: 17/15/15/15/15 no mapa 5 |
+| G e páginas de resultados | Seis métodos no mesmo modelo; oráculo 15, gap válido |
+| H no mapa 18 original | Ciclo reconstruído de custo 391 e memória registrada |
+| Orçamento esgotado | Estado Limite atingido, sem certificado |
+| X/Cancelar | Cancelamento cooperativo no worker |
+| OR-Tools ausente (simulado) | Indisponibilidade, sem travar os demais métodos |
+| Mapa pendente em memória | Novos cálculos bloqueados; JSON real preservado |
 | Escape | Loop encerrado |
 
 ## Inspeção manual nativa ainda pendente

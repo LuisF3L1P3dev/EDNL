@@ -153,6 +153,64 @@ def main():
         evento(pygame.VIDEORESIZE, w=1000, h=760)
         assert app.tela.get_size() == (1000, 760)
         registrar("Redimensionamento mínimo", "janela_minima.png")
+        evento(pygame.VIDEORESIZE, w=1360, h=940)
+        tecla(pygame.K_1)
+        app.acao("pagina_metodos")
+        app.desenhar()
+        for nome, key, custo in (("nearest_neighbor", pygame.K_n, 17), ("two_opt", pygame.K_i, 15),
+                                  ("held_karp", pygame.K_h, 15), ("christofides", pygame.K_a, 15),
+                                  ("ortools_solver", pygame.K_r, 15)):
+            tecla(key)
+            if app.futuro is None:
+                assert nome == "ortools_solver" and "opcional ausente" in app.status
+                registrar("OR-Tools ausente é identificado sem interromper a UI")
+                continue
+            aguardar()
+            r = app.resultados[nome]
+            assert r.custo == custo and r.variante == "fecho", (nome, r.custo)
+            assert app.identidade_visual()["metodo"] == nome
+            registrar(f"Novo método {nome}: custo {custo}, modelo e garantia visíveis", f"novo_{nome}.png")
+            clicar("proximo")
+            assert app.identidade_visual()["metodo"] == nome
+            clicar("fim")
+        tecla(pygame.K_g)
+        aguardar()
+        assert app.comparacao_info["otimo"] == 15
+        assert len(app.resultados) == 6 and all(r.variante == "fecho" for r in app.resultados.values())
+        for _ in range(3):
+            clicar("resultado_next")
+        assert app.pagina_resultados == 0
+        registrar("Comparação de seis métodos, paginação e ótimo certificado do mesmo fecho", "novos_comparacao.png")
+        tecla(pygame.K_m)
+        tecla(pygame.K_2)
+        tecla(pygame.K_h)
+        aguardar()
+        assert app.resultados["held_karp"].custo == 391 and app.resultados["held_karp"].otimo
+        registrar("Held–Karp mapa 18 original: ciclo ótimo 391", "novo_held_karp_18.png")
+        app.limite_segundos = 1e-12
+        tecla(pygame.K_h)
+        aguardar()
+        assert app.estado_execucao == "limitado" and not app.resultados["held_karp"].otimo
+        registrar("Orçamento esgotado aparece como limite, sem prova", "novo_limite.png")
+        app.limite_segundos = 5.0
+        tecla(pygame.K_r)
+        if app.futuro is not None:
+            clicar("cancelar")
+            aguardar()
+            assert app.estado_execucao == "cancelado"
+            registrar("Cancelamento pelo botão mantém a janela responsiva", "novo_cancelado.png")
+        from unittest.mock import patch
+        with patch("solvers.importlib.util.find_spec", return_value=None):
+            tecla(pygame.K_r)
+            assert app.futuro is None and app.estado_execucao == "bloqueado"
+            registrar("Dependência OR-Tools ausente simulada: indisponibilidade explícita", "novo_indisponivel.png")
+        from dataclasses import replace
+        mapas = app.mapas
+        app.mapas = tuple(replace(g, validado=False, pendencias=("fixture smoke",)) for g in mapas)
+        tecla(pygame.K_n)
+        assert app.futuro is None and app.estado_execucao == "bloqueado"
+        registrar("Mapa não validado continua bloqueando os novos métodos")
+        app.mapas = mapas
         tecla(pygame.K_ESCAPE)
         assert not app.rodando
         registrar("Escape encerra o loop")

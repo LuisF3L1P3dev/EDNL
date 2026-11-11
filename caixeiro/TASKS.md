@@ -14,7 +14,7 @@
 
 **Execução autorizada:** o usuário autorizou implementar sequencialmente até a TSP-021 e fazer um commit por tarefa, sem pedir autorização entre etapas. Foram entregues algoritmos, eventos, Pygame, controles, animação, câmera, testes e relatórios. Após definir `9–14 = 1`, as TSP-004 e TSP-020 foram concluídas com execução no mapa real. Permanece aberta a inspeção manual nativa da TSP-017. A fase 3D não foi iniciada.
 
-**Pedido posterior:** implementar a identificação visual TSP-025 e criar o planejamento dos novos métodos. TSP-026 a TSP-032 ficam pendentes para execução posterior; não foram iniciadas automaticamente.
+**Pedido posterior:** após a TSP-025, o usuário solicitou executar as TSP-026 a TSP-032. As sete tarefas foram implementadas com um commit por tarefa: contrato, cinco novos métodos e integração/comparação no Pygame. Evidências em `docs/integracao_solvers.md`. TSP-017 manual e tarefas 3D permanecem abertas.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -147,7 +147,8 @@
 
 ## Epic 05 — Identificação visual e novos algoritmos 2D (prioridade antes do 3D)
 
-O usuário pediu primeiro a identificação visual dos métodos atuais e o planejamento dos próximos. Somente a TSP-025 foi implementada nesta etapa. TSP-026 entregue: contrato, registro, validação de saída, cancelamento e orçamento. As demais entregas são registradas abaixo conforme implementação.
+TSP-025 e TSP-026 a TSP-032 entregues. O catálogo e o worker incluem os cinco
+novos métodos, com limites, garantia e comparação do mesmo problema.
 
 - [x] **TSP-025 — Identificar método, execução, etapa e resultado na interface** · `P1 / Medium`
   - Manter nome, modelo do problema, estado e garantia visíveis em uma faixa dedicada.
@@ -162,42 +163,49 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Registrar capacidades, restrições, atalhos e disponibilidade por dependência/limite; evoluir o catálogo visual existente sem criar botões fictícios.
   - Padronizar progresso, cancelamento cooperativo, orçamento e snapshots, preservando o worker e as guardas de mapas não validados.
   - **Aceite:** métodos atuais adaptados sem mudar os custos 6/15/391; resultado impossível, indisponibilidade, cancelamento e limite possuem estados distintos e testes.
+  - **Conferido:** `solvers.py` padroniza resultados imutáveis, registro, validação física, progresso, orçamento e sinal cooperativo. Worker usa uma execução com snapshots limitados. Custos 6/15/391 preservados; estados e guardas testados. Detalhes em `docs/contrato_solvers.md`.
 
 - [x] **TSP-027 — Implementar `nearest_neighbor`** · `P1 / Medium` · depende de TSP-026
   - Construir a ordem pelo vizinho ainda não visitado de menor custo, com desempate determinístico por ID e retorno à origem.
   - Modo padrão no fecho métrico por Dijkstra, expandindo a ordem nas arestas reais; modo direto opcional deve recusar ou sinalizar bloqueio em grafos esparsos.
   - Identificar como heurística sem prova de ótimo; registrar candidato escolhido e acumulado para reprodução.
   - **Aceite:** rota fechada cobre todos os IDs nos mapas conectados; soma física correta; testes de empate, nó isolado e origem igual; não confundir uma construção bloqueada com prova de inexistência. Comparar custo com busca exata apenas no mesmo modelo.
+  - **Conferido:** vizinho mais próximo determinístico no fecho/original, eventos de escolha e expansão real. Empates, singleton, desconexão e bloqueio guloso apesar de existir ciclo cobertos. UI N; detalhes em `docs/nearest_neighbor.md`.
 
 - [x] **TSP-028 — Implementar `two_opt` como melhoria de uma rota inicial** · `P1 / High` · depende de TSP-027
   - Receber uma rota viável (por exemplo `nearest_neighbor`) e aplicar trocas 2-opt de melhoria estrita, preservando origem, fechamento e cidades.
   - Respeitar a mesma matriz/variante da rota inicial. Na malha original, rejeitar trocas que usem arestas ausentes; no fecho, reexpandir o percurso físico.
   - Registrar arestas removidas/adicionadas, custo anterior/novo, limite de iterações/tempo e condição de parada.
   - **Aceite:** custo final nunca piora o inicial; teste conhecido com melhoria e teste sem melhoria; exibir `nearest_neighbor + two_opt` e "ótimo local" somente quando o critério foi esgotado, sem afirmar ótimo global.
+  - **Conferido:** rota inicial validada ou construída por vizinho; primeira melhoria estrita, arestas/custos registrados e reexpansão no mesmo modelo. Cortes preservam incumbente sem prova local/global. UI I; detalhes em `docs/two_opt.md`.
 
 - [x] **TSP-029 — Promover `held_karp` a solver exato com reconstrução** · `P1 / High` · depende de TSP-026
   - Evoluir o controle de custo de `scripts/validar_mapa_18.py` para um solver do núcleo, com DP por subconjunto/última cidade e predecessores para reconstruir a ordem.
   - Suportar malha original e fecho em modos separados, com orçamento de memória/tempo e sem transformar uma execução cortada em prova de ótimo.
   - Explicar o custo `O(n² 2ⁿ)` e disponibilizar progresso por camadas na interface.
   - **Aceite:** custos iguais à força bruta em instâncias pequenas; ciclo Hamiltoniano de custo 391 no mapa 18 original; caminho físico e memória medidos; falta de rota e limite tratados. O script de controle existente não deve ser apresentado como solver de UI antes desta tarefa.
+  - **Conferido:** DP com predecessores, reconstrução, camadas e memória contabilizada em bytes. Certifica ciclo 391 no original, concorda com força bruta em ambos os modelos e trata memória/tempo/estados sem certificado. UI H; controle independente preservado. Detalhes em `docs/held_karp.md`.
 
 - [x] **TSP-030 — Implementar `christofides` no TSP métrico** · `P2 / High` · depende de TSP-026, TSP-029
   - Trabalhar em grafo completo, não direcionado, simétrico, com pesos não negativos e desigualdade triangular; nos mapas esparsos, construir o fecho por Dijkstra sem modificar os JSON.
   - Implementar MST, nós de grau ímpar, matching perfeito de peso mínimo, multigrafo Euleriano e atalhamento; matching guloso não sustenta a garantia clássica.
   - Reconstruir o passeio físico e registrar as etapas para visualização; escolher e documentar eventual dependência de matching.
   - **Aceite:** pré-condições verificadas; testes métricos pequenos com custo até 1,5 vezes o ótimo de Held–Karp para a mesma instância; saída viável nos mapas conectados e erro em desconectados. Não aplicar essa garantia ao ótimo Hamiltoniano da malha esparsa original.
+  - **Conferido:** MST, matching perfeito mínimo exato por DP (até 18 ímpares, sem nova dependência), multigrafo, Euler e atalhamento implementados. Pré-condições e 21 instâncias contra Held–Karp testadas. UI A no fecho; detalhes em `docs/christofides.md`.
 
 - [x] **TSP-031 — Integrar `ortools_solver` como dependência opcional** · `P2 / High` · depende de TSP-026, TSP-029
   - Verificar compatibilidade com o Python suportado; manter instalação opcional e mostrar indisponibilidade compreensível quando faltar OR-Tools.
   - Modelar origem/retorno, limites, estratégia inicial e busca local; tratar custos inteiros/escalonamento sem alterar a unidade dos resultados.
   - No modo direto, proibir arcos ausentes; não usar uma penalidade arbitrária como se tornasse o percurso válido. No modo fecho, expandir a solução nas arestas reais.
   - **Aceite:** orçamento obrigatório, status/versão/parâmetros registrados, rota validada e custo conferido. Sucesso do solver não será rotulado "ótimo comprovado" sem prova; testar dependência ausente, timeout sem solução, rota conhecida e instâncias pequenas contra Held–Karp.
+  - **Conferido:** OR-Tools 9.15.6755 instalado/testado no Python 3.14 Windows; dependência opcional separada. NextVar proíbe arcos ausentes, escala decimal exata, limite nativo/cancelamento e parâmetros registrados. Ausência, timeout, decimais e rotas testados; UI R. Detalhes em `docs/ortools_solver.md`.
 
-- [ ] **TSP-032 — Integrar, comparar e demonstrar os novos métodos** · `P2 / High` · depende de TSP-027 a TSP-031
+- [x] **TSP-032 — Integrar, comparar e demonstrar os novos métodos** · `P2 / High` · depende de TSP-027 a TSP-031
   - Integrar os cinco métodos ao catálogo, worker, faixa de execução, cards, garantia e histórico; 2-opt aparece como pipeline com o construtor da rota inicial.
   - Comparar somente métodos no mesmo modo/matriz, origem e orçamento; separar preparação do fecho, otimização e reconstrução nas métricas.
   - Usar Held–Karp como referência quando viável; calcular gap/razão apenas contra ótimo comprovado do mesmo problema, sem usar 391 como ótimo do fecho por suposição.
   - **Aceite:** testes de integração e smoke cobrindo todos os métodos e estados; capturas, relatório da aula e README atualizados; dados fixos intactos e UI responsiva.
+  - **Conferido:** nove solvers no catálogo/worker, duas páginas de seleção, modelo/orçamento e cancelamento. G agrupa mesma instância/origem/modelo/orçamento e só calcula gap certificado. 129 testes e 31 casos SDL aprovados, capturas inspecionadas, JSON fixos intactos. Relatórios/rotas/contadores em `docs/comparacao_solvers.*`; entrega em `docs/integracao_solvers.md`. TSP-017 manual permanece aberta.
 
 Detalhamento e referências técnicas: [`docs/novos_algoritmos.md`](docs/novos_algoritmos.md). Ordem proposta: **026 → 027 → 028**, depois **029 → 030/031 → 032**.
 
@@ -239,4 +247,7 @@ TSP-017 + TSP-032 -> TSP-022 (3D somente após consolidar o 2D)
 
 ## Próxima ação recomendada
 
-Revisar a identificação visual entregue na **TSP-025** e, quando solicitado, iniciar a **TSP-026** para preparar o contrato dos novos métodos 2D. TSP-027 a TSP-032 estão planejadas, não implementadas. A inspeção manual nativa da TSP-017 continua pendente. Nenhuma tarefa 3D foi iniciada.
+Realizar a inspeção manual nativa da **TSP-017** usando o roteiro atualizado.
+As **TSP-026 a TSP-032 estão concluídas**: 129 testes e 31 casos SDL aprovados;
+rotas, custos, memória, garantias e capturas registrados em `docs/`.
+Nenhuma tarefa 3D foi iniciada.

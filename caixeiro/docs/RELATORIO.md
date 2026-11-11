@@ -17,7 +17,12 @@ Coordenadas normalizadas x/y são exclusivamente visuais. Zoom, pan e resize nã
 | Dijkstra | Menor caminho da origem ao destino | Exato com pesos não negativos; fila mínima e predecessores |
 | Força bruta direta | Ciclo Hamiltoniano mínimo nas arestas existentes | Exato, até 9 nós; origem fixa e retorno |
 | Dijkstra + busca exata | Ordem mínima no fecho, expandida em passeio físico | Exato nesse problema, até 9 nós; pode repetir intermediários |
-| Branch-and-bound | Mesmo TSP Hamiltoniano da força bruta direta | Até 18 nós, orçamento de 2 s/200 mil estados; distingue prova de corte |
+| Branch-and-bound | Mesmo TSP Hamiltoniano da força bruta direta | Até 18 nós; orçamento comum da UI, distingue prova de corte |
+| Vizinho mais próximo | Construção gulosa no modelo escolhido | Heurística; pode bloquear no original sem provar inviabilidade |
+| Vizinho + 2-opt | Melhoria da rota no mesmo modelo | Melhoria estrita; ótimo local somente após esgotar a vizinhança |
+| Held–Karp | TSP exato original ou fecho | Até 18 nós, DP com predecessores, limite de tempo/memória |
+| Christofides | TSP métrico no fecho | Aproximação ≤ 1,5 do ótimo métrico, matching perfeito mínimo exato |
+| OR-Tools opcional | TSP original ou fecho | Rota viável sob orçamento; sucesso não é certificado de ótimo |
 
 Dijkstra não escolhe sozinho a ordem de todas as visitas. No método composto, ele monta os menores custos entre pares; uma busca TSP escolhe a ordem. Cada trecho é expandido pelos caminhos reconstruídos, evitando apresentar uma aresta inexistente como estrada.
 
@@ -29,7 +34,12 @@ Com origem fixa, força bruta examina `(n−1)!` ordens e até n ligações por 
 
 Dijkstra com heap tem custo usual `O((V+E) log V)` por busca. Esta implementação didática faz V² chamadas, uma por par, para montar o fecho; depois ainda executa a busca fatorial. Isso não torna TSP polinomial. Branch-and-bound usa árvore geradora mínima residual como limite inferior e cache limitado; o pior caso continua exponencial.
 
-Ordens TSP são permutações completas; nós finalizados em Dijkstra são retiradas definitivas da fila; estados de branch-and-bound são expansões parciais. Tempo é medido sem histórico, e contadores são coletados separadamente. A [comparação formal](comparacao.md) usa mediana de sete execuções, inclui o pipeline composto e traz um controle em que ambos recebem a mesma instância métrica. As medições são desta máquina, não uma garantia universal de velocidade.
+Ordens completas, nós finalizados e expansões parciais são grandezas diferentes.
+A [comparação original](comparacao.md) usa mediana sem histórico. A nova
+[comparação dos solvers](comparacao_solvers.md) mede preparação, otimização e
+reconstrução com snapshots limitados em uma execução, declarando as unidades.
+Somente o mesmo modelo/origem/pesos recebe gap, com certificado de ótimo.
+Tempos observados nesta máquina não são garantia universal de velocidade.
 
 ## Resultados verificados
 
@@ -46,7 +56,7 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 | Mapa 18 real, TSP Hamiltoniano | Custo ótimo **391**, branch-and-bound com 1159 estados |
 | Controle independente do ótimo real | Held–Karp confirma **391**, com 153860 estados |
 
-**96 testes automáticos aprovados**, incluindo os 324 pares do mapa 18 contra Floyd–Warshall, ciclo real de custo 391, estados visuais, origem dos snapshots, foco de rota, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 20 casos, com capturas renderizadas. O controle independente é reproduzido por `python scripts/validar_mapa_18.py`; resultados e tempos em [resultados_mapa_18.json](resultados_mapa_18.json). A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
+**129 testes automáticos aprovados**, incluindo os 324 pares do mapa 18 contra Floyd–Warshall, ciclo real de custo 391, estados visuais, origem dos snapshots, foco de rota, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 31 casos, com capturas renderizadas. O controle independente é reproduzido por `python scripts/validar_mapa_18.py`; resultados e tempos em [resultados_mapa_18.json](resultados_mapa_18.json). A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
 
 ## Capturas da versão 2D
 
@@ -84,7 +94,8 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 6. **Animação:** testar Play/Pausar, `<`, `>`, velocidade e Final. Mostrar que uma etapa interna de Dijkstra mantém a identificação do método combinado que a produziu. Explicar histórico separado do relógio e cálculo em segundo plano.
 7. **Busca limitada:** clicar B no mapa pequeno e ler `otimo_comprovado`. Explicar os outros estados e que corte por tempo não prova ótimo ou inexistência.
 8. **Mapa grande:** escolher 2, usar zoom, pan, P e inspeção pelo cursor. Mostrar o peso 1 em 9–14, definido pelo usuário; a referência original continua sem esse rótulo. Selecionar origem 9/destino 14 e clicar D: custo 1. Restaurar a origem 1 e clicar B: ciclo ótimo de custo 391. F/C continuam recusados pelo limite didático de 9 nós.
-9. **Encerramento:** mostrar testes, relatório e controle Held–Karp do ótimo real. Distinguir os testes sintéticos dos resultados do mapa da aula. Explicar a inspeção manual nativa ainda pendente e a futura representação 3D sem mudar dados.
+9. **Novos métodos:** Tab abre a segunda página. Com M no fecho, executar N (17), I (15), H (15), A (15) e R (15) no mapa 5. Explicar heurística, ótimo local, exatidão e aproximação. G compara o mesmo problema; navegar pelos resultados. No mapa 18, M original + H certifica 391. No fecho, não presumir esse ótimo; mostrar limites e ausência de gap sem certificado. Q altera orçamento e X cancela.
+10. **Encerramento:** mostrar 129 testes, 31 casos SDL, [evidências dos novos solvers](integracao_solvers.md) e o controle independente do ótimo real. Explicar a inspeção manual nativa ainda pendente e a futura representação 3D sem mudar dados.
 
 ## Limitações e aceite restante
 

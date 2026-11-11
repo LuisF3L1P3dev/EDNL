@@ -1,0 +1,1874 @@
+{
+  "orcamento_segundos_por_metodo": 15,
+  "unidade_custo": "pesos originais",
+  "tempos": "ms, com snapshots limitados, sem segunda execução",
+  "ortools_busca_local": "GREEDY_DESCENT",
+  "grupos": [
+    {
+      "mapa": "mapa_05",
+      "variante": "original",
+      "origem": 1,
+      "resumo": {
+        "oraculo": "held_karp",
+        "otimo": 15,
+        "gaps": {
+          "forca": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "held_karp": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "nearest_neighbor": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "two_opt": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "ortools_solver": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "limitada": {
+            "percentual": 0.0,
+            "absoluto": 0
+          }
+        }
+      },
+      "resultados": {
+        "forca": {
+          "metodo": "forca",
+          "pipeline": [
+            "forca"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo comprovado",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.03060000017285347
+            ],
+            [
+              "otimizacao",
+              0.8021998219192028
+            ],
+            [
+              "reconstrucao",
+              0.0621001236140728
+            ],
+            [
+              "total",
+              0.8948999457061291
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 24,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 25
+        },
+        "held_karp": {
+          "metodo": "held_karp",
+          "pipeline": [
+            "held_karp"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo comprovado por Held–Karp",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.02219993621110916
+            ],
+            [
+              "otimizacao",
+              0.31390017829835415
+            ],
+            [
+              "reconstrucao",
+              0.047900015488266945
+            ],
+            [
+              "total",
+              0.38400012999773026
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "estados DP",
+              "valor": 25,
+              "unidade": "estados"
+            },
+            {
+              "nome": "memória DP contabilizada (pico)",
+              "valor": 7368,
+              "unidade": "bytes"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 21,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 5
+        },
+        "nearest_neighbor": {
+          "metodo": "nearest_neighbor",
+          "pipeline": [
+            "nearest_neighbor"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Retorno guloso bloqueado · sem prova de inviabilidade",
+          "termino": "construcao_bloqueada",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.023499829694628716
+            ],
+            [
+              "otimizacao",
+              0.13170018792152405
+            ],
+            [
+              "reconstrucao",
+              0.001800013706088066
+            ],
+            [
+              "total",
+              0.15700003132224083
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 4,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 5
+        },
+        "two_opt": {
+          "metodo": "two_opt",
+          "pipeline": [
+            "nearest_neighbor",
+            "two_opt"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Retorno guloso bloqueado · sem prova de inviabilidade",
+          "termino": "construcao_bloqueada",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.01640012487769127
+            ],
+            [
+              "otimizacao",
+              0.10859966278076172
+            ],
+            [
+              "reconstrucao",
+              0.001800013706088066
+            ],
+            [
+              "total",
+              0.12679980136454105
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 4,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 5
+        },
+        "ortools_solver": {
+          "metodo": "ortools_solver",
+          "pipeline": [
+            "ortools_solver"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "custo": 15,
+          "garantia": "OR-Tools: rota viável · sem certificado de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.029199989512562752
+            ],
+            [
+              "otimizacao",
+              85.74389992281795
+            ],
+            [
+              "reconstrucao",
+              0.022799940779805183
+            ],
+            [
+              "total",
+              85.79589985311031
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "soluções OR-Tools",
+              "valor": 3,
+              "unidade": "soluções"
+            },
+            {
+              "nome": "arcos proibidos",
+              "valor": 5,
+              "unidade": "arcos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 81,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "versao_ortools",
+              "9.15.6755"
+            ],
+            [
+              "escala_inteira",
+              "1"
+            ],
+            [
+              "primeira_solucao",
+              "PATH_CHEAPEST_ARC"
+            ],
+            [
+              "busca_local",
+              "GREEDY_DESCENT"
+            ],
+            [
+              "limite_ms_busca",
+              "14916"
+            ],
+            [
+              "limite_solucoes",
+              "None"
+            ],
+            [
+              "status_ortools",
+              "1:SUCCESS"
+            ]
+          ],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 4
+        },
+        "limitada": {
+          "metodo": "limitada",
+          "pipeline": [
+            "limitada"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo comprovado",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.010599847882986069
+            ],
+            [
+              "otimizacao",
+              0.13020029291510582
+            ],
+            [
+              "reconstrucao",
+              0.01810002140700817
+            ],
+            [
+              "total",
+              0.15890016220510006
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 12,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 1
+        }
+      }
+    },
+    {
+      "mapa": "mapa_05",
+      "variante": "fecho",
+      "origem": 1,
+      "resumo": {
+        "oraculo": "held_karp",
+        "otimo": 15,
+        "gaps": {
+          "forca": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "held_karp": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "nearest_neighbor": {
+            "percentual": 13.333333333333334,
+            "absoluto": 2
+          },
+          "two_opt": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "ortools_solver": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "christofides": {
+            "percentual": 0.0,
+            "absoluto": 0
+          }
+        }
+      },
+      "resultados": {
+        "forca": {
+          "metodo": "forca",
+          "pipeline": [
+            "forca"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo comprovado",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              2.01009982265532
+            ],
+            [
+              "otimizacao",
+              0.15130010433495045
+            ],
+            [
+              "reconstrucao",
+              0.012899981811642647
+            ],
+            [
+              "total",
+              2.1742999088019133
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 24,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 236
+        },
+        "held_karp": {
+          "metodo": "held_karp",
+          "pipeline": [
+            "held_karp"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo comprovado por Held–Karp",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              1.579000148922205
+            ],
+            [
+              "otimizacao",
+              0.12389989569783211
+            ],
+            [
+              "reconstrucao",
+              0.01619989052414894
+            ],
+            [
+              "total",
+              1.719099935144186
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "estados DP",
+              "valor": 33,
+              "unidade": "estados"
+            },
+            {
+              "nome": "memória DP contabilizada (pico)",
+              "valor": 10128,
+              "unidade": "bytes"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 29,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 216
+        },
+        "nearest_neighbor": {
+          "metodo": "nearest_neighbor",
+          "pipeline": [
+            "nearest_neighbor"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            4,
+            5,
+            3,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            4,
+            5,
+            3,
+            2,
+            1
+          ],
+          "custo": 17,
+          "garantia": "Heurística · sem prova de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              1.7434998881071806
+            ],
+            [
+              "otimizacao",
+              0.10280031710863113
+            ],
+            [
+              "reconstrucao",
+              0.029499875381588936
+            ],
+            [
+              "total",
+              1.8758000805974007
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 4,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 216
+        },
+        "two_opt": {
+          "metodo": "two_opt",
+          "pipeline": [
+            "nearest_neighbor",
+            "two_opt"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Ótimo local 2-opt · sem prova de ótimo global",
+          "termino": "otimo_local",
+          "tempos_ms": [
+            [
+              "preparacao",
+              1.981200184673071
+            ],
+            [
+              "otimizacao",
+              0.11519971303641796
+            ],
+            [
+              "reconstrucao",
+              0.014799879863858223
+            ],
+            [
+              "total",
+              2.111199777573347
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "trocas 2-opt",
+              "valor": 1,
+              "unidade": "trocas"
+            },
+            {
+              "nome": "varreduras 2-opt",
+              "valor": 2,
+              "unidade": "varreduras"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 15,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "custo_inicial",
+              "17"
+            ]
+          ],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 217
+        },
+        "ortools_solver": {
+          "metodo": "ortools_solver",
+          "pipeline": [
+            "ortools_solver"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "OR-Tools: rota viável · sem certificado de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              2.741399919614196
+            ],
+            [
+              "otimizacao",
+              3.5899002104997635
+            ],
+            [
+              "reconstrucao",
+              0.05559995770454407
+            ],
+            [
+              "total",
+              6.386900087818503
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "soluções OR-Tools",
+              "valor": 2,
+              "unidade": "soluções"
+            },
+            {
+              "nome": "arcos proibidos",
+              "valor": 0,
+              "unidade": "arcos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 74,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "versao_ortools",
+              "9.15.6755"
+            ],
+            [
+              "escala_inteira",
+              "1"
+            ],
+            [
+              "primeira_solucao",
+              "PATH_CHEAPEST_ARC"
+            ],
+            [
+              "busca_local",
+              "GREEDY_DESCENT"
+            ],
+            [
+              "limite_ms_busca",
+              "14996"
+            ],
+            [
+              "limite_solucoes",
+              "None"
+            ],
+            [
+              "status_ortools",
+              "1:SUCCESS"
+            ]
+          ],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 214
+        },
+        "christofides": {
+          "metodo": "christofides",
+          "pipeline": [
+            "dijkstra",
+            "christofides"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            5,
+            4,
+            1
+          ],
+          "custo": 15,
+          "garantia": "Aproximação ≤ 1,5 × ótimo da mesma instância métrica",
+          "termino": "aproximacao",
+          "tempos_ms": [
+            [
+              "preparacao",
+              5.433799931779504
+            ],
+            [
+              "otimizacao",
+              0.42850011959671974
+            ],
+            [
+              "reconstrucao",
+              0.0420999713242054
+            ],
+            [
+              "total",
+              5.904400022700429
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 25,
+              "unidade": "pares"
+            },
+            {
+              "nome": "subconjuntos matching",
+              "valor": 2,
+              "unidade": "subconjuntos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 17,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "0ed1e24bafae0e56d27df9da787dd8363a37dd87b05264418c5ecb195857b5ed",
+          "snapshots": 220
+        }
+      }
+    },
+    {
+      "mapa": "mapa_18",
+      "variante": "original",
+      "origem": 1,
+      "resumo": {
+        "oraculo": "held_karp",
+        "otimo": 391,
+        "gaps": {
+          "forca": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "held_karp": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "nearest_neighbor": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "two_opt": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "ortools_solver": {
+            "percentual": 0.0,
+            "absoluto": 0
+          },
+          "limitada": {
+            "percentual": 0.0,
+            "absoluto": 0
+          }
+        }
+      },
+      "resultados": {
+        "forca": {
+          "metodo": "forca",
+          "pipeline": [
+            "forca"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Indisponível",
+          "termino": "indisponivel",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.0
+            ],
+            [
+              "otimizacao",
+              0.01100008375942707
+            ],
+            [
+              "reconstrucao",
+              0.0
+            ],
+            [
+              "total",
+              0.01100008375942707
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 0,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "indisponibilidade",
+              "Método limitado a 9 nós."
+            ]
+          ],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 0
+        },
+        "held_karp": {
+          "metodo": "held_karp",
+          "pipeline": [
+            "held_karp"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            12,
+            8,
+            13,
+            16,
+            17,
+            18,
+            11,
+            7,
+            6,
+            5,
+            10,
+            15,
+            14,
+            9,
+            4,
+            3,
+            2,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            12,
+            8,
+            13,
+            16,
+            17,
+            18,
+            11,
+            7,
+            6,
+            5,
+            10,
+            15,
+            14,
+            9,
+            4,
+            3,
+            2,
+            1
+          ],
+          "custo": 391,
+          "garantia": "Ótimo comprovado por Held–Karp",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.08050003089010715
+            ],
+            [
+              "otimizacao",
+              688.4959996677935
+            ],
+            [
+              "reconstrucao",
+              0.12990017421543598
+            ],
+            [
+              "total",
+              688.706399872899
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "estados DP",
+              "valor": 153860,
+              "unidade": "estados"
+            },
+            {
+              "nome": "memória DP contabilizada (pico)",
+              "valor": 35867344,
+              "unidade": "bytes"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 153843,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 18
+        },
+        "nearest_neighbor": {
+          "metodo": "nearest_neighbor",
+          "pipeline": [
+            "nearest_neighbor"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Construção gulosa bloqueada · sem prova de inviabilidade",
+          "termino": "construcao_bloqueada",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.07379986345767975
+            ],
+            [
+              "otimizacao",
+              0.33299997448921204
+            ],
+            [
+              "reconstrucao",
+              0.001100124791264534
+            ],
+            [
+              "total",
+              0.4078999627381563
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 14,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 14
+        },
+        "two_opt": {
+          "metodo": "two_opt",
+          "pipeline": [
+            "nearest_neighbor",
+            "two_opt"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Construção gulosa bloqueada · sem prova de inviabilidade",
+          "termino": "construcao_bloqueada",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.062099890783429146
+            ],
+            [
+              "otimizacao",
+              0.32880017533898354
+            ],
+            [
+              "reconstrucao",
+              0.001400010660290718
+            ],
+            [
+              "total",
+              0.3923000767827034
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 14,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 14
+        },
+        "ortools_solver": {
+          "metodo": "ortools_solver",
+          "pipeline": [
+            "ortools_solver"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            18,
+            17,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            18,
+            17,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 391,
+          "garantia": "OR-Tools: rota viável · sem certificado de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.059300102293491364
+            ],
+            [
+              "otimizacao",
+              12.328299693763256
+            ],
+            [
+              "reconstrucao",
+              0.11200015433132648
+            ],
+            [
+              "total",
+              12.499599950388074
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "soluções OR-Tools",
+              "valor": 1,
+              "unidade": "soluções"
+            },
+            {
+              "nome": "arcos proibidos",
+              "valor": 229,
+              "unidade": "arcos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 88,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "versao_ortools",
+              "9.15.6755"
+            ],
+            [
+              "escala_inteira",
+              "1"
+            ],
+            [
+              "primeira_solucao",
+              "PATH_CHEAPEST_ARC"
+            ],
+            [
+              "busca_local",
+              "GREEDY_DESCENT"
+            ],
+            [
+              "limite_ms_busca",
+              "14997"
+            ],
+            [
+              "limite_solucoes",
+              "None"
+            ],
+            [
+              "status_ortools",
+              "1:SUCCESS"
+            ]
+          ],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 2
+        },
+        "limitada": {
+          "metodo": "limitada",
+          "pipeline": [
+            "limitada"
+          ],
+          "variante": "original",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            18,
+            17,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            18,
+            17,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 391,
+          "garantia": "Ótimo comprovado",
+          "termino": "otimo_comprovado",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.09809993207454681
+            ],
+            [
+              "otimizacao",
+              39.12159986793995
+            ],
+            [
+              "reconstrucao",
+              0.050900038331747055
+            ],
+            [
+              "total",
+              39.27059983834624
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 1159,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1
+        }
+      }
+    },
+    {
+      "mapa": "mapa_18",
+      "variante": "fecho",
+      "origem": 1,
+      "resumo": {
+        "oraculo": null,
+        "otimo": null,
+        "gaps": {
+          "forca": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "held_karp": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "nearest_neighbor": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "two_opt": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "ortools_solver": {
+            "percentual": null,
+            "absoluto": null
+          },
+          "christofides": {
+            "percentual": null,
+            "absoluto": null
+          }
+        }
+      },
+      "resultados": {
+        "forca": {
+          "metodo": "forca",
+          "pipeline": [
+            "forca"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Indisponível",
+          "termino": "indisponivel",
+          "tempos_ms": [
+            [
+              "preparacao",
+              0.0
+            ],
+            [
+              "otimizacao",
+              0.004499917849898338
+            ],
+            [
+              "reconstrucao",
+              0.0
+            ],
+            [
+              "total",
+              0.004499917849898338
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "trabalho",
+              "valor": 0,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "indisponibilidade",
+              "Método limitado a 9 nós."
+            ]
+          ],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 0
+        },
+        "held_karp": {
+          "metodo": "held_karp",
+          "pipeline": [
+            "held_karp"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [],
+          "caminho_fisico": [],
+          "custo": null,
+          "garantia": "Nenhuma rota encontrada · sem prova",
+          "termino": "limite_tempo",
+          "tempos_ms": [
+            [
+              "preparacao",
+              84.83240008354187
+            ],
+            [
+              "otimizacao",
+              15035.250500077382
+            ],
+            [
+              "reconstrucao",
+              0.010299962013959885
+            ],
+            [
+              "total",
+              15120.093200122938
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 324,
+              "unidade": "pares"
+            },
+            {
+              "nome": "estados DP",
+              "valor": 1005438,
+              "unidade": "estados"
+            },
+            {
+              "nome": "memória DP contabilizada (pico)",
+              "valor": 254169020,
+              "unidade": "bytes"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 869728,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1512
+        },
+        "nearest_neighbor": {
+          "metodo": "nearest_neighbor",
+          "pipeline": [
+            "nearest_neighbor"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            17,
+            18,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            17,
+            18,
+            15,
+            10,
+            5,
+            6,
+            7,
+            11,
+            15,
+            14,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 412,
+          "garantia": "Heurística · sem prova de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              152.6792999356985
+            ],
+            [
+              "otimizacao",
+              0.4029003903269768
+            ],
+            [
+              "reconstrucao",
+              0.05869986489415169
+            ],
+            [
+              "total",
+              153.14090019091964
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 324,
+              "unidade": "pares"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 17,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1518
+        },
+        "two_opt": {
+          "metodo": "two_opt",
+          "pipeline": [
+            "nearest_neighbor",
+            "two_opt"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            11,
+            10,
+            15,
+            18,
+            17,
+            14,
+            9,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            11,
+            10,
+            15,
+            18,
+            17,
+            14,
+            9,
+            14,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 388,
+          "garantia": "Ótimo local 2-opt · sem prova de ótimo global",
+          "termino": "otimo_local",
+          "tempos_ms": [
+            [
+              "preparacao",
+              161.5180999506265
+            ],
+            [
+              "otimizacao",
+              5.038900068029761
+            ],
+            [
+              "reconstrucao",
+              0.11770008131861687
+            ],
+            [
+              "total",
+              166.67470009997487
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 324,
+              "unidade": "pares"
+            },
+            {
+              "nome": "trocas 2-opt",
+              "valor": 5,
+              "unidade": "trocas"
+            },
+            {
+              "nome": "varreduras 2-opt",
+              "valor": 6,
+              "unidade": "varreduras"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 406,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "custo_inicial",
+              "412"
+            ]
+          ],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1523
+        },
+        "ortools_solver": {
+          "metodo": "ortools_solver",
+          "pipeline": [
+            "ortools_solver"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            6,
+            5,
+            10,
+            11,
+            15,
+            18,
+            17,
+            9,
+            14,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            6,
+            5,
+            10,
+            11,
+            15,
+            18,
+            17,
+            14,
+            9,
+            14,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 379,
+          "garantia": "OR-Tools: rota viável · sem certificado de ótimo",
+          "termino": "heuristica",
+          "tempos_ms": [
+            [
+              "preparacao",
+              160.45510000549257
+            ],
+            [
+              "otimizacao",
+              29.100599698722363
+            ],
+            [
+              "reconstrucao",
+              0.1829001121222973
+            ],
+            [
+              "total",
+              189.73859981633723
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 324,
+              "unidade": "pares"
+            },
+            {
+              "nome": "soluções OR-Tools",
+              "valor": 5,
+              "unidade": "soluções"
+            },
+            {
+              "nome": "arcos proibidos",
+              "valor": 0,
+              "unidade": "arcos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 87,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [
+            [
+              "versao_ortools",
+              "9.15.6755"
+            ],
+            [
+              "escala_inteira",
+              "1"
+            ],
+            [
+              "primeira_solucao",
+              "PATH_CHEAPEST_ARC"
+            ],
+            [
+              "busca_local",
+              "GREEDY_DESCENT"
+            ],
+            [
+              "limite_ms_busca",
+              "14835"
+            ],
+            [
+              "limite_solucoes",
+              "None"
+            ],
+            [
+              "status_ortools",
+              "1:SUCCESS"
+            ]
+          ],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1506
+        },
+        "christofides": {
+          "metodo": "christofides",
+          "pipeline": [
+            "dijkstra",
+            "christofides"
+          ],
+          "variante": "fecho",
+          "origem": 1,
+          "ordem": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            10,
+            5,
+            6,
+            7,
+            11,
+            15,
+            17,
+            18,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "caminho_fisico": [
+            1,
+            2,
+            3,
+            4,
+            9,
+            14,
+            9,
+            10,
+            5,
+            6,
+            7,
+            11,
+            15,
+            17,
+            18,
+            17,
+            16,
+            13,
+            8,
+            12,
+            1
+          ],
+          "custo": 402,
+          "garantia": "Aproximação ≤ 1,5 × ótimo da mesma instância métrica",
+          "termino": "aproximacao",
+          "tempos_ms": [
+            [
+              "preparacao",
+              154.59659998305142
+            ],
+            [
+              "otimizacao",
+              4.19630017131567
+            ],
+            [
+              "reconstrucao",
+              0.06449990905821323
+            ],
+            [
+              "total",
+              158.8574000634253
+            ]
+          ],
+          "contadores": [
+            {
+              "nome": "pares Dijkstra",
+              "valor": 324,
+              "unidade": "pares"
+            },
+            {
+              "nome": "subconjuntos matching",
+              "valor": 34,
+              "unidade": "subconjuntos"
+            },
+            {
+              "nome": "trabalho",
+              "valor": 94,
+              "unidade": "estados"
+            }
+          ],
+          "parametros": [],
+          "instancia": "16c7f56269f1aee7d53f17a9b13f22a7c924737b89e6ebb3daf236174cdbbbe0",
+          "snapshots": 1522
+        }
+      }
+    }
+  ]
+}

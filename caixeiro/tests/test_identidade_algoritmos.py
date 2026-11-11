@@ -7,7 +7,8 @@ from tsp_core import carregar_mapa, tsp_dijkstra
 
 class IdentidadeAlgoritmosTests(unittest.TestCase):
     def test_catalogo_distingue_caminho_hamiltoniano_e_fecho(self):
-        self.assertEqual(set(METODOS), {"dijkstra", "forca", "fecho", "limitada", "comparar"})
+        self.assertEqual(set(METODOS), {"dijkstra", "forca", "fecho", "limitada", "comparar",
+                                      "nearest_neighbor", "two_opt", "held_karp", "christofides", "ortools_solver", "comparar_todos"})
         self.assertEqual(METODOS["fecho"].atalho, "T")
         self.assertIn("Passeio", METODOS["fecho"].problema)
         self.assertIn("Hamiltoniano", METODOS["forca"].problema)

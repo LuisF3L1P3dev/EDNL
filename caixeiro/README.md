@@ -2,9 +2,9 @@
 
 Aplicativo acadêmico em **Python + Pygame** para explorar os dois grafos fixos da aula de Estrutura de Dados Não Linear. Permite escolher origem/destino, inspecionar pesos, calcular percursos e reproduzir os algoritmos passo a passo.
 
-A faixa **Algoritmo em foco** identifica método, estado, etapa e modelo do problema durante execução, resultado e reprodução. Na comparação, clique em um resultado para destacar somente sua rota. Veja a [identificação visual](docs/interface_algoritmos.md).
+A faixa **Algoritmo em foco** identifica método, estado, etapa, modelo e garantia durante execução e reprodução. Há cinco novos métodos, seletor de modelo/orçamento e comparação entre solvers do mesmo problema. Veja a [entrega TSP-032](docs/integracao_solvers.md).
 
-![Comparação dos métodos](docs/capturas/comparacao.png)
+![Comparação dos métodos no mesmo problema](docs/capturas/novos_comparacao.png)
 
 ## Executar
 
@@ -18,6 +18,10 @@ python -m venv .venv
 
 Linux/macOS: usar `.venv/bin/python`. Não é necessário ativar o ambiente ou alterar a política de execução do Windows. A aplicação usa fontes locais e não exige conexão após a instalação.
 
+OR-Tools é opcional: `.venv\Scripts\python.exe -m pip install -r requirements-ortools.txt`.
+Foi instalado e testado OR-Tools 9.15.6755 neste Python 3.14/Windows. Sem ele,
+a interface informa indisponibilidade e os outros algoritmos continuam disponíveis.
+
 ## Controles
 
 | Comando | Ação |
@@ -27,8 +31,19 @@ Linux/macOS: usar `.venv/bin/python`. Não é necessário ativar o ambiente ou a
 | `D` | Dijkstra: menor caminho A→B |
 | `F` | TSP Hamiltoniano por força bruta, até 9 nós |
 | `T` | Dijkstra + TSP isoladamente: fecho métrico, busca exata e percurso físico |
-| `C` | Exibir TSP direto e TSP no fecho, com suas diferenças |
+| `C` | Contrastar TSP direto e TSP no fecho; são modelos distintos |
 | `B` | Branch-and-bound até 18 nós, com orçamento explícito |
+| `Tab` / botão ‹ › | Alternar as duas páginas de métodos |
+| `N` | Vizinho mais próximo (`nearest_neighbor`) |
+| `I` | Pipeline `nearest_neighbor + two_opt` |
+| `H` | Held–Karp exato com reconstrução, até 18 nós |
+| `A` | Christofides no fecho métrico, até 18 nós |
+| `R` | OR-Tools opcional, até 18 nós |
+| `M` | Selecionar fecho ou original para N/I/H/R e comparação G |
+| `Q` | Orçamento por método: 0,5 / 2 / 5 / 15 segundos |
+| `G` | Comparar seis solvers no mesmo modelo/origem; gap com certificado |
+| ‹ / › no cabeçalho de resultados | Alternar páginas da comparação |
+| `X` / Cancelar | Cancelamento cooperativo da execução |
 | Play / Pausar / `<` / `>` | Reproduzir histórico e navegar |
 | Velocidade / Final | Mudar velocidade ou exibir resultado final |
 | Clique no resultado | Destacar sua rota; clicar novamente restaura a comparação |
@@ -51,15 +66,19 @@ Os algoritmos rodam em um worker; a reprodução usa o tempo entre frames. Sele�
 | TSP direto e TSP no fecho, mapa 5 | Ambos com custo **15**; 24 ordens por origem fixa |
 | Branch-and-bound | Mapa 18 real: custo ótimo **391**, confirmado também por Held–Karp |
 | Mapa 18 real | Validado: 45 ligações e 45 pesos; **9–14 = 1** definido pelo usuário |
-| Testes automáticos | **96 aprovados**, incluindo estados visuais, os 324 pares do mapa 18 e integração SDL |
-| Roteiro SDL | **20 casos aprovados**, com capturas renderizadas |
+| Testes automáticos | **129 aprovados**, incluindo novos solvers, contratos, estados, comparação e integração SDL |
+| Roteiro SDL | **31 casos aprovados**, com capturas renderizadas |
 | Inspeção manual nativa | Pendente de conclusão |
 
-**O mapa 18 está liberado para Dijkstra e para a busca limitada (B).** O usuário definiu explicitamente **9–14 = 1**, complementando o rótulo ausente nas imagens. O JSON registra a proveniência, todos os pesos e `validado: true`. A força bruta didática e o enumerador do fecho continuam limitados a 9 nós; no mapa 18 use B. Ver [auditoria](docs/auditoria_mapa_18.md) e [resultados reais](docs/resultados_mapa_18.json).
+O mapa 18 está validado e disponível para Dijkstra, B e os novos métodos. O usuário definiu **9–14 = 1**; a proveniência continua no JSON. F/T continuam limitados a 9 nós. Para reproduzir 391 com H, selecionar **Malha original** com M. No fecho, cidades de passagem podem se repetir e o ótimo é outro problema. Ver [auditoria](docs/auditoria_mapa_18.md) e [comparação dos solvers](docs/comparacao_solvers.md).
 
 Dijkstra sozinho resolve A→B. O TSP direto exige ciclo Hamiltoniano nas arestas existentes; o TSP no fecho permite repetir cidades de passagem. São problemas distintos na malha original, mesmo quando os custos coincidem. A [comparação formal](docs/comparacao.md) apresenta também um controle em que os dois métodos recebem exatamente a mesma instância métrica.
 
-Força bruta ingênua é limitada a 9 nós antes da enumeração. A busca limitada usa até 2 segundos/200 mil estados e distingue ótimo comprovado, inexistência comprovada, melhor solução conhecida e limite sem solução encontrada. Ver [estratégia para 18 nós](docs/estrategia_18.md).
+Força bruta é limitada a 9 nós. O worker usa orçamento comum: 5 s por padrão,
+2 milhões de estados, DP até 256 MiB, 1000 varreduras 2-opt e 3000 snapshots
+por método. Q altera o tempo. Cancelamento/limite preservam uma rota completa
+quando encontrada, sem prova. Os tempos P/O/R separam preparação, otimização e
+reconstrução; o total inclui snapshots, sem repetir a busca.
 
 ## Verificações
 
@@ -67,6 +86,7 @@ Força bruta ingênua é limitada a 9 nós antes da enumeração. A busca limita
 .venv\Scripts\python.exe -B -m unittest discover -s tests -v
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 .venv\Scripts\python.exe -B scripts\comparar_metodos.py
+.venv\Scripts\python.exe -B scripts\demonstrar_solvers.py
 .venv\Scripts\python.exe -B scripts\validar_mapa_18.py
 .venv\Scripts\python.exe -B scripts\verificar.py
 ```
@@ -83,11 +103,14 @@ Use o ambiente com os requisitos para incluir os testes Pygame; sem Pygame, esse
 | `reprodutor.py` | Relógio da animação, independente de Pygame |
 | `busca_limitada.py` | Branch-and-bound com orçamento |
 | `comparacao.py` | Medições sem histórico e contadores separados |
+| `solvers.py` | Contrato, registro, modelos, orçamento e cinco novos solvers |
+| `comparacao_solvers.py` | Mesmo problema, oráculo certificado e gaps |
 | `data/` / `assets/referencias/` | Cadastros fixos e referências preservadas |
 | `tests/` / `scripts/` | Testes e geração de evidências |
 
 ```python
 from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra
+from solvers import executar, Orcamento
 
 grafo = carregar_mapa("data/mapa_05.json")
 print(dijkstra(grafo, 1, 3).caminho)    # (1, 2, 3)
@@ -95,6 +118,9 @@ print(tsp_forca_bruta(grafo, 1).custo) # 15
 print(tsp_dijkstra(grafo, 1).caminho)  # percurso físico
 eventos = []
 dijkstra(grafo, 1, 3, eventos=eventos)  # snapshots imutáveis
+resultado = executar("two_opt", grafo, 1, variante="fecho",
+                     orcamento=Orcamento(segundos=2))
+print(resultado.pipeline, resultado.custo, resultado.garantia)
 ```
 
 Destino inalcançável retorna caminho vazio e custo infinito. `GrafoInvalidoError` informa dados/IDs inválidos; `MapaNaoValidadoError` bloqueia cadastros pendentes. Pesos negativos, booleanos e não finitos são recusados. Dados e adjacência são imutáveis; não há geração de cidades ou pesos aleatórios.
@@ -105,4 +131,8 @@ Destino inalcançável retorna caminho vazio e custo infinito. `GrafoInvalidoErr
 
 Há um commit por tarefa da TSP-008 à TSP-021, com commits posteriores concluindo as TSP-004 e TSP-020 após a definição do peso 1. Permanece aberta a TSP-017 (inspeção manual nativa). O relatório TSP-021 foi atualizado com os resultados do mapa real. A fase 3D (TSP-022 a TSP-024) não foi iniciada.
 
-A **TSP-025** acrescenta a identificação visual dos métodos atuais. As TSP-026 a TSP-032 planejam contrato comum, `nearest_neighbor`, `two_opt`, `held_karp`, `christofides`, `ortools_solver` e sua comparação. Esses novos solvers ainda não estão implementados na interface. Ver [planejamento dos novos algoritmos](docs/novos_algoritmos.md).
+As **TSP-026 a TSP-032 foram implementadas**, com um commit por tarefa:
+contrato comum, cinco novos métodos e integração/comparação 2D.
+Veja [algoritmos](docs/novos_algoritmos.md), [evidências](docs/integracao_solvers.md)
+e [resultados comparáveis](docs/comparacao_solvers.md). A TSP-017 manual continua
+pendente; a fase 3D permanece futura.

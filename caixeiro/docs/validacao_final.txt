@@ -9,8 +9,19 @@ test_instancia_sintetica_de_18_nos_termina_com_prova (test_busca_limitada.BuscaL
 test_limites_invalidos (test_busca_limitada.BuscaLimitadaTests.test_limites_invalidos) ... ok
 test_orcamento_nao_declara_inexistencia_ou_otimo (test_busca_limitada.BuscaLimitadaTests.test_orcamento_nao_declara_inexistencia_ou_otimo) ... ok
 test_prova_de_ausencia_e_cidade_unica (test_busca_limitada.BuscaLimitadaTests.test_prova_de_ausencia_e_cidade_unica) ... ok
+test_limite_3_2_contra_held_karp_mesmo_fecho (test_christofides.ChristofidesTests.test_limite_3_2_contra_held_karp_mesmo_fecho) ... ok
+test_mapas_e_etapas_multigrafo (test_christofides.ChristofidesTests.test_mapas_e_etapas_multigrafo) ... ok
+test_matching_exato_supera_escolha_gulosa (test_christofides.ChristofidesTests.test_matching_exato_supera_escolha_gulosa) ... ok
+test_precondicoes (test_christofides.ChristofidesTests.test_precondicoes) ... ok
 test_metricas_distintas_e_controle_equivalente (test_comparacao.ComparacaoTests.test_metricas_distintas_e_controle_equivalente) ... ok
 test_repeticoes_invalidas (test_comparacao.ComparacaoTests.test_repeticoes_invalidas) ... ok
+test_oraculo_cortado_nao_e_certificado (test_comparacao_solvers.ComparacaoSolversTests.test_oraculo_cortado_nao_e_certificado) ... ok
+test_oraculo_e_gap_do_mesmo_modelo (test_comparacao_solvers.ComparacaoSolversTests.test_oraculo_e_gap_do_mesmo_modelo) ... <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+<frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+<frozen importlib._bootstrap>:491: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+ok
+test_rejeita_mistura_de_modelos_origens_e_pesos (test_comparacao_solvers.ComparacaoSolversTests.test_rejeita_mistura_de_modelos_origens_e_pesos) ... ok
+test_sem_oraculo_nao_inventa_gap_e_zero_nao_divide (test_comparacao_solvers.ComparacaoSolversTests.test_sem_oraculo_nao_inventa_gap_e_zero_nao_divide) ... ok
 test_caminho_inverso_no_grafo_nao_direcionado (test_dijkstra.DijkstraTests.test_caminho_inverso_no_grafo_nao_direcionado) ... ok
 test_caso_de_aceite_1_2_3_com_custo_6 (test_dijkstra.DijkstraTests.test_caso_de_aceite_1_2_3_com_custo_6) ... ok
 test_destino_inalcancavel_retorna_vazio_e_infinito (test_dijkstra.DijkstraTests.test_destino_inalcancavel_retorna_vazio_e_infinito) ... ok
@@ -38,6 +49,9 @@ test_estrela_distingue_ciclo_hamiltoniano_e_passeio (test_fecho.FechoTests.test_
 test_fecho_preserva_caminhos_e_distancias_sem_mudar_original (test_fecho.FechoTests.test_fecho_preserva_caminhos_e_distancias_sem_mudar_original) ... ok
 test_limites_e_mapa_pendente (test_fecho.FechoTests.test_limites_e_mapa_pendente) ... ok
 test_tsp_mapa_05_custo_e_expansao (test_fecho.FechoTests.test_tsp_mapa_05_custo_e_expansao) ... ok
+test_coincide_forca_bruta_ambos_modelos (test_held_karp.HeldKarpTests.test_coincide_forca_bruta_ambos_modelos) ... ok
+test_inviavel_singleton_e_limites_sem_prova (test_held_karp.HeldKarpTests.test_inviavel_singleton_e_limites_sem_prova) ... ok
+test_mapa_18_ciclo_391_memoria_e_camadas (test_held_karp.HeldKarpTests.test_mapa_18_ciclo_391_memoria_e_camadas) ... ok
 test_catalogo_distingue_caminho_hamiltoniano_e_fecho (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_catalogo_distingue_caminho_hamiltoniano_e_fecho) ... ok
 test_progresso_informa_as_fases_reais_do_metodo_composto (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_progresso_informa_as_fases_reais_do_metodo_composto) ... ok
 test_rotulo_nao_chama_busca_cortada_de_otima_ou_inexistente (test_identidade_algoritmos.IdentidadeAlgoritmosTests.test_rotulo_nao_chama_busca_cortada_de_otima_ou_inexistente) ... ok
@@ -61,8 +75,23 @@ test_rotulo_56_confirmado_em_4_14 (test_mapa_18.Mapa18Tests.test_rotulo_56_confi
 test_todos_os_pesos_e_ligacoes_conferidos (test_mapa_18.Mapa18Tests.test_todos_os_pesos_e_ligacoes_conferidos) ... ok
 test_branch_bound_ciclo_real_otimo_391 (test_mapa_18_algoritmos.Mapa18AlgoritmosTests.test_branch_bound_ciclo_real_otimo_391) ... ok
 test_dijkstra_todos_os_pares_contra_floyd_warshall (test_mapa_18_algoritmos.Mapa18AlgoritmosTests.test_dijkstra_todos_os_pares_contra_floyd_warshall) ... ok
+test_compara_apenas_mesmo_modelo (test_nearest_neighbor.NearestNeighborTests.test_compara_apenas_mesmo_modelo) ... ok
+test_desconectado_e_bloqueio_guloso_nao_sao_mesma_coisa (test_nearest_neighbor.NearestNeighborTests.test_desconectado_e_bloqueio_guloso_nao_sao_mesma_coisa) ... ok
+test_empates_por_id_e_origem_arbitraria (test_nearest_neighbor.NearestNeighborTests.test_empates_por_id_e_origem_arbitraria) ... ok
+test_mapas_conectados_e_custos_fisicos (test_nearest_neighbor.NearestNeighborTests.test_mapas_conectados_e_custos_fisicos) ... ok
+test_ausencia_de_dependencia_nao_impede_demais_solvers (test_ortools_solver.DependenciaTests.test_ausencia_de_dependencia_nao_impede_demais_solvers) ... ok
+test_escala_exata_e_overflow (test_ortools_solver.DependenciaTests.test_escala_exata_e_overflow) ... ok
+test_decimais_origem_e_arcos_proibidos (test_ortools_solver.OrtoolsTests.test_decimais_origem_e_arcos_proibidos) ... ok
+test_mapa_5_e_18_ambas_variantes_sem_falsa_prova (test_ortools_solver.OrtoolsTests.test_mapa_5_e_18_ambas_variantes_sem_falsa_prova) ... ok
+test_timeout_sem_solucao_e_cancelamento_cooperativo (test_ortools_solver.OrtoolsTests.test_timeout_sem_solucao_e_cancelamento_cooperativo) ... ok
+test_uma_cidade (test_ortools_solver.OrtoolsTests.test_uma_cidade) ... ok
 test_limites_e_limpeza (test_reprodutor.ReprodutorTests.test_limites_e_limpeza) ... ok
 test_play_pause_passos_velocidade_e_retorno (test_reprodutor.ReprodutorTests.test_play_pause_passos_velocidade_e_retorno) ... ok
+test_adaptadores_preservam_custos_e_tempos (test_solvers.ContratoTests.test_adaptadores_preservam_custos_e_tempos) ... ok
+test_estados_distintos (test_solvers.ContratoTests.test_estados_distintos) ... ok
+test_guardas (test_solvers.ContratoTests.test_guardas) ... ok
+test_limite_eventos_e_progresso_cancelavel (test_solvers.ContratoTests.test_limite_eventos_e_progresso_cancelavel) ... ok
+test_original_18_preserva_391 (test_solvers.ContratoTests.test_original_18_preserva_391) ... ok
 test_cidade_unica_e_ciclo_de_duas_cidades (test_tsp.ForcaBrutaTests.test_cidade_unica_e_ciclo_de_duas_cidades) ... ok
 test_limite_antes_de_enumerar_18_nos (test_tsp.ForcaBrutaTests.test_limite_antes_de_enumerar_18_nos) ... ok
 test_mapa_05_ciclo_otimo_e_24_ordens (test_tsp.ForcaBrutaTests.test_mapa_05_ciclo_otimo_e_24_ordens) ... ok
@@ -91,6 +120,10 @@ test_rejeita_json_quebrado_chaves_duplicadas_e_utf8_invalido (test_tsp_core.Graf
 test_rejeita_metadados_invalidos (test_tsp_core.GrafoTests.test_rejeita_metadados_invalidos) ... ok
 test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos (test_tsp_core.GrafoTests.test_rejeita_pesos_negativos_booleanos_textos_e_nao_finitos) ... ok
 test_validado_com_peso_desconhecido_ou_pendencias_e_invalido (test_tsp_core.GrafoTests.test_validado_com_peso_desconhecido_ou_pendencias_e_invalido) ... ok
+test_melhoria_estrita_e_snapshots (test_two_opt.TwoOptTests.test_melhoria_estrita_e_snapshots) ... ok
+test_pipeline_nunca_piora_e_reexpande (test_two_opt.TwoOptTests.test_pipeline_nunca_piora_e_reexpande) ... ok
+test_sem_melhoria_e_limite_preservam_rota (test_two_opt.TwoOptTests.test_sem_melhoria_e_limite_preservam_rota) ... ok
+test_valida_inicial_e_rejeita_arcos_ausentes (test_two_opt.TwoOptTests.test_valida_inicial_e_rejeita_arcos_ausentes) ... ok
 test_cliques_teclado_worker_e_bloqueio (test_ui.InterfaceTests.test_cliques_teclado_worker_e_bloqueio) ... ok
 test_comparacao_permite_identificar_e_focar_uma_rota (test_ui.InterfaceTests.test_comparacao_permite_identificar_e_focar_uma_rota) ... ok
 test_fase_em_execucao_erro_e_limpeza_nao_se_confundem (test_ui.InterfaceTests.test_fase_em_execucao_erro_e_limpeza_nao_se_confundem) ... ok
@@ -99,8 +132,11 @@ test_pesos_referencia_e_resize (test_ui.InterfaceTests.test_pesos_referencia_e_r
 test_selecao_indisponivel_e_layout_minimo (test_ui.InterfaceTests.test_selecao_indisponivel_e_layout_minimo) ... ok
 test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel (test_ui.InterfaceTests.test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel) ... ok
 test_zoom_ancorado_reset_e_custos_preservados (test_ui.InterfaceTests.test_zoom_ancorado_reset_e_custos_preservados) ... ok
+test_cancelamento_limite_dependencia_e_layout_minimo (test_ui_solvers.InterfaceSolversTests.test_cancelamento_limite_dependencia_e_layout_minimo) ... ok
+test_cinco_metodos_botoes_atalhos_e_historico (test_ui_solvers.InterfaceSolversTests.test_cinco_metodos_botoes_atalhos_e_historico) ... ok
+test_comparacao_paginas_mesmo_problema_e_modelo_estavel (test_ui_solvers.InterfaceSolversTests.test_comparacao_paginas_mesmo_problema_e_modelo_estavel) ... ok
 
 ----------------------------------------------------------------------
-Ran 96 tests in 0.802s
+Ran 129 tests in 4.533s
 
 OK

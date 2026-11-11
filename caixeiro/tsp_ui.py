@@ -10,7 +10,8 @@ from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra, Err
 from reprodutor import Reprodutor
 from busca_limitada import tsp_branch_bound
 from identidade_algoritmos import METODOS, garantia_resultado
-from solvers import executar, disponibilidade, MODELOS
+from solvers import executar, disponibilidade, MODELOS, REGISTRO, ORIGINAL, FECHO, Orcamento
+from comparacao_solvers import comparar_solvers, resumir
 
 
 ROOT = Path(__file__).resolve().parent
@@ -60,6 +61,11 @@ class Aplicacao:
         self.resultado_focado = None
         self.progresso = SimpleQueue()
         self.cancelar = Event()
+        self.variante = FECHO
+        self.limite_segundos = 5.0
+        self.pagina_metodos = 0
+        self.pagina_resultados = 0
+        self.comparacao_info = None
         self.layout()
 
     @property
@@ -82,13 +88,26 @@ class Aplicacao:
         self.historico = []
         self.player.carregar(())
         self.resultado_focado = None
+        self.pagina_resultados = 0
+        self.comparacao_info = None
         self.estado_execucao = "pronto"
         self.metodo_em_execucao = None
         self.fase_execucao = "Pronto para executar o método selecionado."
         limite = METODOS[self.metodo_selecionado].limite_nos
-        if limite is not None and len(self.mapa.nos) > limite:
+        motivo = self.motivo_indisponivel(self.metodo_selecionado)
+        if motivo:
             self.estado_execucao = "bloqueado"
-            self.fase_execucao = f"Método disponível até {limite} cidades; este mapa possui {len(self.mapa.nos)}."
+            self.fase_execucao = motivo
+
+    def variante_metodo(self, nome):
+        return {"dijkstra": "caminho_minimo", "forca": ORIGINAL,
+                "fecho": FECHO, "limitada": ORIGINAL, "christofides": FECHO}.get(nome, self.variante)
+
+    def motivo_indisponivel(self, nome):
+        if nome == "comparar_todos":
+            return "" if self.mapa.validado else "Mapa não validado."
+        return disponibilidade("forca" if nome == "comparar" else nome, self.mapa,
+                               None if nome == "comparar" else self.variante_metodo(nome))
 
     def selecionar_no(self, node_id):
         if self.futuro is not None:
@@ -109,10 +128,14 @@ class Aplicacao:
             self.status = f"Método indisponível: {metodo}"
             return
         self.metodo_selecionado = metodo
+        if metodo in ("nearest_neighbor", "two_opt", "held_karp", "christofides", "ortools_solver"):
+            self.pagina_metodos = 1
+        elif metodo in REGISTRO:
+            self.pagina_metodos = 0
         self.limpar()
         try:
             self.mapa.exigir_validado()
-            motivo = disponibilidade("forca" if metodo == "comparar" else metodo, self.mapa)
+            motivo = self.motivo_indisponivel(metodo)
             if motivo:
                 raise LimiteTSPError(motivo)
         except ErroGrafo as erro:
@@ -122,21 +145,29 @@ class Aplicacao:
             return
         mapa, origem, destino = self.mapa, self.origem, self.destino
         self.estado_execucao = "executando"
-        self.metodo_em_execucao = "forca" if metodo == "comparar" else metodo
+        self.metodo_em_execucao = "forca" if metodo in ("comparar", "comparar_todos") else metodo
         self.fase_execucao = "Preparando a execução."
         self.status = f"Executando {METODOS[metodo].titulo}. A janela continua respondendo."
         self.progresso = SimpleQueue()
         progresso = self.progresso
         self.cancelar = Event()
         cancelar = self.cancelar
+        variante = self.variante_metodo(metodo)
+        orcamento = Orcamento(segundos=self.limite_segundos)
 
         def calcular():
             eventos, resultados, tempos = [], {}, {}
+            if metodo == "comparar_todos":
+                resultados, _ = comparar_solvers(mapa, origem, variante, orcamento=orcamento,
+                                                 cancelar=cancelar, progresso=lambda n, f: progresso.put((n, f)))
+                return resultados, {n: dict(r.tempos_ms)["total"] for n, r in resultados.items()}, [e for r in resultados.values() for e in r.eventos]
             metodos = ("forca", "fecho") if metodo == "comparar" else (metodo,)
             for nome in metodos:
                 progresso.put((nome, "Calculando o percurso"))
                 informar = lambda fase, metodo_atual=nome: progresso.put((metodo_atual, fase))
-                r = executar(nome, mapa, origem, destino=destino, cancelar=cancelar, progresso=informar)
+                modo = (ORIGINAL if nome == "forca" else FECHO) if metodo == "comparar" else variante
+                r = executar(nome, mapa, origem, destino=destino, variante=modo, orcamento=orcamento,
+                             cancelar=cancelar, progresso=informar)
                 tempos[nome] = dict(r.tempos_ms)["total"]
                 eventos.extend(r.eventos)
                 resultados[nome] = r
@@ -228,18 +259,24 @@ class Aplicacao:
             passo = self.player.passo
             chave = passo.metodo_origem or {"forca_bruta": "forca", "tsp_fecho": "fecho", "dijkstra": "dijkstra"}.get(passo.algoritmo, chave)
             estado = "Reproduzindo" if self.player.reproduzindo else "Pausado"
-            etapa = "Dijkstra" if passo.algoritmo == "dijkstra" else "Caixeiro exato"
+            etapa = "Dijkstra" if passo.algoritmo == "dijkstra" else METODOS[chave].curto
             tipos = {"inicio": "inicialização", "visita": "visitando cidade", "relaxamento": "atualizando distância",
                      "candidato": "avaliando ordem de visitas", "fim": "resultado", "sem_caminho": "destino inalcançável"}
             fase = f"{etapa}: {tipos.get(passo.tipo, passo.tipo)} · etapa {self.player.indice + 1}/{len(self.historico)}"
         elif self.resultado_focado in self.resultados:
             chave = self.resultado_focado
             fase = "Percurso selecionado no painel de resultados."
+            termino = getattr(self.resultados[chave], "termino", "")
+            estado = "Cancelado" if termino == "cancelado" else "Limite atingido" if termino.startswith("limite_") else "Indisponível" if termino == "indisponivel" else "Concluído"
         elif self.resultados:
             fase = "Clique em um resultado para destacar o percurso." if len(self.resultados) > 1 else "Resultado e percurso exibidos abaixo."
         metodo = METODOS[chave]
+        resultado = self.resultados.get(chave)
+        modo = getattr(resultado, "variante", self.variante_metodo(chave))
+        problema = metodo.problema if chave == "comparar" else MODELOS.get(modo, metodo.problema)
+        garantia = garantia_resultado(chave, resultado) if resultado is not None else metodo.garantia
         return {"metodo": chave, "titulo": metodo.titulo, "estado": estado,
-                "fase": fase, "problema": metodo.problema, "garantia": metodo.garantia, "cor": metodo.cor}
+                "fase": fase, "problema": problema, "garantia": garantia, "cor": metodo.cor}
 
     def desenhar_identidade(self):
         identidade = self.identidade_visual()
@@ -291,12 +328,12 @@ class Aplicacao:
         pygame.draw.rect(self.tela, metodo.cor if destaque else LINE, rect, 2 if destaque else 1, border_radius=8)
         if destaque:
             pygame.draw.rect(self.tela, metodo.cor, (rect.x, rect.y + 9, 4, rect.h - 18), border_radius=2)
-        self.texto_ajustado(metodo.curto, (rect.x + 12, rect.y + 5), rect.w - 48, 15, metodo.cor, True)
-        disponivel = metodo.limite_nos is None or len(self.mapa.nos) <= metodo.limite_nos
-        estado = "Em execução" if self.futuro is not None and self.metodo_em_execucao == chave else f"Indisponível · até {metodo.limite_nos} cidades" if not disponivel else "Em destaque" if self.resultado_focado == chave else "Selecionado" if self.metodo_selecionado == chave else metodo.garantia
+        self.texto_ajustado(metodo.curto, (rect.x + 12, rect.y + 2), rect.w - 48, 14, metodo.cor, True)
+        motivo = self.motivo_indisponivel(chave)
+        estado = "Em execução" if self.futuro is not None and self.metodo_em_execucao == chave else f"Indisponível: {motivo}" if motivo else "Em destaque" if self.resultado_focado == chave else "Selecionado" if self.metodo_selecionado == chave else metodo.garantia
         if self.player.passo is not None and destaque:
             estado = "Reproduzindo etapa" if self.player.reproduzindo else "Reprodução pausada"
-        self.texto_ajustado(estado, (rect.x + 12, rect.y + 26), rect.w - 48, 11, INK)
+        self.texto_ajustado(estado, (rect.x + 12, rect.y + 20), rect.w - 48, 10, INK)
         tecla = self.fonte(12, True).render(metodo.atalho, True, metodo.cor)
         self.tela.blit(tecla, tecla.get_rect(center=(rect.right - 22, rect.centery)))
 
@@ -307,28 +344,37 @@ class Aplicacao:
         self.botao("mapa1", "1 · 5 nós", (42, 184, 116, 33), selecionado=self.indice_mapa == 0)
         self.botao("mapa2", "2 · 18 nós", (170, 184, 116, 33), BLUE, selecionado=self.indice_mapa == 1)
         self.texto(f"Origem: {self.origem}    Destino: {self.destino}", (42, 239), 16, INK, True)
-        self.texto(f"Clique para definir {self.selecao}", (42, 266), 12, MUTED)
-        self.texto("MÉTODOS DISPONÍVEIS", (42, 294), 11, MUTED, True)
         livre = self.futuro is None
-        for i, chave in enumerate(("dijkstra", "forca", "fecho", "limitada")):
-            self.cartao_metodo(chave, (42, 317 + i * 52, 244, 46))
-        self.botao("comparar", "C  Comparar os dois TSP", (42, 538, 244, 34), METODOS["comparar"].cor, livre,
+        self.botao("modelo", "M  " + ("Fecho métrico" if self.variante == FECHO else "Malha original"), (42, 270, 244, 28), MUTED, livre)
+        self.botao("orcamento", f"Q  Orçamento: {self.limite_segundos:g} s / método", (42, 305, 244, 28), MUTED, livre)
+        self.texto("MÉTODOS " + ("2/2" if self.pagina_metodos else "1/2"), (42, 343), 11, MUTED, True)
+        self.botao("pagina_metodos", "‹ ›", (236, 339, 50, 22), MUTED, livre)
+        paginas = (("dijkstra", "forca", "fecho", "limitada"),
+                   ("nearest_neighbor", "two_opt", "held_karp", "christofides", "ortools_solver"))
+        for i, chave in enumerate(paginas[self.pagina_metodos]):
+            self.cartao_metodo(chave, (42, 366 + i * 38, 244, 36))
+        self.botao("comparar_todos", "G  Comparar métodos", (42, 559, 244, 30), METODOS["comparar_todos"].cor, livre,
+                   selecionado=self.metodo_selecionado == "comparar_todos")
+        self.botao("comparar", "C  Contrastar modelos", (42, 596, 244, 28), METODOS["comparar"].cor, livre,
                    selecionado=self.metodo_selecionado == "comparar")
-        self.botao("original", "O  Referência", (42, 593, 116, 32), MUTED)
+        self.botao("original", "O  Referência", (42, 633, 116, 28), MUTED)
         titulo_pesos = ("todos", "do nó", "ocultos")[self.modo_pesos]
-        self.botao("pesos", f"P  {titulo_pesos}", (170, 593, 116, 32), MUTED)
-        self.botao("limpar", "L  Limpar resultados", (42, 637, 244, 32), MUTED, livre)
+        self.botao("pesos", f"P  {titulo_pesos}", (170, 633, 116, 28), MUTED)
+        self.botao("limpar", "L  Limpar resultados", (42, 670, 244, 28), MUTED, livre)
         passo = self.player.passo
         if passo is None:
             metodo = METODOS[self.identidade_visual()["metodo"]]
             self.linhas(f"{metodo.descricao}. {metodo.garantia}.",
-                        (42, 689), 244, tamanho=12, max_linhas=max(1, (self.lateral.bottom - 696) // 18))
+                        (42, 711), 244, tamanho=12, max_linhas=max(1, (self.lateral.bottom - 718) // 18))
         else:
-            self.texto_ajustado(f"Etapa: {passo.algoritmo} · {passo.tipo}", (42, 685), 244, 12, INK)
+            self.texto_ajustado(f"Etapa: {passo.algoritmo} · {passo.tipo}", (42, 711), 244, 12, INK)
             dist = ", ".join(f"{i}:{d:g}" for i, d in passo.distancias)
-            self.texto_ajustado(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 708), 244, 11, MUTED)
+            if passo.adicionadas:
+                dist = "Novas arestas: " + str(passo.adicionadas)
             if self.lateral.bottom > 760:
-                self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 736), 244, 12, max_linhas=3)
+                self.texto_ajustado(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 737), 244, 11, MUTED)
+            if self.lateral.bottom > 760:
+                self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 763), 244, 12, max_linhas=3)
 
     def rotas_exibidas(self):
         passo = self.player.passo
@@ -371,6 +417,10 @@ class Aplicacao:
                         pygame.draw.line(self.tela, cor_rota, a, b, espessura)
                 passo = self.player.passo
                 if passo and passo.relaxamento and frozenset(passo.relaxamento) == frozenset((aresta.origem, aresta.destino)):
+                    pygame.draw.line(self.tela, ORANGE, a, b, 5)
+                if passo and (aresta.origem, aresta.destino) in passo.adicionadas:
+                    pygame.draw.line(self.tela, GREEN, a, b, 5)
+                if passo and (aresta.origem, aresta.destino) in passo.removidas:
                     pygame.draw.line(self.tela, ORANGE, a, b, 5)
                 delta = b - a
                 normal = pygame.Vector2(-delta.y, delta.x)
@@ -417,7 +467,13 @@ class Aplicacao:
     def desenhar_resultados(self):
         self.painel(self.resultados_rect)
         x, y = self.resultados_rect.topleft
-        self.texto("02  RESULTADOS", (x + 22, y + 17), 12, GREEN, True)
+        paginas = max(1, (len(self.resultados) + 1) // 2)
+        if paginas > 1:
+            self.botao("resultado_prev", "‹", (x + 18, y + 10, 30, 29), MUTED)
+            self.texto(f"{self.pagina_resultados + 1} / {paginas}", (x + 60, y + 16), 12, GREEN, True)
+            self.botao("resultado_next", "›", (x + 125, y + 10, 30, 29), MUTED)
+        else:
+            self.texto("02  RESULTADOS", (x + 22, y + 17), 12, GREEN, True)
         if self.historico:
             comandos = (("reproduzir", "Play"), ("pausar", "Pausar"), ("voltar", "<"),
                         ("proximo", ">"), ("velocidade", f"{self.player.velocidade:g}x"), ("fim", "Final"))
@@ -426,8 +482,9 @@ class Aplicacao:
         if not self.resultados:
             self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 15, max_linhas=6)
             return
-        largura = (self.resultados_rect.w - 56) // max(1, len(self.resultados))
-        for indice, (nome, resultado) in enumerate(self.resultados.items()):
+        visiveis = list(self.resultados.items())[self.pagina_resultados * 2:self.pagina_resultados * 2 + 2]
+        largura = (self.resultados_rect.w - 56) // max(1, len(visiveis))
+        for indice, (nome, resultado) in enumerate(visiveis):
             cx = x + 22 + indice * (largura + 12)
             cor = CORES_METODOS[nome]
             card = pygame.Rect(cx, y + 46, largura, 163)
@@ -436,15 +493,25 @@ class Aplicacao:
             pygame.draw.rect(self.tela, (247, 249, 247), card, border_radius=8)
             pygame.draw.rect(self.tela, cor if focado else LINE, card, 2 if focado else 1, border_radius=8)
             self.texto_ajustado(METODOS[nome].curto, (cx + 12, y + 52), largura - 24, 15, cor, True)
-            self.texto_ajustado(METODOS[nome].problema, (cx + 12, y + 76), largura - 24, 10, MUTED)
+            self.texto_ajustado(MODELOS.get(getattr(resultado, "variante", ""), METODOS[nome].problema), (cx + 12, y + 76), largura - 24, 10, MUTED)
             custo = resultado.custo if resultado.caminho else "—"
             self.texto(f"Custo: {custo}", (cx + 12, y + 92), 21, INK, True)
-            self.texto_ajustado(f"{self.tempos.get(nome, 0):.3f} ms · total", (cx + largura // 2, y + 101), largura // 2 - 12, 11, MUTED)
+            if self.comparacao_info:
+                gap = self.comparacao_info["gaps"][nome]["percentual"]
+                label = f"Gap: {gap:.1f}%" if gap is not None else "Gap: sem certificado"
+                self.texto_ajustado(label, (cx + largura // 2, y + 99), largura // 2 - 12, 11, MUTED)
+            t = dict(getattr(resultado, "tempos_ms", ()))
+            tempo = f"P {t.get('preparacao', 0):.1f} · O {t.get('otimizacao', 0):.1f} · R {t.get('reconstrucao', 0):.1f} ms | total {self.tempos.get(nome, 0):.1f}"
+            self.texto_ajustado(tempo, (cx + 12, y + 120), largura - 24, 10, MUTED)
             rota = " → ".join(map(str, resultado.caminho)) or ("Nenhuma rota no orçamento." if not getattr(resultado, "otimo", True) else "Sem percurso viável.")
-            self.linhas(rota, (cx + 12, y + 124), largura - 24, 13, cor, max_linhas=2)
+            self.linhas(rota, (cx + 12, y + 136), largura - 24, 12, cor, max_linhas=2)
             if hasattr(resultado, "contadores"):
                 c = resultado.contadores[-1]
-                self.texto_ajustado(f"{c.nome}: {c.valor} {c.unidade}", (cx + 12, y + 167), largura - 24, 11, MUTED)
+                memoria = next((c.valor for c in resultado.contadores if c.unidade == "bytes"), None)
+                label = f"{c.nome}: {c.valor} {c.unidade}"
+                if memoria is not None:
+                    label += f" · DP {memoria / 1024**2:.1f} MiB" if memoria >= 1024**2 else f" · DP {memoria / 1024:.1f} KiB"
+                self.texto_ajustado(label, (cx + 12, y + 173), largura - 24, 11, MUTED)
             elif hasattr(resultado, "estados_testados"):
                 self.texto(f"{resultado.estados_testados} ordens examinadas", (cx + 12, y + 167), 11, MUTED)
             elif hasattr(resultado, "estado"):
@@ -472,7 +539,8 @@ class Aplicacao:
             self.layout()
         elif evento.type == pygame.KEYDOWN:
             atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
-                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_b: "limitada", pygame.K_t: "fecho", pygame.K_x: "cancelar"}
+                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_b: "limitada", pygame.K_t: "fecho", pygame.K_x: "cancelar",
+                       pygame.K_n: "nearest_neighbor", pygame.K_i: "two_opt", pygame.K_h: "held_karp", pygame.K_a: "christofides", pygame.K_r: "ortools_solver", pygame.K_g: "comparar_todos", pygame.K_m: "modelo", pygame.K_q: "orcamento", pygame.K_TAB: "pagina_metodos"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -516,8 +584,24 @@ class Aplicacao:
         elif chave == "reset":
             self.zoom = 1
             self.pan.update(0, 0)
-        elif chave in ("forca", "dijkstra", "fecho", "comparar", "limitada"):
+        elif chave in REGISTRO or chave in ("comparar", "comparar_todos"):
             self.iniciar(chave)
+        elif chave == "pagina_metodos":
+            self.pagina_metodos = 1 - self.pagina_metodos
+        elif chave == "modelo":
+            self.variante = ORIGINAL if self.variante == FECHO else FECHO
+            self.limpar()
+            self.status = "Modelo selecionado: " + MODELOS[self.variante] + ". F/B usam malha original; T/A usam fecho."
+        elif chave == "orcamento":
+            tempos = (0.5, 2.0, 5.0, 15.0)
+            self.limite_segundos = tempos[(tempos.index(self.limite_segundos) + 1) % len(tempos)]
+            self.status = f"Orçamento por método: {self.limite_segundos:g} s, 2 milhões de estados, DP até 256 MiB."
+        elif chave in ("resultado_prev", "resultado_next"):
+            paginas = max(1, (len(self.resultados) + 1) // 2)
+            self.pagina_resultados = (self.pagina_resultados + (1 if chave == "resultado_next" else -1)) % paginas
+            nomes = list(self.resultados)[self.pagina_resultados * 2:self.pagina_resultados * 2 + 2]
+            self.resultado_focado = next((n for n in nomes if self.resultados[n].caminho), nomes[0] if nomes else None)
+            self.player.comando("fim")
         elif chave == "limpar":
             self.limpar()
             self.status = "Resultados limpos."
@@ -538,17 +622,23 @@ class Aplicacao:
         if self.futuro is not None and self.futuro.done():
             try:
                 self.resultados, self.tempos, self.historico = self.futuro.result()
+                if self.metodo_selecionado == "comparar_todos":
+                    self.comparacao_info = resumir(self.resultados)
+                    self.resultado_focado = next((n for n, r in self.resultados.items() if r.caminho), None)
                 self.player.carregar(self.historico)
                 self.status = "Cálculo concluído."
                 self.estado_execucao = "concluido"
                 self.fase_execucao = "Resultado concluído."
                 finais = {getattr(r, "termino", "") for r in self.resultados.values()}
-                if "cancelado" in finais:
+                if "cancelado" in finais or self.cancelar.is_set():
                     self.estado_execucao = "cancelado"
                     self.fase_execucao = "Execução cancelada · sem prova de ótimo."
                 elif any(f.startswith("limite_") for f in finais):
                     self.estado_execucao = "limitado"
                     self.fase_execucao = "Orçamento atingido · consulte a garantia do resultado."
+                elif finais == {"indisponivel"}:
+                    self.estado_execucao = "bloqueado"
+                    self.fase_execucao = "Dependência ou método indisponível."
             except Exception as erro:
                 self.status = f"Falha no cálculo: {erro}"
                 self.estado_execucao = "erro"
