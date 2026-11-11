@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. O checklist foi reconciliado com os arquivos disponíveis: a base recebida em `docs/ativ/` contém as referências e os materiais da aula; o código Python, os JSON e os testes ainda serão implementados.
+**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis e o cadastro/testes do mapa 5 já estão presentes; o núcleo matemático, o mapa 18 e a interface ainda serão implementados.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -21,10 +21,11 @@
   - **Aceite:** ambas acessíveis em `assets/referencias/`.
   - **Conferido:** cópias binariamente idênticas às imagens em `docs/ativ/` (SHA-256 iguais). Nenhum redimensionamento ou edição foi aplicado.
 
-- [ ] **TSP-002 — Transcrever e testar o mapa de 5 nós** · `P0 / Medium`
+- [x] **TSP-002 — Transcrever e testar o mapa de 5 nós** · `P0 / Medium`
   - Preservar 5 IDs, 8 arestas e todos os pesos da figura.
   - Impedir criação automática de arestas ausentes.
   - **Aceite:** ciclo de referência `1-2-3-5-4-1` tem custo 15.
+  - **Conferido:** `data/mapa_05.json` preserva os 5 IDs, as 8 arestas e seus pesos. Os 6 testes em `tests/test_mapa_05.py` passaram com `python -B -m unittest discover -s tests -v`; cobrem também as ligações ausentes e o ciclo inverso.
 
 - [ ] **TSP-003 — Preparar o cadastro do mapa de 18 nós** · `P0 / Medium`
   - Preservar os 18 IDs, coordenadas para desenho e pesos identificáveis.
@@ -156,4 +157,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-002: transcrever e testar o mapa de 5 nós.** A auditoria do mapa de 18 nós (TSP-004) continua bloqueando seus cálculos até confirmar todos os pesos. A interface e o smoke test serão executados após implementar suas dependências.
+**TSP-003: preparar o cadastro do mapa de 18 nós.** A auditoria do mapa de 18 nós (TSP-004) continua bloqueando seus cálculos até confirmar todos os pesos. A interface e o smoke test serão executados após implementar suas dependências.

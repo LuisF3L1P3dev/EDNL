@@ -1,0 +1,26 @@
+{
+  "id": "mapa_05",
+  "nome": "Mapa 1 — 5 nós",
+  "direcionado": false,
+  "validado": true,
+  "referencia": "assets/referencias/mapa_05_original.png",
+  "sistema_coordenadas": "normalizadas_0_1",
+  "observacoes": "As coordenadas servem apenas ao desenho. Os pesos são fixos e foram transcritos da referência; arestas ausentes não devem ser criadas.",
+  "nos": [
+    { "id": 1, "x": 0.140, "y": 0.465 },
+    { "id": 2, "x": 0.524, "y": 0.186 },
+    { "id": 3, "x": 0.873, "y": 0.465 },
+    { "id": 4, "x": 0.310, "y": 0.810 },
+    { "id": 5, "x": 0.677, "y": 0.814 }
+  ],
+  "arestas": [
+    { "origem": 1, "destino": 2, "peso": 2 },
+    { "origem": 1, "destino": 4, "peso": 3 },
+    { "origem": 1, "destino": 5, "peso": 6 },
+    { "origem": 2, "destino": 3, "peso": 4 },
+    { "origem": 2, "destino": 4, "peso": 3 },
+    { "origem": 3, "destino": 4, "peso": 7 },
+    { "origem": 3, "destino": 5, "peso": 3 },
+    { "origem": 4, "destino": 5, "peso": 3 }
+  ]
+}

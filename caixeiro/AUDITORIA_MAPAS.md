@@ -2,7 +2,7 @@
 
 ## Regras
 
-**Estado dos artefatos:** as referências em `assets/referencias/` já estão presentes e foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). A transcrição descrita abaixo é uma especificação provisória; os arquivos JSON e os testes ainda serão criados nas tarefas seguintes.
+**Estado dos artefatos:** as referências em `assets/referencias/` foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). O mapa 5 já tem cadastro JSON e testes (TSP-002). A transcrição do mapa 18 continua provisória; seu JSON e sua auditoria serão tratados nas próximas tarefas.
 
 Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A transcrição para JSON não altera pesos, conectividade ou número de nós. Coordenadas normalizadas têm finalidade apenas visual; **não** representam distância.
 
@@ -13,6 +13,8 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 - **8 arestas:** `1-2:2`, `1-4:3`, `1-5:6`, `2-3:4`, `2-4:3`, `3-4:7`, `3-5:3`, `4-5:3`.
 - **Não há aresta direta:** `1-3` nem `2-5`.
 - **Verificação:** o ciclo `1-2-3-5-4-1` custa `15`.
+- **Cadastro:** `data/mapa_05.json`, com coordenadas normalizadas exclusivamente para desenho e `validado: true`.
+- **Validação automatizada:** 6 testes aprovados em `tests/test_mapa_05.py`; incluem todos os pesos, a ausência de `1-3` e `2-5` e o ciclo de referência/inverso. Comando: `python -B -m unittest discover -s tests -v`.
 
 ## Mapa 2 — 18 nós
 

@@ -4,14 +4,14 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 
 > **Escopo inicial: 2D.** A migração para 3D será uma etapa posterior, preservando os dados dos grafos e o código dos algoritmos. **Não gerar cidades, arestas ou pesos aleatórios.**
 
-> **Andamento real:** TSP-001 concluída: as duas referências foram copiadas de `docs/ativ/` para `assets/referencias/`, preservando os bytes originais (SHA-256 conferido). Os arquivos Python, JSON, requisitos e testes descritos neste documento ainda fazem parte do planejamento. As seções abaixo especificam o comportamento esperado; não representam funcionalidades já executáveis. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
+> **Andamento real:** TSP-001 e TSP-002 concluídas. As referências originais estão em `assets/referencias/` (SHA-256 conferido); o mapa de 5 nós está em `data/mapa_05.json`, com 6 testes aprovados. O núcleo matemático, o mapa 18, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
 
 ## Situação atual
 
 | Item | Estado |
 |---|---|
 | Referências dos mapas 1 e 2 | ✅ Organizadas e conferidas em `assets/referencias/` |
-| Mapa 1 — 5 nós, 8 arestas | ⏳ Cadastro JSON e testes pendentes |
+| Mapa 1 — 5 nós, 8 arestas | ✅ JSON cadastrado e 6 testes aprovados |
 | Mapa 2 — 18 nós | ⚠️ Cadastro e auditoria pendentes |
 | Mapa 2 — 45 ligações transcritas | ⚠️ Uma ligação está sem peso legível (9–14); outras devem ser cotejadas com a fonte original |
 | Dijkstra no mapa 1 | ⏳ Implementação pendente |
@@ -35,7 +35,9 @@ O pequeno grafo foi transcrito com os seguintes pesos, **sem completar artificia
 | 2–4 | 3 | 3–4 | 7 |
 | 3–5 | 3 | 4–5 | 3 |
 
-**Verificação de referência:** origem em `1`; um ciclo ótimo encontrado por força bruta é `1 → 2 → 3 → 5 → 4 → 1`, com custo **15** (`2+4+3+3+3`). Sua rota inversa tem o mesmo custo.
+**Verificação de referência:** o ciclo `1 → 2 → 3 → 5 → 4 → 1` e sua rota inversa têm custo **15** (`2+4+3+3+3`), conferido pelos testes dos dados. A busca automática pelo ciclo ótimo será implementada na TSP-008.
+
+O cadastro em [`data/mapa_05.json`](data/mapa_05.json) lista cada aresta não direcionada uma única vez, com `origem`, `destino` e `peso`. Os nós têm `id`, `x` e `y`; as coordenadas normalizadas entre 0 e 1 preservam a disposição da figura apenas para desenho. As arestas ausentes `1–3` e `2–5` não constam do cadastro.
 
 O grafo grande contém **18 nós numerados de 1 a 18**, com posição e ligações conforme a figura. Os **44 pesos identificados** estão em [`data/mapa_18.json`](data/mapa_18.json), junto de uma conexão `9–14` com `peso: null`. **Não substitua `null` por um valor suposto.** Por causa da resolução da imagem, a base do mapa grande foi marcada como `"validado": false` e nenhuma solução é declarada correta até uma auditoria dos dados.
 
@@ -93,16 +95,23 @@ python main.py
 
 ## Testes
 
-Os algoritmos são **independentes de Pygame**, permitindo testes sem interface:
+Os testes atuais validam os dados do mapa 5, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Casos incluídos:
+Casos implementados em [`tests/test_mapa_05.py`](tests/test_mapa_05.py) (6 testes):
 
-- 5 nós e 8 arestas preservados;
-- ligações inexistentes não são inventadas;
+- metadados e referência original;
+- 5 IDs únicos preservados;
+- coordenadas normalizadas com a disposição da figura;
+- exatamente 8 arestas e todos os pesos conferidos;
+- ausência das ligações `1–3` e `2–5`;
+- ciclo de referência e seu inverso com custo 15.
+
+Casos previstos para as tarefas do núcleo matemático:
+
 - Dijkstra `1 → 3` retorna custo 6;
 - força bruta retorna ciclo Hamiltoniano de custo 15;
 - TSP usando fecho métrico por Dijkstra retorna custo 15;
@@ -110,7 +119,7 @@ Casos incluídos:
 - grafo de 18 nós bloqueia cálculos até validação;
 - força bruta é limitada a instâncias pequenas.
 
-## Estrutura de arquivos
+## Estrutura de arquivos planejada
 
 ```text
 tsp_grafos_2d/
@@ -128,6 +137,7 @@ tsp_grafos_2d/
 │       ├── mapa_05_original.png
 │       └── mapa_18_original.png
 └── tests/
+    ├── test_mapa_05.py         # Testes dos dados (implementado)
     └── test_tsp_core.py
 ```
 
