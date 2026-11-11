@@ -119,9 +119,10 @@
 
 ## Epic 04 — Comparação e validação acadêmica
 
-- [ ] **TSP-018 — Criar testes automáticos iniciais** · `P1 / Medium` · depende de TSP-006 a TSP-009
+- [x] **TSP-018 — Criar testes automáticos iniciais** · `P1 / Medium` · depende de TSP-006 a TSP-009
   - Validar estrutura, distâncias, custos, ciclo e bloqueio do mapa incompleto.
   - **Aceite:** `python -m unittest discover -s tests -v` executa sem falhas.
+  - **Conferido:** suíte cobre cadastros, núcleo, Dijkstra, TSP direto/fecho, históricos, reprodução, câmera e integração da interface. Acrescentados testes da diferença entre Hamiltoniano e passeio, expansão física, imutabilidade dos arquivos, worker, cliques e bloqueio do mapa pendente. Executar no ambiente com requirements instalados para incluir os testes SDL.
 
 - [ ] **TSP-019 — Publicar comparação formal entre métodos** · `P1 / Medium` · depende de TSP-017
   - Apresentar Dijkstra sozinho como caminho mínimo A→B, e não como TSP.
