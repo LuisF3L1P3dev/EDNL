@@ -5,6 +5,7 @@ from time import perf_counter
 import pygame
 from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra, ErroGrafo, LimiteTSPError
 from reprodutor import Reprodutor
+from busca_limitada import tsp_branch_bound
 
 
 ROOT = Path(__file__).resolve().parent
@@ -17,7 +18,7 @@ GREEN = (26, 107, 75)
 BLUE = (57, 108, 178)
 ORANGE = (200, 117, 76)
 PURPLE = (128, 86, 166)
-CORES_METODOS = {"forca": GREEN, "dijkstra": BLUE, "fecho": PURPLE}
+CORES_METODOS = {"forca": GREEN, "dijkstra": BLUE, "fecho": PURPLE, "limitada": ORANGE}
 
 
 class Aplicacao:
@@ -86,7 +87,7 @@ class Aplicacao:
             return
         try:
             self.mapa.exigir_validado()
-            if metodo != "dijkstra" and len(self.mapa.nos) > 9:
+            if metodo not in ("dijkstra", "limitada") and len(self.mapa.nos) > 9:
                 raise LimiteTSPError("Busca didática limitada a 9 nós.")
         except ErroGrafo as erro:
             self.status = str(erro)
@@ -104,11 +105,14 @@ class Aplicacao:
                     funcao, args = dijkstra, (mapa, origem, destino)
                 elif nome == "forca":
                     funcao, args = tsp_forca_bruta, (mapa, origem)
+                elif nome == "limitada":
+                    funcao, args = tsp_branch_bound, (mapa, origem)
                 else:
                     funcao, args = tsp_dijkstra, (mapa, origem)
                 r = funcao(*args)
                 tempos[nome] = (perf_counter() - inicio) * 1000
-                funcao(*args, eventos=eventos)
+                if nome != "limitada":
+                    funcao(*args, eventos=eventos)
                 resultados[nome] = r
             return resultados, tempos, eventos
 
@@ -224,6 +228,7 @@ class Aplicacao:
         self.painel(self.mapa_rect)
         self.texto("VISUALIZAÇÃO DO GRAFO", (self.mapa_rect.x + 22, 119), 12, MUTED, True)
         self.texto(f"Mapa {self.indice_mapa + 1} · {len(self.mapa.nos)} cidades", (self.mapa_rect.x + 22, 145), 22, INK, True)
+        self.botao("limitada", "B  Busca limitada", (self.mapa_rect.right - 420, 142, 205, 30), ORANGE, self.futuro is None)
         for i, (chave, titulo) in enumerate((("zoom_menos", "−"), ("zoom_mais", "+"), ("reset", "Z"))):
             self.botao(chave, titulo, (self.mapa_rect.right - 198 + i * 59, 142, 53, 30), MUTED)
         clip_anterior = self.tela.get_clip()
@@ -307,7 +312,7 @@ class Aplicacao:
             self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 15, max_linhas=6)
             return
         largura = (self.resultados_rect.w - 56) // max(1, len(self.resultados))
-        titulos = {"forca": "Força bruta · ciclo Hamiltoniano", "dijkstra": "Dijkstra · caminho A → B",
+        titulos = {"forca": "Força bruta · ciclo Hamiltoniano", "dijkstra": "Dijkstra · caminho A → B", "limitada": "Branch-and-bound · até 18 nós",
                    "fecho": "Dijkstra + TSP · passeio fechado"}
         for indice, (nome, resultado) in enumerate(self.resultados.items()):
             cx = x + 22 + indice * (largura + 12)
@@ -320,6 +325,8 @@ class Aplicacao:
             self.linhas(rota, (cx, y + 130), largura, 14, cor, max_linhas=2)
             if hasattr(resultado, "estados_testados"):
                 self.texto(f"{resultado.estados_testados} ordens testadas · ótimo comprovado", (cx, y + 184), 12, MUTED)
+            elif hasattr(resultado, "estado"):
+                self.texto(f"{resultado.nos_expandidos} estados · {resultado.estado}", (cx, y + 184), 12, MUTED)
 
     def desenhar(self):
         self.botoes.clear()
@@ -340,7 +347,7 @@ class Aplicacao:
             self.layout()
         elif evento.type == pygame.KEYDOWN:
             atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
-                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset"}
+                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_b: "limitada"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -380,7 +387,7 @@ class Aplicacao:
         elif chave == "reset":
             self.zoom = 1
             self.pan.update(0, 0)
-        elif chave in ("forca", "dijkstra", "comparar"):
+        elif chave in ("forca", "dijkstra", "comparar", "limitada"):
             self.iniciar(chave)
         elif chave == "limpar":
             self.limpar()

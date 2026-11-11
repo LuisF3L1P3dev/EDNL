@@ -135,6 +135,7 @@
   - Dijkstra em pares funciona após validação; **não** executar força bruta ingênua de 18 nós.
   - Selecionar busca melhorada (Held–Karp, branch-and-bound ou OR-Tools) com justificativa.
   - **Aceite:** algoritmo para o mapa 18 termina dentro de um limite razoável e identifica se a solução é ótima comprovada ou apenas conhecida.
+  - **Avanço parcial:** branch-and-bound implementado com limite de 2 s/200 mil estados e estados de prova explícitos, integrado ao botão B. Testes cobrem anel sintético de 18 nós e cortes com/sem solução. O mapa real permanece recusado por faltar o peso de 9–14 (ausência confirmada pelo usuário). Estratégia em `docs/estrategia_18.md`; aceite de execução no mapa real depende da TSP-004.
 
 - [ ] **TSP-021 — Elaborar relatório e demonstração da aula** · `P2 / Medium` · depende de TSP-017 a TSP-020
   - Explicar grafos incompletos, pesos, Dijkstra, força bruta, complexidade e resultados.

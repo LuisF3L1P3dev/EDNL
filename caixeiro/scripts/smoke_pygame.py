@@ -70,6 +70,10 @@ def main():
         aguardar()
         assert app.resultados["forca"].custo == 15
         registrar("Força bruta por botão: custo 15", "forca_bruta.png")
+        clicar("limitada")
+        aguardar()
+        assert app.resultados["limitada"].custo == 15 and app.resultados["limitada"].otimo
+        registrar("Busca limitada por botão: ótimo comprovado 15", "busca_limitada.png")
         tecla(pygame.K_1)
         tecla(pygame.K_c)
         aguardar()

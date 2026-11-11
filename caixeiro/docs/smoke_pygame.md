@@ -8,13 +8,14 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 ```
 
-**11 casos passaram**, via eventos Pygame/SDL dummy. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas visualmente as telas de comparação, animação e janela mínima.
+**12 casos passaram**, via eventos Pygame/SDL dummy, incluindo a busca limitada acrescentada na TSP-020. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas visualmente as telas de comparação, animação e janela mínima.
 
 | Caso executado | Resultado |
 |---|---|
 | Dijkstra pelo botão | Caminho 1–2–3, custo 6 |
 | Clique nos nós | Origem 2 e destino 5 selecionados alternadamente |
 | Força bruta pelo botão | Custo 15 |
+| Busca limitada pelo botão B | Custo 15, ótimo comprovado no mapa 5 |
 | Comparação pela tecla C | Dois TSP com custo 15 |
 | Play, pausar, avançar, voltar, velocidade e final | Índice do histórico muda e pausa; retorno ao resultado final |
 | Referência do mapa 5 | Imagem original carregada |

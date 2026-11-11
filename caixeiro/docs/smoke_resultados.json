@@ -17,6 +17,10 @@
       "resultado": "passou"
     },
     {
+      "caso": "Busca limitada por botão: ótimo comprovado 15",
+      "resultado": "passou"
+    },
+    {
       "caso": "Comparação por teclado: ambos custam 15",
       "resultado": "passou"
     },
