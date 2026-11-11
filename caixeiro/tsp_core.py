@@ -177,6 +177,9 @@ class Passo:
     contador: int = 0
     caminho: tuple[int, ...] = ()
     metodo_origem: str = ""
+    removidas: tuple[tuple[int, int], ...] = ()
+    adicionadas: tuple[tuple[int, int], ...] = ()
+    custo_anterior: Peso = math.inf
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,7 +190,7 @@ class ResultadoDijkstra:
     custo: Peso
 
 
-def dijkstra(grafo: Grafo, origem: int, destino: int, *, eventos: list[Passo] | None = None) -> ResultadoDijkstra:
+def dijkstra(grafo: Grafo, origem: int, destino: int, *, eventos: list[Passo] | None = None, controle=None) -> ResultadoDijkstra:
     """Calcula o menor caminho entre dois nós de um mapa validado.
 
     Usa heap mínimo de (distância, ID) e mapa de predecessores. Entradas
@@ -221,6 +224,8 @@ def dijkstra(grafo: Grafo, origem: int, destino: int, *, eventos: list[Passo] | 
     registrar("inicio", origem)
 
     while fila:
+        if controle:
+            controle()
         custo, atual = heappop(fila)
         if atual in visitados or custo != distancias[atual]:
             continue
@@ -276,7 +281,7 @@ def _validar_tsp(grafo: Grafo, origem: int, *, limite: int = 9) -> None:
         raise LimiteTSPError(f"Busca exata didática limitada a {limite} nós; mapa possui {len(grafo.nos)}.")
 
 
-def tsp_forca_bruta(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None) -> ResultadoTSP:
+def tsp_forca_bruta(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None, controle=None) -> ResultadoTSP:
     """Enumera até (n-1)! ordens, somente sobre arestas reais; máximo 9 nós.
 
     Sem ciclo viável, retorna tuplas vazias e infinito (inexistência provada).
@@ -293,6 +298,8 @@ def tsp_forca_bruta(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = 
     custo_melhor = math.inf
     testados = validos = 0
     for ordem in permutations(sorted(node_id for node_id in grafo.ids if node_id != origem)):
+        if controle:
+            controle()
         rota = (origem, *ordem, origem)
         testados += 1
         custo = 0

@@ -147,7 +147,7 @@
 
 ## Epic 05 — Identificação visual e novos algoritmos 2D (prioridade antes do 3D)
 
-O usuário pediu primeiro a identificação visual dos métodos atuais e o planejamento dos próximos. Somente a TSP-025 foi implementada nesta etapa. TSP-026 a TSP-032 são tarefas futuras; criar o checklist não significa que os cinco novos solvers estejam disponíveis na interface.
+O usuário pediu primeiro a identificação visual dos métodos atuais e o planejamento dos próximos. Somente a TSP-025 foi implementada nesta etapa. TSP-026 entregue: contrato, registro, validação de saída, cancelamento e orçamento. As demais entregas são registradas abaixo conforme implementação.
 
 - [x] **TSP-025 — Identificar método, execução, etapa e resultado na interface** · `P1 / Medium`
   - Manter nome, modelo do problema, estado e garantia visíveis em uma faixa dedicada.
@@ -156,7 +156,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - **Aceite:** distinguir Pronto, Em execução, Concluído, Reproduzindo, Pausado, Indisponível e Erro sem depender apenas de cores; não declarar busca interrompida como ótima.
   - **Conferido:** metadados em `identidade_algoritmos.py`, progresso por fila, eventos com método de origem, cards/estado/garantia, foco de rota e layout mínimo testados. Evidências em `docs/interface_algoritmos.md`; 96 testes e 20 casos SDL aprovados. A inspeção manual nativa da TSP-017 permanece separada.
 
-- [ ] **TSP-026 — Padronizar contrato e registro de solvers** · `P1 / High` · depende de TSP-025
+- [x] **TSP-026 — Padronizar contrato e registro de solvers** · `P1 / High` · depende de TSP-025
   - Contrato comum para `ordem`, `caminho_fisico`, `custo`, método/pipeline, variante do problema, garantia, motivo de término, tempos e contadores com unidade.
   - Separar explicitamente modo Hamiltoniano da malha original e modo passeio no fecho métrico; validar origem, conectividade e todas as arestas da saída.
   - Registrar capacidades, restrições, atalhos e disponibilidade por dependência/limite; evoluir o catálogo visual existente sem criar botões fictícios.

@@ -35,6 +35,8 @@ METODOS = MappingProxyType({
 
 
 def garantia_resultado(metodo, resultado):
+    if hasattr(resultado, "garantia"):
+        return resultado.garantia
     if metodo == "dijkstra":
         return "Caminho mínimo exato" if resultado.caminho else "Destino inalcançável"
     estado = getattr(resultado, "estado", "")

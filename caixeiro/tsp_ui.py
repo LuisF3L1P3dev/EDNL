@@ -4,11 +4,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from queue import SimpleQueue, Empty
 from time import perf_counter
+from threading import Event
 import pygame
 from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra, ErroGrafo, LimiteTSPError
 from reprodutor import Reprodutor
 from busca_limitada import tsp_branch_bound
 from identidade_algoritmos import METODOS, garantia_resultado
+from solvers import executar, disponibilidade, MODELOS
 
 
 ROOT = Path(__file__).resolve().parent
@@ -57,6 +59,7 @@ class Aplicacao:
         self.fase_execucao = "Selecione um método para calcular o percurso."
         self.resultado_focado = None
         self.progresso = SimpleQueue()
+        self.cancelar = Event()
         self.layout()
 
     @property
@@ -109,8 +112,9 @@ class Aplicacao:
         self.limpar()
         try:
             self.mapa.exigir_validado()
-            if metodo not in ("dijkstra", "limitada") and len(self.mapa.nos) > 9:
-                raise LimiteTSPError("Busca didática limitada a 9 nós.")
+            motivo = disponibilidade("forca" if metodo == "comparar" else metodo, self.mapa)
+            if motivo:
+                raise LimiteTSPError(motivo)
         except ErroGrafo as erro:
             self.status = str(erro)
             self.estado_execucao = "bloqueado"
@@ -123,31 +127,21 @@ class Aplicacao:
         self.status = f"Executando {METODOS[metodo].titulo}. A janela continua respondendo."
         self.progresso = SimpleQueue()
         progresso = self.progresso
+        self.cancelar = Event()
+        cancelar = self.cancelar
 
         def calcular():
             eventos, resultados, tempos = [], {}, {}
             metodos = ("forca", "fecho") if metodo == "comparar" else (metodo,)
             for nome in metodos:
                 progresso.put((nome, "Calculando o percurso"))
-                inicio = perf_counter()
-                if nome == "dijkstra":
-                    funcao, args = dijkstra, (mapa, origem, destino)
-                elif nome == "forca":
-                    funcao, args = tsp_forca_bruta, (mapa, origem)
-                elif nome == "limitada":
-                    funcao, args = tsp_branch_bound, (mapa, origem)
-                else:
-                    funcao, args = tsp_dijkstra, (mapa, origem)
                 informar = lambda fase, metodo_atual=nome: progresso.put((metodo_atual, fase))
-                kwargs = {"ao_progresso": informar} if nome == "fecho" else {}
-                r = funcao(*args, **kwargs)
-                tempos[nome] = (perf_counter() - inicio) * 1000
-                if nome != "limitada":
-                    progresso.put((nome, "Preparando o histórico da animação"))
-                    locais = []
-                    funcao(*args, eventos=locais)
-                    eventos.extend(replace(p, metodo_origem=nome) for p in locais)
+                r = executar(nome, mapa, origem, destino=destino, cancelar=cancelar, progresso=informar)
+                tempos[nome] = dict(r.tempos_ms)["total"]
+                eventos.extend(r.eventos)
                 resultados[nome] = r
+                if cancelar.is_set():
+                    break
             return resultados, tempos, eventos
 
         self.futuro = self.executor.submit(calcular)
@@ -224,7 +218,7 @@ class Aplicacao:
     def identidade_visual(self):
         """Estado sem dependência de cores; preserva a origem de cada etapa."""
         chave = self.metodo_selecionado
-        estado = {"pronto": "Pronto", "concluido": "Concluído", "bloqueado": "Indisponível", "erro": "Erro"}.get(self.estado_execucao, "Pronto")
+        estado = {"pronto": "Pronto", "concluido": "Concluído", "bloqueado": "Indisponível", "erro": "Erro", "cancelado": "Cancelado", "limitado": "Limite atingido"}.get(self.estado_execucao, "Pronto")
         fase = self.fase_execucao
         if self.futuro is not None:
             estado = "Em execução"
@@ -445,10 +439,13 @@ class Aplicacao:
             self.texto_ajustado(METODOS[nome].problema, (cx + 12, y + 76), largura - 24, 10, MUTED)
             custo = resultado.custo if resultado.caminho else "—"
             self.texto(f"Custo: {custo}", (cx + 12, y + 92), 21, INK, True)
-            self.texto_ajustado(f"{self.tempos.get(nome, 0):.3f} ms · sem histórico", (cx + largura // 2, y + 101), largura // 2 - 12, 11, MUTED)
+            self.texto_ajustado(f"{self.tempos.get(nome, 0):.3f} ms · total", (cx + largura // 2, y + 101), largura // 2 - 12, 11, MUTED)
             rota = " → ".join(map(str, resultado.caminho)) or ("Nenhuma rota no orçamento." if not getattr(resultado, "otimo", True) else "Sem percurso viável.")
             self.linhas(rota, (cx + 12, y + 124), largura - 24, 13, cor, max_linhas=2)
-            if hasattr(resultado, "estados_testados"):
+            if hasattr(resultado, "contadores"):
+                c = resultado.contadores[-1]
+                self.texto_ajustado(f"{c.nome}: {c.valor} {c.unidade}", (cx + 12, y + 167), largura - 24, 11, MUTED)
+            elif hasattr(resultado, "estados_testados"):
                 self.texto(f"{resultado.estados_testados} ordens examinadas", (cx + 12, y + 167), 11, MUTED)
             elif hasattr(resultado, "estado"):
                 self.texto(f"{resultado.nos_expandidos} estados expandidos", (cx + 12, y + 167), 11, MUTED)
@@ -460,6 +457,8 @@ class Aplicacao:
         self.texto("NEXUS / ESTRUTURA DE DADOS NÃO LINEARES", (26, 16), 11, GREEN, True)
         self.texto("Caixeiro viajante", (24, 35), 32, INK, True)
         self.texto("Métodos, etapas e percursos identificados", (320, 54), 15, MUTED)
+        if self.futuro is not None:
+            self.botao("cancelar", "X  Cancelar", (self.tela.get_width() - 154, 38, 130, 34), ORANGE)
         self.desenhar_lateral()
         self.desenhar_mapa()
         self.desenhar_resultados()
@@ -473,7 +472,7 @@ class Aplicacao:
             self.layout()
         elif evento.type == pygame.KEYDOWN:
             atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
-                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_b: "limitada", pygame.K_t: "fecho"}
+                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_b: "limitada", pygame.K_t: "fecho", pygame.K_x: "cancelar"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -497,6 +496,10 @@ class Aplicacao:
             self.pan += pygame.Vector2(evento.rel)
 
     def acao(self, chave):
+        if chave == "cancelar":
+            self.cancelar.set()
+            self.fase_execucao = "Cancelamento solicitado."
+            return
         if self.futuro is not None and chave not in ("original", "pesos"):
             return
         if chave in ("mapa1", "mapa2"):
@@ -539,6 +542,13 @@ class Aplicacao:
                 self.status = "Cálculo concluído."
                 self.estado_execucao = "concluido"
                 self.fase_execucao = "Resultado concluído."
+                finais = {getattr(r, "termino", "") for r in self.resultados.values()}
+                if "cancelado" in finais:
+                    self.estado_execucao = "cancelado"
+                    self.fase_execucao = "Execução cancelada · sem prova de ótimo."
+                elif any(f.startswith("limite_") for f in finais):
+                    self.estado_execucao = "limitado"
+                    self.fase_execucao = "Orçamento atingido · consulte a garantia do resultado."
             except Exception as erro:
                 self.status = f"Falha no cálculo: {erro}"
                 self.estado_execucao = "erro"
@@ -555,5 +565,6 @@ class Aplicacao:
             self.desenhar()
 
     def fechar(self):
+        self.cancelar.set()
         self.executor.shutdown(wait=True, cancel_futures=True)
         pygame.quit()

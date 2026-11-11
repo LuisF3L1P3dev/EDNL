@@ -20,7 +20,7 @@ class ResultadoBusca:
         return self.caminho
 
 
-def tsp_branch_bound(grafo, origem, *, limite_segundos=2.0, max_estados=200_000):
+def tsp_branch_bound(grafo, origem, *, limite_segundos=2.0, max_estados=200_000, controle=None, ao_melhor=None):
     """Máximo 18 nós. Nunca chama o enumerador de permutações.
 
     Limite inferior: MST dos não visitados mais uma ligação de cada ponta.
@@ -59,6 +59,8 @@ def tsp_branch_bound(grafo, origem, *, limite_segundos=2.0, max_estados=200_000)
 
     def visitar(rota, usados, custo):
         nonlocal melhor, melhor_custo, estados, cortado
+        if controle:
+            controle()
         if cortado:
             return
         if estados >= max_estados or perf_counter() >= prazo:
@@ -72,6 +74,8 @@ def tsp_branch_bound(grafo, origem, *, limite_segundos=2.0, max_estados=200_000)
                 melhor, melhor_custo = rota, 0
             elif origem in adj[atual] and custo + adj[atual][origem] < melhor_custo:
                 melhor, melhor_custo = (*rota, origem), custo + adj[atual][origem]
+                if ao_melhor:
+                    ao_melhor(melhor)
             return
         entrada = min((adj[atual][i] for i in restantes if i in adj[atual]), default=math.inf)
         saida = min((adj[origem][i] for i in restantes if i in adj[origem]), default=math.inf)
