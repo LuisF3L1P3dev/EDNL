@@ -175,7 +175,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Registrar arestas removidas/adicionadas, custo anterior/novo, limite de iterações/tempo e condição de parada.
   - **Aceite:** custo final nunca piora o inicial; teste conhecido com melhoria e teste sem melhoria; exibir `nearest_neighbor + two_opt` e "ótimo local" somente quando o critério foi esgotado, sem afirmar ótimo global.
 
-- [ ] **TSP-029 — Promover `held_karp` a solver exato com reconstrução** · `P1 / High` · depende de TSP-026
+- [x] **TSP-029 — Promover `held_karp` a solver exato com reconstrução** · `P1 / High` · depende de TSP-026
   - Evoluir o controle de custo de `scripts/validar_mapa_18.py` para um solver do núcleo, com DP por subconjunto/última cidade e predecessores para reconstruir a ordem.
   - Suportar malha original e fecho em modos separados, com orçamento de memória/tempo e sem transformar uma execução cortada em prova de ótimo.
   - Explicar o custo `O(n² 2ⁿ)` e disponibilizar progresso por camadas na interface.

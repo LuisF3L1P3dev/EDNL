@@ -9,6 +9,7 @@ from threading import Event
 from time import perf_counter
 from types import MappingProxyType
 import math
+import sys
 
 from tsp_core import Aresta, Grafo, Passo, ErroGrafo, dijkstra
 from busca_limitada import tsp_branch_bound
@@ -399,3 +400,72 @@ def two_opt(p, ctx, *, ordem_inicial=None):
 
 
 registrar("two_opt", two_opt, (ORIGINAL, FECHO), FECHO, atalho="I")
+
+
+def held_karp(p, ctx):
+    """DP O(n²2ⁿ), custos por camada e predecessores para reconstrução.
+
+    Memória: contabilização conservadora via getsizeof dos contêineres e
+    objetos armazenados (inclui compartilhamentos mais de uma vez).
+    """
+    origem = p.origem
+    ids = sorted(i for i in p.grafo.ids if i != origem)
+    if not ids:
+        return (origem,), "otimo_comprovado", "Ótimo comprovado"
+    bits = {i: 1 << k for k, i in enumerate(ids)}
+    vizinhos = {a: [(b, p.custos[a, b]) for b in ids if b != a and (a, b) in p.custos]
+                for a in p.grafo.ids}
+    camada, pais = {(0, origem): 0}, {}
+    payload_atual, payload_pais, pico, estados_dp = 128, 0, 0, 1
+    try:
+        for tamanho in range(1, len(ids) + 1):
+            ctx.fase(f"Held–Karp: camada {tamanho}/{len(ids)}")
+            proxima, payload_proxima = {}, 0
+            for (mask, atual), custo in camada.items():
+                ctx.verificar(1)
+                for vizinho, peso in vizinhos[atual]:
+                    if mask & bits[vizinho]:
+                        continue
+                    chave = mask | bits[vizinho], vizinho
+                    candidato = custo + peso
+                    anterior = proxima.get(chave, math.inf)
+                    if candidato < anterior:
+                        if chave not in proxima:
+                            payload_proxima += sys.getsizeof(chave) + sys.getsizeof(chave[0]) + sys.getsizeof(chave[1])
+                            payload_pais += sys.getsizeof(chave) + sys.getsizeof(chave[0]) + sys.getsizeof(chave[1]) + sys.getsizeof(atual)
+                            payload_proxima += sys.getsizeof(candidato)
+                            estados_dp += 1
+                        else:
+                            payload_proxima += sys.getsizeof(candidato) - sys.getsizeof(anterior)
+                        proxima[chave], pais[chave] = candidato, atual
+                        memoria = (sys.getsizeof(camada) + sys.getsizeof(proxima) + sys.getsizeof(pais)
+                                   + payload_atual + payload_proxima + payload_pais)
+                        pico = max(pico, memoria)
+                        if memoria > ctx.orcamento.memoria_bytes:
+                            raise Interrompido("limite_memoria")
+            camada, payload_atual = proxima, payload_proxima
+            ctx.evento("camada_dp", contador=tamanho)
+            if not camada:
+                break
+        ctx.verificar()
+        finais = ((c + p.custos[atual, origem], atual, mask)
+                  for (mask, atual), c in camada.items()
+                  if mask == (1 << len(ids)) - 1 and (atual, origem) in p.custos)
+        custo, atual, mask = min(finais, default=(math.inf, None, 0))
+        if atual is None:
+            return (), "inviavel_comprovado", "Ausência de ciclo comprovada"
+        reverso = [origem, atual]
+        while mask:
+            anterior = pais[mask, atual]
+            mask ^= bits[atual]
+            atual = anterior
+            reverso.append(atual)
+        rota = tuple(reversed(reverso))
+        ctx.melhor = rota
+        return rota, "otimo_comprovado", "Ótimo comprovado por Held–Karp"
+    finally:
+        ctx.contadores.extend((Contador("estados DP", estados_dp, "estados"),
+                               Contador("memória DP contabilizada (pico)", pico, "bytes")))
+
+
+registrar("held_karp", held_karp, (ORIGINAL, FECHO), ORIGINAL, 18, "H")
