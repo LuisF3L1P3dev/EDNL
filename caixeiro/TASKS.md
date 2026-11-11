@@ -72,10 +72,11 @@
   - **Aceite:** no mapa 5, custo 15 e percurso físico com soma correta.
   - **Conferido:** `fecho_metrico()` e `tsp_dijkstra()` calculam distâncias, buscam a ordem exata e expandem o percurso sobre arestas reais. Testes incluem custo 15, estrela sem ciclo Hamiltoniano, grafo desconectado e limite de 9 nós.
 
-- [ ] **TSP-010 — Registrar passos intermediários dos algoritmos** · `P2 / High` · depende de TSP-007, TSP-008
+- [x] **TSP-010 — Registrar passos intermediários dos algoritmos** · `P2 / High` · depende de TSP-007, TSP-008
   - Dijkstra: fila, distâncias tentativas, nós visitados, relaxamentos e predecessores.
   - Força bruta: candidato atual, custo, melhor solução e contador.
   - **Aceite:** histórico de eventos reproduzível sem depender do Pygame.
+  - **Conferido:** snapshots imutáveis `Passo`, gravação opcional por `eventos=`, fila/distâncias/visitados/relaxamentos/predecessores e candidatos/melhor/custo/contador. Testes reproduzem históricos e confirmam que gravar não altera resultados.
 
 ## Epic 03 — Visualização 2D no Pygame
 

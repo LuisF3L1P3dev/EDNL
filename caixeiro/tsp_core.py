@@ -161,6 +161,23 @@ class Grafo:
 
 
 @dataclass(frozen=True, slots=True)
+class Passo:
+    algoritmo: str
+    tipo: str
+    atual: int | None = None
+    fila: tuple[tuple[Peso, int], ...] = ()
+    distancias: tuple[tuple[int, Peso], ...] = ()
+    visitados: tuple[int, ...] = ()
+    predecessores: tuple[tuple[int, int], ...] = ()
+    relaxamento: tuple[int, ...] = ()
+    candidato: tuple[int, ...] = ()
+    custo: Peso = math.inf
+    melhor: tuple[int, ...] = ()
+    melhor_custo: Peso = math.inf
+    contador: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class ResultadoDijkstra:
     """Caminho mínimo e custo; destino inalcançável resulta em () e infinito."""
 
@@ -168,7 +185,7 @@ class ResultadoDijkstra:
     custo: Peso
 
 
-def dijkstra(grafo: Grafo, origem: int, destino: int) -> ResultadoDijkstra:
+def dijkstra(grafo: Grafo, origem: int, destino: int, *, eventos: list[Passo] | None = None) -> ResultadoDijkstra:
     """Calcula o menor caminho entre dois nós de um mapa validado.
 
     Usa heap mínimo de (distância, ID) e mapa de predecessores. Entradas
@@ -192,16 +209,29 @@ def dijkstra(grafo: Grafo, origem: int, destino: int) -> ResultadoDijkstra:
     distancias[origem] = 0
     fila: list[tuple[Peso, int]] = [(0, origem)]
 
+    def registrar(tipo, atual=None, relaxamento=()):
+        if eventos is not None:
+            eventos.append(Passo(
+                "dijkstra", tipo, atual, tuple(sorted(fila)), tuple(sorted(distancias.items())),
+                tuple(sorted(visitados)), tuple(sorted(predecessores.items())), relaxamento,
+            ))
+
+    registrar("inicio", origem)
+
     while fila:
         custo, atual = heappop(fila)
         if atual in visitados or custo != distancias[atual]:
             continue
         visitados.add(atual)
+        registrar("visita", atual)
         if atual == destino:
             caminho = [destino]
             while caminho[-1] != origem:
                 caminho.append(predecessores[caminho[-1]])
             caminho.reverse()
+            if eventos is not None:
+                eventos.append(Passo("dijkstra", "fim", atual, visitados=tuple(sorted(visitados)),
+                                     candidato=tuple(caminho), custo=custo))
             return ResultadoDijkstra(tuple(caminho), custo)
 
         for vizinho, peso in sorted(adjacencia[atual].items()):
@@ -217,7 +247,9 @@ def dijkstra(grafo: Grafo, origem: int, destino: int) -> ResultadoDijkstra:
                 distancias[vizinho] = candidato
                 predecessores[vizinho] = atual
                 heappush(fila, (candidato, vizinho))
+                registrar("relaxamento", atual, (atual, vizinho))
 
+    registrar("sem_caminho")
     return ResultadoDijkstra((), math.inf)
 
 
@@ -242,7 +274,7 @@ def _validar_tsp(grafo: Grafo, origem: int, *, limite: int = 9) -> None:
         raise LimiteTSPError(f"Busca exata didática limitada a {limite} nós; mapa possui {len(grafo.nos)}.")
 
 
-def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
+def tsp_forca_bruta(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None) -> ResultadoTSP:
     """Enumera até (n-1)! ordens, somente sobre arestas reais; máximo 9 nós.
 
     Sem ciclo viável, retorna tuplas vazias e infinito (inexistência provada).
@@ -251,6 +283,9 @@ def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
     _validar_tsp(grafo, origem)
     adj = grafo.adjacencia()
     if len(grafo.nos) == 1:
+        if eventos is not None:
+            eventos.append(Passo("forca_bruta", "fim", candidato=(origem,), custo=0,
+                                 melhor=(origem,), melhor_custo=0, contador=1))
         return ResultadoTSP((origem,), (origem,), 0, 1, 1)
     melhor = ()
     custo_melhor = math.inf
@@ -259,6 +294,7 @@ def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
         rota = (origem, *ordem, origem)
         testados += 1
         custo = 0
+        viavel = False
         for a, b in zip(rota, rota[1:]):
             if b not in adj[a]:
                 break
@@ -266,28 +302,36 @@ def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
             if type(custo) is float and not math.isfinite(custo):
                 raise ErroGrafo("Custo acumulado excede a capacidade numérica.")
         else:
+            viavel = True
             validos += 1
             if custo < custo_melhor:
                 melhor, custo_melhor = rota, custo
+        if eventos is not None:
+            eventos.append(Passo("forca_bruta", "candidato", candidato=rota,
+                                 custo=custo if viavel else math.inf, melhor=melhor,
+                                 melhor_custo=custo_melhor, contador=testados))
+    if eventos is not None:
+        eventos.append(Passo("forca_bruta", "fim", candidato=melhor, custo=custo_melhor,
+                             melhor=melhor, melhor_custo=custo_melhor, contador=testados))
     return ResultadoTSP(melhor, melhor, custo_melhor, testados, validos)
 
 
-def fecho_metrico(grafo: Grafo) -> Mapping[tuple[int, int], ResultadoDijkstra]:
+def fecho_metrico(grafo: Grafo, *, eventos: list[Passo] | None = None) -> Mapping[tuple[int, int], ResultadoDijkstra]:
     """Menores caminhos entre todos os pares; não modifica a malha original."""
     grafo.exigir_validado()
     return MappingProxyType({
-        (a, b): dijkstra(grafo, a, b) for a in sorted(grafo.ids) for b in sorted(grafo.ids)
+        (a, b): dijkstra(grafo, a, b, eventos=eventos) for a in sorted(grafo.ids) for b in sorted(grafo.ids)
     })
 
 
-def tsp_dijkstra(grafo: Grafo, origem: int) -> ResultadoTSP:
+def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None) -> ResultadoTSP:
     """Busca exata (até 9 nós) nas distâncias mínimas, expandindo arestas reais.
 
     A ordem é um ciclo no fecho métrico; o caminho físico pode repetir nós.
     A instância original permanece intacta, inclusive suas arestas ausentes.
     """
     _validar_tsp(grafo, origem)
-    fecho = fecho_metrico(grafo)
+    fecho = fecho_metrico(grafo, eventos=eventos)
     ids = sorted(grafo.ids)
     derivado = Grafo(
         id=f"{grafo.id}_fecho", nome=f"Fecho métrico de {grafo.nome}",
@@ -297,7 +341,7 @@ def tsp_dijkstra(grafo: Grafo, origem: int) -> ResultadoTSP:
                       for i, a in enumerate(ids) for b in ids[i + 1:]
                       if fecho[a, b].caminho),
     )
-    resultado = tsp_forca_bruta(derivado, origem)
+    resultado = tsp_forca_bruta(derivado, origem, eventos=eventos)
     fisico = [origem] if resultado.ordem else []
     for a, b in zip(resultado.ordem, resultado.ordem[1:]):
         fisico.extend(fecho[a, b].caminho[1:])
