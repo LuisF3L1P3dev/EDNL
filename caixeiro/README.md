@@ -4,17 +4,20 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 
 > **Escopo inicial: 2D.** A migração para 3D será uma etapa posterior, preservando os dados dos grafos e o código dos algoritmos. **Não gerar cidades, arestas ou pesos aleatórios.**
 
+> **Andamento real:** TSP-001 concluída: as duas referências foram copiadas de `docs/ativ/` para `assets/referencias/`, preservando os bytes originais (SHA-256 conferido). Os arquivos Python, JSON, requisitos e testes descritos neste documento ainda fazem parte do planejamento. As seções abaixo especificam o comportamento esperado; não representam funcionalidades já executáveis. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
+
 ## Situação atual
 
 | Item | Estado |
 |---|---|
-| Mapa 1 — 5 nós, 8 arestas | ✅ Transcrito e testado |
-| Mapa 2 — 18 nós | ⚠️ Visualização implementada; transcrição ainda requer auditoria |
+| Referências dos mapas 1 e 2 | ✅ Organizadas e conferidas em `assets/referencias/` |
+| Mapa 1 — 5 nós, 8 arestas | ⏳ Cadastro JSON e testes pendentes |
+| Mapa 2 — 18 nós | ⚠️ Cadastro e auditoria pendentes |
 | Mapa 2 — 45 ligações transcritas | ⚠️ Uma ligação está sem peso legível (9–14); outras devem ser cotejadas com a fonte original |
-| Dijkstra no mapa 1 | ✅ Implementado e testado |
-| Força bruta Hamiltoniana no mapa 1 | ✅ Implementada e testada |
-| Dijkstra + força bruta no fecho métrico | ✅ Implementado e testado para mapas pequenos |
-| Interface 2D em Pygame | ✅ Código inicial criado; precisa de teste visual no computador com Pygame |
+| Dijkstra no mapa 1 | ⏳ Implementação pendente |
+| Força bruta Hamiltoniana no mapa 1 | ⏳ Implementação pendente |
+| Dijkstra + força bruta no fecho métrico | ⏳ Implementação pendente |
+| Interface 2D em Pygame | ⏳ Implementação e teste visual pendentes |
 | Resultados algorítmicos do mapa 2 | ⛔ Bloqueados até conferir a transcrição completa |
 | Migração para 3D | ⏳ Fora do escopo desta primeira etapa |
 

@@ -6,24 +6,27 @@
 
 ## Convenção
 
-- `[x]` Código/documentação preparado neste pacote.
+- `[x]` Artefatos presentes neste repositório e aceite da tarefa conferido.
 - `[ ]` Pendente de implementação, auditoria ou verificação local.
 - `P0`: bloqueante; `P1`: essencial ao MVP; `P2`: aprimoramento; `P3`: evolução futura.
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
+
+**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. O checklist foi reconciliado com os arquivos disponíveis: a base recebida em `docs/ativ/` contém as referências e os materiais da aula; o código Python, os JSON e os testes ainda serão implementados.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
 - [x] **TSP-001 — Organizar as referências originais** · `P0 / Low`
   - Guardar as duas imagens no repositório, com nomes estáveis.
   - **Aceite:** ambas acessíveis em `assets/referencias/`.
+  - **Conferido:** cópias binariamente idênticas às imagens em `docs/ativ/` (SHA-256 iguais). Nenhum redimensionamento ou edição foi aplicado.
 
-- [x] **TSP-002 — Transcrever e testar o mapa de 5 nós** · `P0 / Medium`
+- [ ] **TSP-002 — Transcrever e testar o mapa de 5 nós** · `P0 / Medium`
   - Preservar 5 IDs, 8 arestas e todos os pesos da figura.
   - Impedir criação automática de arestas ausentes.
   - **Aceite:** ciclo de referência `1-2-3-5-4-1` tem custo 15.
 
-- [x] **TSP-003 — Preparar o cadastro do mapa de 18 nós** · `P0 / Medium`
+- [ ] **TSP-003 — Preparar o cadastro do mapa de 18 nós** · `P0 / Medium`
   - Preservar os 18 IDs, coordenadas para desenho e pesos identificáveis.
   - Marcar explicitamente a dúvida sobre `9-14`.
   - **Aceite:** JSON contém 18 nós; nenhuma aresta com valor incerto recebe peso inventado.
@@ -40,23 +43,23 @@
 
 ## Epic 02 — Núcleo matemático em Python
 
-- [x] **TSP-006 — Implementar representação do grafo** · `P1 / Medium` · depende de TSP-002
+- [ ] **TSP-006 — Implementar representação do grafo** · `P1 / Medium` · depende de TSP-002
   - Carregar JSON, validar nós, pares de arestas e pesos não negativos.
   - Gerar adjacência não orientada sem criar ligações inexistentes.
   - **Aceite:** mapas malformados produzem erro; mapa pendente bloqueia os algoritmos.
 
-- [x] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
+- [ ] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
   - Usar fila de prioridade e vetor de predecessores.
   - Entrada: grafo, origem e destino. Saída: sequência e custo.
   - **Aceite:** no mapa 5, de 1 até 3 a distância mínima é 6 (`1-2-3`).
 
-- [x] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
+- [ ] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
   - Enumerar ordens com origem fixa e retorno à origem.
   - Ignorar candidatos com arestas não existentes.
   - Impor limite de até 9 nós na versão didática.
   - **Aceite:** mapa 5 tem custo ótimo 15; mapa 18 não tenta avaliar `17!` permutações.
 
-- [x] **TSP-009 — Implementar fecho métrico por Dijkstra + busca exata** · `P1 / High` · depende de TSP-007 e TSP-008
+- [ ] **TSP-009 — Implementar fecho métrico por Dijkstra + busca exata** · `P1 / High` · depende de TSP-007 e TSP-008
   - Calcular caminhos mínimos entre todos os destinos.
   - Buscar a melhor ordem de entregas sobre a matriz de menores distâncias.
   - Reconstruir o percurso físico usando as arestas reais.
@@ -69,21 +72,21 @@
 
 ## Epic 03 — Visualização 2D no Pygame
 
-- [x] **TSP-011 — Criar janela e layout 2D inicial** · `P1 / Medium`
+- [ ] **TSP-011 — Criar janela e layout 2D inicial** · `P1 / Medium`
   - Janela com mapa central, controle lateral e painel de resultados.
   - **Aceite:** código em `main.py` com UI separada do núcleo matemático.
   - **Observação:** código escrito; teste visual local ainda é exigido em TSP-017.
 
-- [x] **TSP-012 — Desenhar mapas, pesos e nós fixos** · `P1 / Medium` · depende de TSP-001, TSP-003
+- [ ] **TSP-012 — Desenhar mapas, pesos e nós fixos** · `P1 / Medium` · depende de TSP-001, TSP-003
   - Renderizar nós e arestas sem recalcular pesos pela posição.
   - Permitir alternar os dois mapas e visualizar as referências originais.
   - **Aceite:** 5 ou 18 nós desenhados conforme o mapa escolhido; peso incerto apresentado como `?`.
 
-- [x] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
+- [ ] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
   - Clique em nós; botões para força bruta, Dijkstra, comparação e alternância de mapas.
   - **Aceite:** comandos de teclado e mouse implementados.
 
-- [x] **TSP-014 — Destacar caminho calculado** · `P1 / Medium` · depende de TSP-007, TSP-008
+- [ ] **TSP-014 — Destacar caminho calculado** · `P1 / Medium` · depende de TSP-007, TSP-008
   - Mostrar caminho em cor distinta, custo e rota textual.
   - **Aceite:** caminho visual segue os IDs resultantes do algoritmo.
 
@@ -102,7 +105,7 @@
 
 ## Epic 04 — Comparação e validação acadêmica
 
-- [x] **TSP-018 — Criar testes automáticos iniciais** · `P1 / Medium` · depende de TSP-006 a TSP-009
+- [ ] **TSP-018 — Criar testes automáticos iniciais** · `P1 / Medium` · depende de TSP-006 a TSP-009
   - Validar estrutura, distâncias, custos, ciclo e bloqueio do mapa incompleto.
   - **Aceite:** `python -m unittest discover -s tests -v` executa sem falhas.
 
@@ -153,4 +156,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-004: auditar o mapa de 18 nós.** Enquanto a figura original não permitir confirmar o peso de `9-14`, é correto mostrar o desenho, mas seria incorreto declarar uma rota ótima calculada nesse grafo. Paralelamente, execute o **TSP-017** no computador com Pygame instalado.
+**TSP-002: transcrever e testar o mapa de 5 nós.** A auditoria do mapa de 18 nós (TSP-004) continua bloqueando seus cálculos até confirmar todos os pesos. A interface e o smoke test serão executados após implementar suas dependências.

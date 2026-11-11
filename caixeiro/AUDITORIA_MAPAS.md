@@ -2,6 +2,8 @@
 
 ## Regras
 
+**Estado dos artefatos:** as referências em `assets/referencias/` já estão presentes e foram conferidas contra `docs/ativ/` por SHA-256 (TSP-001). A transcrição descrita abaixo é uma especificação provisória; os arquivos JSON e os testes ainda serão criados nas tarefas seguintes.
+
 Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A transcrição para JSON não altera pesos, conectividade ou número de nós. Coordenadas normalizadas têm finalidade apenas visual; **não** representam distância.
 
 ## Mapa 1 — 5 nós
