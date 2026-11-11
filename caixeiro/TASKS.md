@@ -80,10 +80,10 @@
 
 ## Epic 03 — Visualização 2D no Pygame
 
-- [ ] **TSP-011 — Criar janela e layout 2D inicial** · `P1 / Medium`
+- [x] **TSP-011 — Criar janela e layout 2D inicial** · `P1 / Medium`
   - Janela com mapa central, controle lateral e painel de resultados.
   - **Aceite:** código em `main.py` com UI separada do núcleo matemático.
-  - **Observação:** código escrito; teste visual local ainda é exigido em TSP-017.
+  - **Conferido:** entrada em `main.py`, apresentação em `tsp_ui.py`, janela redimensionável com mapa, controle lateral e resultados. Ambiente virtual com pygame-ce 2.5.8 (API pygame) instalado; renderização inicial conferida com driver dummy. Smoke visual completo permanece na TSP-017.
 
 - [ ] **TSP-012 — Desenhar mapas, pesos e nós fixos** · `P1 / Medium` · depende de TSP-001, TSP-003
   - Renderizar nós e arestas sem recalcular pesos pela posição.
