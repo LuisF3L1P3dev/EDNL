@@ -1,10 +1,11 @@
-"""Dados e validação dos grafos, sem dependência da interface Pygame.
+"""Grafos, validação e caminhos mínimos, sem dependência da interface Pygame.
 
 Mapas pendentes podem ser carregados para desenho. A adjacência numérica só
 é disponibilizada após exigir_validado(), sem inventar pesos ou ligações.
 """
 
 from dataclasses import dataclass
+from heapq import heappop, heappush
 import json
 import math
 from pathlib import Path
@@ -127,7 +128,7 @@ class Grafo:
         return tuple(no.id for no in self.nos)
 
     def exigir_validado(self) -> None:
-        """Guarda a ser chamada na entrada de cada algoritmo futuro."""
+        """Guarda chamada na entrada dos algoritmos."""
         if not self.validado:
             detalhes = list(self.pendencias)
             desconhecidas = [f"{a.origem}-{a.destino}" for a in self.arestas if a.peso is None]
@@ -152,6 +153,67 @@ class Grafo:
             vizinhos[aresta.origem][aresta.destino] = aresta.peso
             vizinhos[aresta.destino][aresta.origem] = aresta.peso
         return MappingProxyType({no: MappingProxyType(v) for no, v in vizinhos.items()})
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoDijkstra:
+    """Caminho mínimo e custo; destino inalcançável resulta em () e infinito."""
+
+    caminho: tuple[int, ...]
+    custo: Peso
+
+
+def dijkstra(grafo: Grafo, origem: int, destino: int) -> ResultadoDijkstra:
+    """Calcula o menor caminho entre dois nós de um mapa validado.
+
+    Usa heap mínimo de (distância, ID) e mapa de predecessores. Entradas
+    antigas do heap são descartadas após uma melhoria de distância. O destino
+    só é aceito ao sair da fila com sua distância mínima, não ao ser descoberto.
+    Empates preservam o primeiro predecessor; vizinhos e prioridades usam ID
+    para produzir resultado reproduzível mesmo se a ordem das arestas mudar.
+    """
+    if not isinstance(grafo, Grafo):
+        raise GrafoInvalidoError("Dijkstra exige um objeto Grafo.")
+    grafo.exigir_validado()
+    for campo, node_id in (("origem", origem), ("destino", destino)):
+        _id_valido(node_id, campo)
+        if node_id not in grafo.ids:
+            raise GrafoInvalidoError(f"{campo}: nó {node_id} inexistente no mapa {grafo.id}.")
+
+    adjacencia = grafo.adjacencia()
+    distancias: dict[int, Peso] = {node_id: math.inf for node_id in grafo.ids}
+    predecessores: dict[int, int] = {}
+    visitados: set[int] = set()
+    distancias[origem] = 0
+    fila: list[tuple[Peso, int]] = [(0, origem)]
+
+    while fila:
+        custo, atual = heappop(fila)
+        if atual in visitados or custo != distancias[atual]:
+            continue
+        visitados.add(atual)
+        if atual == destino:
+            caminho = [destino]
+            while caminho[-1] != origem:
+                caminho.append(predecessores[caminho[-1]])
+            caminho.reverse()
+            return ResultadoDijkstra(tuple(caminho), custo)
+
+        for vizinho, peso in sorted(adjacencia[atual].items()):
+            if vizinho in visitados:
+                continue
+            try:
+                candidato = custo + peso
+            except OverflowError as erro:
+                raise ErroGrafo("Custo acumulado excede a capacidade numérica de ponto flutuante.") from erro
+            if type(candidato) is float and not math.isfinite(candidato):
+                raise ErroGrafo("Custo acumulado excede a capacidade numérica de ponto flutuante.")
+            if candidato < distancias[vizinho]:
+                distancias[vizinho] = candidato
+                predecessores[vizinho] = atual
+                heappush(fila, (candidato, vizinho))
+
+    return ResultadoDijkstra((), math.inf)
 
 
 def _campos(objeto: object, obrigatorios: tuple[str, ...], contexto: str) -> dict:

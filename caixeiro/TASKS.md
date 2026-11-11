@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON, a representação/validação do grafo e seus testes estão presentes; os algoritmos e a interface serão implementados nas tarefas seguintes. O mapa 18 continua não validado pela falta do peso de `9–14`.
+**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON, a representação/validação do grafo, Dijkstra e seus testes estão presentes; os algoritmos TSP e a interface serão implementados nas tarefas seguintes. O mapa 18 continua não validado pela falta do peso de `9–14`.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -52,10 +52,11 @@
   - **Aceite:** mapas malformados produzem erro; mapa pendente bloqueia os algoritmos.
   - **Conferido:** `tsp_core.py` carrega JSON UTF-8 e fornece `No`, `Aresta` e `Grafo` imutáveis. Valida metadados, IDs, coordenadas, duplicatas, extremos e pesos finitos não negativos. `Grafo.adjacencia()` exige mapa validado, preserva somente ligações reais e produz vizinhança simétrica imutável. O mapa 18 pode ser inspecionado sem habilitar cálculos. Os 19 testes do núcleo passaram; 33 testes aprovados no projeto com `python -B -m unittest discover -s tests -v`.
 
-- [ ] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
+- [x] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
   - Usar fila de prioridade e vetor de predecessores.
   - Entrada: grafo, origem e destino. Saída: sequência e custo.
   - **Aceite:** no mapa 5, de 1 até 3 a distância mínima é 6 (`1-2-3`).
+  - **Conferido:** `dijkstra(grafo, origem, destino)` usa heap mínimo, distâncias tentativas, nós finalizados e predecessores em `tsp_core.py`. Retorna `ResultadoDijkstra` imutável; caminho vazio e custo infinito sinalizam destino inalcançável. Os 18 testes em `tests/test_dijkstra.py` cobrem os 25 pares do mapa 5, o caso de custo 6, bloqueio do mapa 18, empates, pesos zero/fracionários e entradas inválidas. Total: 51 testes aprovados com `python -B -m unittest discover -s tests -v`.
 
 - [ ] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
   - Enumerar ordens com origem fixa e retorno à origem.
@@ -160,4 +161,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-007: implementar Dijkstra com reconstrução do caminho**, após autorização para a próxima etapa. A TSP-004 permanece aberta até obter o peso de `9-14`, ausente inclusive na fonte do autor. A representação já bloqueia cálculos com esse mapa; o desenvolvimento pode prosseguir com o mapa 5 validado.
+**TSP-008: implementar TSP trivial por força bruta**, após autorização para a próxima etapa. A TSP-004 permanece aberta até obter o peso de `9-14`, ausente inclusive na fonte do autor. Dijkstra já bloqueia cálculos com esse mapa; o desenvolvimento prossegue com o mapa 5 validado.

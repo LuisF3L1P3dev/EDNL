@@ -4,7 +4,7 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 
 > **Escopo inicial: 2D.** A migração para 3D será uma etapa posterior, preservando os dados dos grafos e o código dos algoritmos. **Não gerar cidades, arestas ou pesos aleatórios.**
 
-> **Andamento real:** TSP-001 a TSP-003, TSP-005 e TSP-006 concluídas; TSP-004 parcialmente realizada. Os dois mapas têm cadastro JSON, e `tsp_core.py` implementa a representação e validação dos grafos. São 33 testes aprovados. As 45 ligações e os 44 pesos do mapa 18 foram conferidos, mas falta o peso de `9–14` inclusive na fonte do autor; o mapa permanece não validado e sua adjacência para cálculos é bloqueada. Os algoritmos, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
+> **Andamento real:** TSP-001 a TSP-003 e TSP-005 a TSP-007 concluídas; TSP-004 parcialmente realizada. Os dois mapas têm cadastro JSON, e `tsp_core.py` implementa a representação, validação e Dijkstra. São 51 testes aprovados. As 45 ligações e os 44 pesos do mapa 18 foram conferidos, mas falta o peso de `9–14` inclusive na fonte do autor; o mapa permanece não validado e bloqueado para algoritmos. As buscas TSP, os requisitos e a interface Pygame ainda fazem parte do planejamento. A implementação segue uma tarefa por vez, com revisão e commit entre etapas.
 
 ## Situação atual
 
@@ -15,7 +15,7 @@ Projeto acadêmico em **Python + Pygame** para a disciplina **Estrutura de Dados
 | Mapa 2 — 18 nós | ⚠️ Auditoria parcial registrada; falta o custo de 9–14 |
 | Mapa 2 — 45 ligações transcritas | ✅ Conexões e 44 pesos conferidos nas figuras do autor; 1 peso ausente |
 | Representação do grafo e carregamento JSON | ✅ Implementados e testados, com bloqueio de mapas pendentes |
-| Dijkstra no mapa 1 | ⏳ Implementação pendente |
+| Dijkstra no mapa 1 | ✅ Implementado e testado, com reconstrução do caminho |
 | Força bruta Hamiltoniana no mapa 1 | ⏳ Implementação pendente |
 | Dijkstra + força bruta no fecho métrico | ⏳ Implementação pendente |
 | Interface 2D em Pygame | ⏳ Implementação e teste visual pendentes |
@@ -52,7 +52,7 @@ São problemas diferentes:
 2. **TSP por força bruta:** testa ordens de visita de cidades e retorna à origem; no **modo Hamiltoniano**, somente usa arestas existentes no grafo da imagem. Para `n` nós e origem fixa, testa até `(n−1)!` ordens (ou menos ciclos viáveis).
 3. **TSP apoiado por Dijkstra:** aplica Dijkstra entre os pares de cidades para montar a matriz de menores distâncias (*fecho métrico*). **Depois** uma busca de TSP escolhe a ordem das visitas. O percurso físico pode repetir nós intermediários; não equivale a exigir um ciclo Hamiltoniano na malha original.
 
-No mapa pequeno, ambas as estratégias TSP encontraram custo **15**. Isso é um **resultado daquele grafo**, não uma garantia de igualdade em qualquer instância.
+No mapa pequeno, o custo de referência esperado para ambas as estratégias TSP é **15**. A implementação dessas buscas será feita nas TSP-008 e TSP-009. Esse resultado de referência não garante igualdade em qualquer instância.
 
 No grafo de 18 nós, força bruta ingênua seria impraticável: com a origem fixa, até `17! = 355687428096000` ordens seriam examinadas. Por isso há um limite didático de 9 nós no protótipo. Para a próxima fase, serão discutidas programação dinâmica, branch-and-bound e heurísticas/OR-Tools, sempre como extensões separadas.
 
@@ -74,7 +74,22 @@ print(len(pendente.nos))          # 18, disponível para desenho
 
 `No`, `Aresta` e `Grafo` são imutáveis. `nos` e `arestas` preservam os dados de desenho; uma aresta desconhecida mantém `peso=None`. `Grafo.adjacencia()` fornece uma visão imutável dos pesos conhecidos somente em mapas validados, inclui as duas direções de cada aresta e mantém vizinhança vazia para nós isolados. Não calcula distâncias pelas coordenadas nem completa ligações ausentes.
 
-`GrafoInvalidoError` informa erros de arquivo, JSON, campos, IDs, coordenadas, duplicatas, extremos ou pesos. Pesos zero e fracionários são aceitos; pesos negativos, booleanos e não finitos são recusados. Um cadastro com `validado: true` e peso desconhecido ou pendências é inconsistente e também é recusado. `MapaNaoValidadoError` sinaliza o bloqueio de um cadastro pendente; `Grafo.exigir_validado()` é a guarda que os próximos algoritmos deverão usar na entrada.
+`GrafoInvalidoError` informa erros de arquivo, JSON, campos, IDs, coordenadas, duplicatas, extremos ou pesos. Pesos zero e fracionários são aceitos; pesos negativos, booleanos e não finitos são recusados. Um cadastro com `validado: true` e peso desconhecido ou pendências é inconsistente e também é recusado. `MapaNaoValidadoError` sinaliza o bloqueio de um cadastro pendente; `Grafo.exigir_validado()` é a guarda usada por Dijkstra e que os próximos algoritmos deverão usar na entrada.
+
+## Dijkstra com reconstrução do caminho (implementado)
+
+```python
+from tsp_core import carregar_mapa, dijkstra
+
+grafo = carregar_mapa("data/mapa_05.json")
+resultado = dijkstra(grafo, origem=1, destino=3)
+print(resultado.caminho)  # (1, 2, 3)
+print(resultado.custo)    # 6
+```
+
+`dijkstra()` retorna `ResultadoDijkstra` imutável, com `caminho` (tupla de IDs) e `custo` (soma dos pesos). Usa fila de prioridade mínima (`heapq`), distâncias tentativas e predecessores; reconstrói o caminho iterativamente após finalizar o destino. Empates seguem ordem determinística por ID, preservando o primeiro predecessor de mesmo custo.
+
+Origem igual ao destino retorna `(origem,)` com custo zero. Destino inalcançável retorna `caminho=()` e `custo=math.inf`. IDs inexistentes, booleanos e outros tipos inválidos geram `GrafoInvalidoError`. Mapas não validados geram `MapaNaoValidadoError`, inclusive quando origem e destino são iguais. Um custo acumulado que exceda a capacidade de ponto flutuante gera `ErroGrafo`, em vez de ser tratado como ausência de caminho. O algoritmo calcula um caminho entre duas cidades; a escolha de uma ordem de visitas do caixeiro será implementada nas próximas tarefas.
 
 ## Instalação e execução
 
@@ -118,7 +133,7 @@ python main.py
 
 ## Testes
 
-Os 33 testes atuais verificam os dados, a auditoria parcial do mapa 18 e a representação do grafo, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
+Os 51 testes atuais verificam os dados, a auditoria parcial do mapa 18, a representação do grafo e Dijkstra, usando somente a biblioteca padrão do Python. Execute a partir da pasta do projeto:
 
 ```bash
 python -m unittest discover -s tests -v
@@ -153,9 +168,18 @@ Casos implementados em [`tests/test_tsp_core.py`](tests/test_tsp_core.py) (19 te
 - imutabilidade dos dados e da adjacência;
 - erros de JSON/UTF-8, arquivo ausente, campos, IDs, coordenadas, laços, duplicatas e pesos inválidos.
 
-Casos previstos para as tarefas dos algoritmos:
+Casos implementados em [`tests/test_dijkstra.py`](tests/test_dijkstra.py) (18 testes):
 
-- Dijkstra `1 → 3` retorna custo 6;
+- caso de aceite `1 → 2 → 3`, custo 6, e os 25 pares do mapa 5;
+- caminho inverso, soma das arestas reais e atualização dos predecessores;
+- destino aceito somente após sair da fila com custo mínimo;
+- pesos zero/fracionários, ciclos de custo zero e empates reproduzíveis;
+- origem igual ao destino, nós isolados e destino inalcançável;
+- bloqueio de mapas pendentes e rejeição de IDs inválidos;
+- resultado imutável, reconstrução longa sem recursão e limites numéricos.
+
+Casos previstos para as tarefas TSP:
+
 - força bruta retorna ciclo Hamiltoniano de custo 15;
 - TSP usando fecho métrico por Dijkstra retorna custo 15;
 - rota física expandida preserva soma dos custos;
@@ -171,7 +195,7 @@ tsp_grafos_2d/
 ├── AUDITORIA_MAPAS.md
 ├── requirements.txt
 ├── main.py                     # Interface e renderização 2D (Pygame)
-├── tsp_core.py                 # Representação e validação implementadas; algoritmos pendentes
+├── tsp_core.py                 # Representação, validação e Dijkstra implementados; TSP pendente
 ├── data/
 │   ├── mapa_05.json            # 5 nós, 8 arestas (validado)
 │   └── mapa_18.json            # Cadastro provisório implementado; auditoria pendente
@@ -180,6 +204,7 @@ tsp_grafos_2d/
 │       ├── mapa_05_original.png
 │       └── mapa_18_original.png
 └── tests/
+    ├── test_dijkstra.py        # Testes de caminhos mínimos (implementado)
     ├── test_mapa_05.py         # Testes dos dados (implementado)
     ├── test_mapa_18.py         # Testes do cadastro provisório (implementado)
     └── test_tsp_core.py        # Testes de representação/validação (implementado)
