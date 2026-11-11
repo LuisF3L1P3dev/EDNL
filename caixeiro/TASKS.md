@@ -115,6 +115,7 @@
   - Instalar requisitos, abrir programa e testar todos os botões.
   - Validar clique nos nós, desenhos, cores, teclado, alternância de mapas e mensagens de erro.
   - **Aceite:** testes manuais reproduzíveis registrados em `docs/` ou no relatório da equipe.
+  - **Avanço parcial:** requisitos instalados; 11 casos SDL passaram em `scripts/smoke_pygame.py`, com log e capturas inspecionadas em `docs/`. A janela nativa foi iniciada, mas a ferramenta de captura permaneceu na aprovação de acesso ao Python. A autorização verbal do usuário foi recebida; a confirmação na interface ainda precisa ser concluída. Teste manual nativo não foi declarado realizado. Roteiro em `docs/smoke_pygame.md`.
 
 ## Epic 04 — Comparação e validação acadêmica
 

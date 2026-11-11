@@ -1,0 +1,52 @@
+{
+  "modo": "SDL dummy",
+  "python": "3.14.0",
+  "pygame": "2.5.8",
+  "plataforma": "Windows-11-10.0.26200-SP0",
+  "casos": [
+    {
+      "caso": "Dijkstra por botão: 1-2-3, custo 6",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Clique nos nós alterna origem e destino",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Força bruta por botão: custo 15",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Comparação por teclado: ambos custam 15",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Play, pausa, avançar, voltar e velocidade",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Referência original do mapa 5",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Mapa 18 recusa algoritmo citando custo ausente",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Zoom por botão, pan e reset por teclado",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Referência original do mapa 18",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Redimensionamento mínimo",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Escape encerra o loop",
+      "resultado": "passou"
+    }
+  ]
+}
