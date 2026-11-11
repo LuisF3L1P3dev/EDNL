@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON e seus testes já estão presentes; o mapa 18 ainda requer auditoria, e o núcleo matemático e a interface serão implementados nas tarefas seguintes.
+**Execução por etapas:** implementar uma tarefa por vez e aguardar autorização do usuário antes da próxima, permitindo revisão e commit. A base recebida em `docs/ativ/` contém as referências e os materiais da aula. As referências estáveis, os dois cadastros JSON, a representação/validação do grafo e seus testes estão presentes; os algoritmos e a interface serão implementados nas tarefas seguintes. O mapa 18 continua não validado pela falta do peso de `9–14`.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -46,10 +46,11 @@
 
 ## Epic 02 — Núcleo matemático em Python
 
-- [ ] **TSP-006 — Implementar representação do grafo** · `P1 / Medium` · depende de TSP-002
+- [x] **TSP-006 — Implementar representação do grafo** · `P1 / Medium` · depende de TSP-002
   - Carregar JSON, validar nós, pares de arestas e pesos não negativos.
   - Gerar adjacência não orientada sem criar ligações inexistentes.
   - **Aceite:** mapas malformados produzem erro; mapa pendente bloqueia os algoritmos.
+  - **Conferido:** `tsp_core.py` carrega JSON UTF-8 e fornece `No`, `Aresta` e `Grafo` imutáveis. Valida metadados, IDs, coordenadas, duplicatas, extremos e pesos finitos não negativos. `Grafo.adjacencia()` exige mapa validado, preserva somente ligações reais e produz vizinhança simétrica imutável. O mapa 18 pode ser inspecionado sem habilitar cálculos. Os 19 testes do núcleo passaram; 33 testes aprovados no projeto com `python -B -m unittest discover -s tests -v`.
 
 - [ ] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
   - Usar fila de prioridade e vetor de predecessores.
@@ -159,4 +160,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-**TSP-004: auditar integralmente o mapa de 18 nós.** Confirmar todas as ligações e pesos, especialmente `9-14` e a associação de `56` a `4-14`, preferindo uma fonte de maior resolução. O cadastro permanece não validado até essa confirmação. A interface e o smoke test serão executados após implementar suas dependências.
+**TSP-007: implementar Dijkstra com reconstrução do caminho**, após autorização para a próxima etapa. A TSP-004 permanece aberta até obter o peso de `9-14`, ausente inclusive na fonte do autor. A representação já bloqueia cálculos com esse mapa; o desenvolvimento pode prosseguir com o mapa 5 validado.

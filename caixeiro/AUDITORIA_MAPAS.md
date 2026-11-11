@@ -20,6 +20,7 @@ Os arquivos PNG anexados pelo professor/usuário são a **fonte de verdade**. A 
 
 - **Estado:** auditoria parcial, **não aprovado para cálculos** por faltar o peso de `9–14`.
 - **Cadastro:** `data/mapa_18.json`, com `validado: false`, coordenadas normalizadas e pendências explícitas. Não usar como instância validada de algoritmos.
+- **Bloqueio implementado (TSP-006):** `carregar_mapa()` preserva os nós, arestas e o peso desconhecido para inspeção/desenho; `Grafo.exigir_validado()` e `Grafo.adjacencia()` levantam `MapaNaoValidadoError` citando `9-14`. Não há conversão de `null` em custo numérico nem exclusão silenciosa da ligação.
 - **Nós:** inteiros de `1` a `18` (18 no total).
 - **Arestas registradas:** 45, sendo 44 com pesos visíveis e uma com `null`.
 - **Ponto pendente:** existência de `9-14` confirmada nas figuras originais do autor, mas **não há peso indicado para essa linha**. O rótulo `56` foi confirmado em `4-14`; `43` pertence a `9-16`.
