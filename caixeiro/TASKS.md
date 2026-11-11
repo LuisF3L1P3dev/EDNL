@@ -91,9 +91,10 @@
   - **Aceite:** 5 ou 18 nós desenhados conforme o mapa escolhido; peso incerto apresentado como `?`.
   - **Conferido:** renderiza os cadastros sem recalcular custos; botões/atalhos 1/2, O para referência original e P para pesos. O custo ausente de 9–14 é desenhado como `?`.
 
-- [ ] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
+- [x] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
   - Clique em nós; botões para força bruta, Dijkstra, comparação e alternância de mapas.
   - **Aceite:** comandos de teclado e mouse implementados.
+  - **Conferido:** seleção alternada de origem/destino por clique; F/D/C executam algoritmos em worker, com validação antes de iniciar; 1/2/O/P/L e botões implementados. Seleções ficam estáveis durante cálculo; resultados são entregues ao loop sem bloquear eventos.
 
 - [ ] **TSP-014 — Destacar caminho calculado** · `P1 / Medium` · depende de TSP-007, TSP-008
   - Mostrar caminho em cor distinta, custo e rota textual.

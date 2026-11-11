@@ -1,7 +1,9 @@
 """Apresentação Pygame; os algoritmos permanecem em tsp_core."""
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from time import perf_counter
 import pygame
-from tsp_core import carregar_mapa
+from tsp_core import carregar_mapa, dijkstra, tsp_forca_bruta, tsp_dijkstra, ErroGrafo, LimiteTSPError
 
 
 ROOT = Path(__file__).resolve().parent
@@ -30,6 +32,13 @@ class Aplicacao:
         self.original = False
         self.pesos = True
         self.imagens = {}
+        self.origem, self.destino = 1, 3
+        self.selecao = "origem"
+        self.resultados = {}
+        self.tempos = {}
+        self.historico = []
+        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.futuro = None
         self.layout()
 
     @property
@@ -39,7 +48,58 @@ class Aplicacao:
     def trocar_mapa(self, indice):
         self.indice_mapa = indice
         self.original = False
+        self.origem, self.destino = self.mapa.ids[0], self.mapa.ids[2]
+        self.selecao = "origem"
+        self.limpar()
         self.status = "Mapa selecionado." if self.mapa.validado else "Mapa 18: peso 9–14 ausente; cálculos bloqueados."
+
+    def limpar(self):
+        self.resultados = {}
+        self.tempos = {}
+        self.historico = []
+
+    def selecionar_no(self, node_id):
+        if self.futuro is not None:
+            return
+        if self.selecao == "origem":
+            self.origem = node_id
+            self.selecao = "destino"
+        else:
+            self.destino = node_id
+            self.selecao = "origem"
+        self.limpar()
+        self.status = f"Origem {self.origem}; destino {self.destino}. Próximo clique define {self.selecao}."
+
+    def iniciar(self, metodo):
+        if self.futuro is not None:
+            return
+        try:
+            self.mapa.exigir_validado()
+            if metodo != "dijkstra" and len(self.mapa.nos) > 9:
+                raise LimiteTSPError("Busca didática limitada a 9 nós.")
+        except ErroGrafo as erro:
+            self.status = str(erro)
+            return
+        mapa, origem, destino = self.mapa, self.origem, self.destino
+        self.limpar()
+        self.status = "Calculando em segundo plano… a janela continua respondendo."
+
+        def calcular():
+            eventos, resultados, tempos = [], {}, {}
+            metodos = ("forca", "fecho") if metodo == "comparar" else (metodo,)
+            for nome in metodos:
+                inicio = perf_counter()
+                if nome == "dijkstra":
+                    r = dijkstra(mapa, origem, destino, eventos=eventos)
+                elif nome == "forca":
+                    r = tsp_forca_bruta(mapa, origem, eventos=eventos)
+                else:
+                    r = tsp_dijkstra(mapa, origem, eventos=eventos)
+                tempos[nome] = (perf_counter() - inicio) * 1000
+                resultados[nome] = r
+            return resultados, tempos, eventos
+
+        self.futuro = self.executor.submit(calcular)
 
     def layout(self):
         w, h = self.tela.get_size()
@@ -103,10 +163,17 @@ class Aplicacao:
         self.texto("Percurso da aula", (42, 147), 21, INK, True)
         self.botao("mapa1", "1  Mapa de 5 nós", (42, 185, 216, 38))
         self.botao("mapa2", "2  Mapa de 18 nós", (42, 231, 216, 38), BLUE)
-        self.botao("original", "O  Referência original", (42, 295, 216, 38), MUTED)
-        self.botao("pesos", "P  Mostrar / ocultar pesos", (42, 341, 216, 38), MUTED)
-        self.linhas("As posições servem ao desenho. Os pesos são os valores fixos da aula.",
-                    (42, 410), 210)
+        self.texto(f"Origem: {self.origem}    Destino: {self.destino}", (42, 286), 16, INK, True)
+        self.texto(f"Clique para definir {self.selecao}", (42, 313), 12, MUTED)
+        livre = self.futuro is None
+        self.botao("forca", "F  Força bruta exata", (42, 350, 216, 38), ativo=livre)
+        self.botao("dijkstra", "D  Dijkstra: origem → destino", (42, 396, 216, 38), BLUE, livre)
+        self.botao("comparar", "C  Comparar os dois TSP", (42, 442, 216, 38), ativo=livre)
+        self.botao("original", "O  Referência original", (42, 504, 216, 38), MUTED)
+        self.botao("pesos", "P  Mostrar / ocultar pesos", (42, 550, 216, 38), MUTED)
+        self.botao("limpar", "L  Limpar resultados", (42, 596, 216, 38), MUTED, livre)
+        self.linhas("Dijkstra calcula A → B. O caixeiro visita todas as cidades e retorna à origem.",
+                    (42, 660), 210, tamanho=13)
 
     def desenhar_mapa(self):
         self.painel(self.mapa_rect)
@@ -137,8 +204,9 @@ class Aplicacao:
                     pygame.draw.rect(self.tela, WHITE, rect.inflate(9, 5), border_radius=4)
                     self.tela.blit(label, rect)
             for node_id, centro in pos.items():
+                cor = ORANGE if node_id == self.origem else BLUE if node_id == self.destino else GREEN
                 pygame.draw.circle(self.tela, WHITE, centro, 17)
-                pygame.draw.circle(self.tela, GREEN, centro, 17, width=2)
+                pygame.draw.circle(self.tela, cor, centro, 17, width=3)
                 label = self.fonte(15, True).render(str(node_id), True, INK)
                 self.tela.blit(label, label.get_rect(center=centro))
         self.texto(f"{len(self.mapa.arestas)} ligações · pesos fixos · não direcionado",
@@ -168,7 +236,8 @@ class Aplicacao:
             self.tela = pygame.display.set_mode((max(1000, evento.w), max(760, evento.h)), pygame.RESIZABLE)
             self.layout()
         elif evento.type == pygame.KEYDOWN:
-            atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos"}
+            atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
+                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -176,17 +245,36 @@ class Aplicacao:
                 if ativo and rect.collidepoint(evento.pos):
                     self.acao(chave)
                     break
+            else:
+                if self.plot.collidepoint(evento.pos) and not self.original:
+                    for node_id, pos in self.posicoes().items():
+                        if pos.distance_to(evento.pos) <= 22:
+                            self.selecionar_no(node_id)
+                            break
 
     def acao(self, chave):
+        if self.futuro is not None and chave not in ("original", "pesos"):
+            return
         if chave in ("mapa1", "mapa2"):
             self.trocar_mapa(0 if chave == "mapa1" else 1)
         elif chave == "original":
             self.original = not self.original
         elif chave == "pesos":
             self.pesos = not self.pesos
+        elif chave in ("forca", "dijkstra", "comparar"):
+            self.iniciar(chave)
+        elif chave == "limpar":
+            self.limpar()
+            self.status = "Resultados limpos."
 
     def atualizar(self, dt):
-        pass
+        if self.futuro is not None and self.futuro.done():
+            try:
+                self.resultados, self.tempos, self.historico = self.futuro.result()
+                self.status = "Cálculo concluído."
+            except Exception as erro:
+                self.status = f"Falha no cálculo: {erro}"
+            self.futuro = None
 
     def executar(self):
         while self.rodando:
@@ -197,4 +285,5 @@ class Aplicacao:
             self.desenhar()
 
     def fechar(self):
+        self.executor.shutdown(wait=True, cancel_futures=True)
         pygame.quit()
