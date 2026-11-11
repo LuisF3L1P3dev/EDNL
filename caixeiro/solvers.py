@@ -5,6 +5,7 @@ escondida. Pesos e custos mantêm a unidade do cadastro, nunca pixels.
 """
 from dataclasses import dataclass, field, replace
 from itertools import permutations
+from functools import lru_cache
 from threading import Event
 from time import perf_counter
 from types import MappingProxyType
@@ -469,3 +470,98 @@ def held_karp(p, ctx):
 
 
 registrar("held_karp", held_karp, (ORIGINAL, FECHO), ORIGINAL, 18, "H")
+
+
+def _matching_exato(impares, custos, ctx):
+    """Matching perfeito mínimo: fixa o primeiro ímpar e testa todos os pares.
+
+    O(2^k k²) para k ímpares (k <= 18); sem dependência externa de matching.
+    """
+    @lru_cache(maxsize=None)
+    def resolver(restantes):
+        ctx.verificar(1)
+        if not restantes:
+            return 0, ()
+        a, resto = restantes[0], restantes[1:]
+        melhor = (math.inf, ())
+        for j, b in enumerate(resto):
+            custo, pares = resolver(resto[:j] + resto[j + 1:])
+            candidato = custos[a, b] + custo, ((a, b), *pares)
+            if candidato < melhor:
+                melhor = candidato
+        return melhor
+    resultado = resolver(tuple(sorted(impares)))
+    ctx.contadores.append(Contador("subconjuntos matching", resolver.cache_info().currsize, "subconjuntos"))
+    return resultado
+
+
+def christofides(p, ctx):
+    ids = sorted(p.grafo.ids)
+    if p.grafo.direcionado:
+        raise ErroGrafo("Christofides exige grafo não direcionado.")
+    for a in ids:
+        ctx.verificar()
+        for b in ids:
+            if (a, b) not in p.custos or p.custos[a, b] != p.custos.get((b, a)):
+                raise ErroGrafo("Christofides exige matriz completa e simétrica.")
+    for a in ids:
+        ctx.verificar()
+        for b in ids:
+            for c in ids:
+                direto, via = p.custos[a, b], p.custos[a, c] + p.custos[c, b]
+                if direto > via and not math.isclose(direto, via, rel_tol=1e-12, abs_tol=1e-12):
+                    raise ErroGrafo("Christofides exige desigualdade triangular.")
+    ctx.pipeline = ("dijkstra", "christofides") if p.variante == FECHO else ("christofides",)
+    if len(ids) == 1:
+        return (p.origem,), "aproximacao", "Aproximação ≤ 1,5 × ótimo da mesma instância métrica"
+    ctx.fase("Christofides: árvore geradora mínima (MST)")
+    dentro, fora, mst = {p.origem}, set(ids) - {p.origem}, []
+    graus = dict.fromkeys(ids, 0)
+    while fora:
+        ctx.verificar(1)
+        _, a, b = min((p.custos[a, b], a, b) for a in dentro for b in fora)
+        mst.append((a, b))
+        graus[a] += 1
+        graus[b] += 1
+        dentro.add(b)
+        fora.remove(b)
+        ctx.evento("mst", adicionadas=tuple(mst), contador=len(mst))
+    impares = tuple(a for a in ids if graus[a] % 2)
+    ctx.evento("vertices_impares", visitados=impares)
+    ctx.fase("Christofides: matching perfeito de peso mínimo (exato)")
+    custo_matching, matching = _matching_exato(impares, p.custos, ctx)
+    ctx.evento("matching_minimo", adicionadas=matching, custo=custo_matching)
+    ctx.fase("Christofides: circuito Euleriano no multigrafo")
+    adj = {a: [] for a in ids}
+    for indice, (a, b) in enumerate((*mst, *matching)):
+        adj[a].append((b, indice))
+        adj[b].append((a, indice))
+    for lista in adj.values():
+        lista.sort(reverse=True)
+    usados, pilha, circuito = set(), [p.origem], []
+    while pilha:
+        ctx.verificar(1)
+        a = pilha[-1]
+        while adj[a] and adj[a][-1][1] in usados:
+            adj[a].pop()
+        if not adj[a]:
+            circuito.append(pilha.pop())
+        else:
+            b, indice = adj[a].pop()
+            usados.add(indice)
+            pilha.append(b)
+    circuito.reverse()
+    ctx.evento("circuito_euleriano", candidato=tuple(circuito), caminho=p.expandir(circuito))
+    ctx.fase("Christofides: atalhamento e expansão física")
+    vistos, rota = set(), []
+    for a in circuito:
+        if a not in vistos:
+            vistos.add(a)
+            rota.append(a)
+    rota.append(p.origem)
+    ctx.melhor = tuple(rota)
+    ctx.evento("atalhamento", candidato=ctx.melhor, caminho=p.expandir(rota), custo=p.custo(rota))
+    return ctx.melhor, "aproximacao", "Aproximação ≤ 1,5 × ótimo da mesma instância métrica"
+
+
+registrar("christofides", christofides, (ORIGINAL, FECHO), FECHO, 18, "A")

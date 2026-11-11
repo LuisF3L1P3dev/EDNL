@@ -181,7 +181,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Explicar o custo `O(n² 2ⁿ)` e disponibilizar progresso por camadas na interface.
   - **Aceite:** custos iguais à força bruta em instâncias pequenas; ciclo Hamiltoniano de custo 391 no mapa 18 original; caminho físico e memória medidos; falta de rota e limite tratados. O script de controle existente não deve ser apresentado como solver de UI antes desta tarefa.
 
-- [ ] **TSP-030 — Implementar `christofides` no TSP métrico** · `P2 / High` · depende de TSP-026, TSP-029
+- [x] **TSP-030 — Implementar `christofides` no TSP métrico** · `P2 / High` · depende de TSP-026, TSP-029
   - Trabalhar em grafo completo, não direcionado, simétrico, com pesos não negativos e desigualdade triangular; nos mapas esparsos, construir o fecho por Dijkstra sem modificar os JSON.
   - Implementar MST, nós de grau ímpar, matching perfeito de peso mínimo, multigrafo Euleriano e atalhamento; matching guloso não sustenta a garantia clássica.
   - Reconstruir o passeio físico e registrar as etapas para visualização; escolher e documentar eventual dependência de matching.
