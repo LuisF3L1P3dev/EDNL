@@ -6,6 +6,7 @@ Mapas pendentes podem ser carregados para desenho. A adjacência numérica só
 
 from dataclasses import dataclass
 from heapq import heappop, heappush
+from itertools import permutations
 import json
 import math
 from pathlib import Path
@@ -26,6 +27,10 @@ class GrafoInvalidoError(ErroGrafo):
 
 class MapaNaoValidadoError(ErroGrafo):
     """Mapa ainda não autorizado pelos dados para uso em algoritmos."""
+
+
+class LimiteTSPError(ErroGrafo):
+    """Instância acima do limite seguro da busca didática."""
 
 
 def _numero_finito(valor: object) -> bool:
@@ -214,6 +219,57 @@ def dijkstra(grafo: Grafo, origem: int, destino: int) -> ResultadoDijkstra:
                 heappush(fila, (candidato, vizinho))
 
     return ResultadoDijkstra((), math.inf)
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoTSP:
+    ordem: tuple[int, ...]
+    caminho: tuple[int, ...]
+    custo: Peso
+    estados_testados: int
+    ciclos_validos: int
+    otimo: bool = True
+
+
+def _validar_tsp(grafo: Grafo, origem: int, *, limite: int = 9) -> None:
+    if not isinstance(grafo, Grafo):
+        raise GrafoInvalidoError("TSP exige um objeto Grafo.")
+    grafo.exigir_validado()
+    _id_valido(origem, "origem")
+    if origem not in grafo.ids:
+        raise GrafoInvalidoError(f"origem: nó {origem} inexistente.")
+    if len(grafo.nos) > limite:
+        raise LimiteTSPError(f"Busca exata didática limitada a {limite} nós; mapa possui {len(grafo.nos)}.")
+
+
+def tsp_forca_bruta(grafo: Grafo, origem: int) -> ResultadoTSP:
+    """Enumera até (n-1)! ordens, somente sobre arestas reais; máximo 9 nós.
+
+    Sem ciclo viável, retorna tuplas vazias e infinito (inexistência provada).
+    Uma única cidade tem percurso trivial de custo zero.
+    """
+    _validar_tsp(grafo, origem)
+    adj = grafo.adjacencia()
+    if len(grafo.nos) == 1:
+        return ResultadoTSP((origem,), (origem,), 0, 1, 1)
+    melhor = ()
+    custo_melhor = math.inf
+    testados = validos = 0
+    for ordem in permutations(sorted(node_id for node_id in grafo.ids if node_id != origem)):
+        rota = (origem, *ordem, origem)
+        testados += 1
+        custo = 0
+        for a, b in zip(rota, rota[1:]):
+            if b not in adj[a]:
+                break
+            custo += adj[a][b]
+            if type(custo) is float and not math.isfinite(custo):
+                raise ErroGrafo("Custo acumulado excede a capacidade numérica.")
+        else:
+            validos += 1
+            if custo < custo_melhor:
+                melhor, custo_melhor = rota, custo
+    return ResultadoTSP(melhor, melhor, custo_melhor, testados, validos)
 
 
 def _campos(objeto: object, obrigatorios: tuple[str, ...], contexto: str) -> dict:

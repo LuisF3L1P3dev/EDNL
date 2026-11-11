@@ -58,11 +58,12 @@
   - **Aceite:** no mapa 5, de 1 até 3 a distância mínima é 6 (`1-2-3`).
   - **Conferido:** `dijkstra(grafo, origem, destino)` usa heap mínimo, distâncias tentativas, nós finalizados e predecessores em `tsp_core.py`. Retorna `ResultadoDijkstra` imutável; caminho vazio e custo infinito sinalizam destino inalcançável. Os 18 testes em `tests/test_dijkstra.py` cobrem os 25 pares do mapa 5, o caso de custo 6, bloqueio do mapa 18, empates, pesos zero/fracionários e entradas inválidas. Total: 51 testes aprovados com `python -B -m unittest discover -s tests -v`.
 
-- [ ] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
+- [x] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
   - Enumerar ordens com origem fixa e retorno à origem.
   - Ignorar candidatos com arestas não existentes.
   - Impor limite de até 9 nós na versão didática.
   - **Aceite:** mapa 5 tem custo ótimo 15; mapa 18 não tenta avaliar `17!` permutações.
+  - **Conferido:** `tsp_forca_bruta()` enumera 24 ordens no mapa 5, retorna ciclo de custo 15 e impõe limite de 9 nós antes da enumeração. Testes em `tests/test_tsp.py`.
 
 - [ ] **TSP-009 — Implementar fecho métrico por Dijkstra + busca exata** · `P1 / High` · depende de TSP-007 e TSP-008
   - Calcular caminhos mínimos entre todos os destinos.
