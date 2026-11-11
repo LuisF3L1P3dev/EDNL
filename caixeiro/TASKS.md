@@ -163,7 +163,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Padronizar progresso, cancelamento cooperativo, orçamento e snapshots, preservando o worker e as guardas de mapas não validados.
   - **Aceite:** métodos atuais adaptados sem mudar os custos 6/15/391; resultado impossível, indisponibilidade, cancelamento e limite possuem estados distintos e testes.
 
-- [ ] **TSP-027 — Implementar `nearest_neighbor`** · `P1 / Medium` · depende de TSP-026
+- [x] **TSP-027 — Implementar `nearest_neighbor`** · `P1 / Medium` · depende de TSP-026
   - Construir a ordem pelo vizinho ainda não visitado de menor custo, com desempate determinístico por ID e retorno à origem.
   - Modo padrão no fecho métrico por Dijkstra, expandindo a ordem nas arestas reais; modo direto opcional deve recusar ou sinalizar bloqueio em grafos esparsos.
   - Identificar como heurística sem prova de ótimo; registrar candidato escolhido e acumulado para reprodução.

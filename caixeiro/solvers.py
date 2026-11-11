@@ -318,3 +318,31 @@ registrar("dijkstra", None, (CAMINHO,), CAMINHO, atalho="D")
 registrar("forca", _forca, (ORIGINAL, FECHO), ORIGINAL, 9, "F")
 registrar("fecho", _forca, (FECHO,), FECHO, 9, "T")
 registrar("limitada", _limitada, (ORIGINAL,), ORIGINAL, 18, "B")
+
+
+def nearest_neighbor(p, ctx):
+    """Construção determinística O(n²); não fornece certificado de ótimo."""
+    origem = p.origem
+    rota, restantes, acumulado = [origem], set(p.grafo.ids) - {origem}, 0
+    ctx.fase("Vizinho mais próximo: construindo a rota")
+    while restantes:
+        ctx.verificar(1)
+        atual = rota[-1]
+        peso, proximo = min(((p.custos[atual, b], b) for b in restantes
+                              if (atual, b) in p.custos), default=(math.inf, None))
+        if proximo is None:
+            return (), "construcao_bloqueada", "Construção gulosa bloqueada · sem prova de inviabilidade"
+        rota.append(proximo)
+        restantes.remove(proximo)
+        acumulado += peso
+        ctx.evento("escolha", atual=proximo, candidato=tuple(rota),
+                   caminho=p.expandir(rota), custo=acumulado, contador=ctx.estados)
+    if len(rota) > 1:
+        if (rota[-1], origem) not in p.custos:
+            return (), "construcao_bloqueada", "Retorno guloso bloqueado · sem prova de inviabilidade"
+        rota.append(origem)
+    ctx.melhor = tuple(rota)
+    return ctx.melhor, "heuristica", "Heurística · sem prova de ótimo"
+
+
+registrar("nearest_neighbor", nearest_neighbor, (ORIGINAL, FECHO), FECHO, atalho="N")
