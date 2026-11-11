@@ -169,7 +169,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Identificar como heurística sem prova de ótimo; registrar candidato escolhido e acumulado para reprodução.
   - **Aceite:** rota fechada cobre todos os IDs nos mapas conectados; soma física correta; testes de empate, nó isolado e origem igual; não confundir uma construção bloqueada com prova de inexistência. Comparar custo com busca exata apenas no mesmo modelo.
 
-- [ ] **TSP-028 — Implementar `two_opt` como melhoria de uma rota inicial** · `P1 / High` · depende de TSP-027
+- [x] **TSP-028 — Implementar `two_opt` como melhoria de uma rota inicial** · `P1 / High` · depende de TSP-027
   - Receber uma rota viável (por exemplo `nearest_neighbor`) e aplicar trocas 2-opt de melhoria estrita, preservando origem, fechamento e cidades.
   - Respeitar a mesma matriz/variante da rota inicial. Na malha original, rejeitar trocas que usem arestas ausentes; no fecho, reexpandir o percurso físico.
   - Registrar arestas removidas/adicionadas, custo anterior/novo, limite de iterações/tempo e condição de parada.

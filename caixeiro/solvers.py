@@ -346,3 +346,56 @@ def nearest_neighbor(p, ctx):
 
 
 registrar("nearest_neighbor", nearest_neighbor, (ORIGINAL, FECHO), FECHO, atalho="N")
+
+
+def two_opt(p, ctx, *, ordem_inicial=None):
+    """Primeira melhoria estrita, custo completo (também verifica arcos ausentes)."""
+    if ordem_inicial is None:
+        ctx.pipeline = ("nearest_neighbor", "two_opt")
+        rota, termino, garantia = nearest_neighbor(p, ctx)
+        if not rota:
+            return rota, termino, garantia
+    else:
+        ctx.pipeline = ("rota_fornecida", "two_opt")
+        if isinstance(ordem_inicial, ResultadoSolver):
+            if ordem_inicial.variante != p.variante or ordem_inicial.origem != p.origem:
+                raise ErroGrafo("Rota inicial pertence a outra variante/origem.")
+            rota = ordem_inicial.ordem
+            validar_saida(p, rota, ordem_inicial.caminho, ordem_inicial.custo)
+        else:
+            rota = tuple(ordem_inicial)
+            validar_saida(p, rota, p.expandir(rota), p.custo(rota))
+        if not rota:
+            raise ErroGrafo("2-opt exige uma rota inicial viável.")
+    ctx.melhor = tuple(rota)
+    custo = p.custo(rota)
+    inicial, trocas = custo, 0
+    ctx.parametros.append(("custo_inicial", str(custo)))
+    ctx.fase("nearest_neighbor + two_opt: procurando melhorias")
+    for iteracao in range(1, ctx.orcamento.max_iteracoes + 1):
+        melhorou = False
+        for i in range(1, len(rota) - 2):
+            for j in range(i + 1, len(rota) - 1):
+                ctx.verificar(1)
+                candidato = (*rota[:i], *reversed(rota[i:j + 1]), *rota[j + 1:])
+                novo = p.custo(candidato)
+                if novo < custo:
+                    ctx.evento("troca_2opt", candidato=candidato, caminho=p.expandir(candidato),
+                               custo=novo, custo_anterior=custo, contador=iteracao,
+                               removidas=((rota[i - 1], rota[i]), (rota[j], rota[j + 1])),
+                               adicionadas=((rota[i - 1], rota[j]), (rota[i], rota[j + 1])))
+                    rota, custo, melhorou = candidato, novo, True
+                    ctx.melhor = rota
+                    trocas += 1
+                    break
+            if melhorou:
+                break
+        if not melhorou:
+            ctx.contadores.extend((Contador("trocas 2-opt", trocas, "trocas"),
+                                   Contador("varreduras 2-opt", iteracao, "varreduras")))
+            return tuple(rota), "otimo_local", "Ótimo local 2-opt · sem prova de ótimo global"
+    ctx.contadores.append(Contador("trocas 2-opt", trocas, "trocas"))
+    return tuple(rota), "limite_iteracoes", "Limite de iterações · sem prova de ótimo local/global"
+
+
+registrar("two_opt", two_opt, (ORIGINAL, FECHO), FECHO, atalho="I")
