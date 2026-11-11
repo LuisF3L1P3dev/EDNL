@@ -12,7 +12,7 @@
 - **Dificuldade:** Low, Medium e High.
 - O fato de uma tarefa de código estar marcada `[x]` não significa que a interface Pygame já foi validada em todas as máquinas. Rodar a interface visualmente ainda é necessário.
 
-**Execução autorizada:** o usuário autorizou implementar sequencialmente até a TSP-021 e fazer um commit por tarefa, sem pedir autorização entre etapas. Foram entregues algoritmos, eventos, Pygame, controles, animação, câmera, testes e relatórios. As TSP-004, TSP-017 e o aceite real da TSP-020 permanecem abertos pelos motivos registrados abaixo. A autorização não abrange iniciar a fase 3D.
+**Execução autorizada:** o usuário autorizou implementar sequencialmente até a TSP-021 e fazer um commit por tarefa, sem pedir autorização entre etapas. Foram entregues algoritmos, eventos, Pygame, controles, animação, câmera, testes e relatórios. Após definir `9–14 = 1`, as TSP-004 e TSP-020 foram concluídas com execução no mapa real. Permanece aberta a inspeção manual nativa da TSP-017. A fase 3D não foi iniciada.
 
 ## Epic 01 — Especificação, referências e dados fixos
 
@@ -31,7 +31,7 @@
   - Preservar os 18 IDs, coordenadas para desenho e pesos identificáveis.
   - Marcar explicitamente a dúvida sobre `9-14`.
   - **Aceite:** JSON contém 18 nós; nenhuma aresta com valor incerto recebe peso inventado.
-  - **Conferido:** `data/mapa_18.json` contém 18 IDs, coordenadas normalizadas e 45 ligações provisórias: 44 pesos transcritos e `9-14` com `null`. A associação `4-14:56` está explicitamente pendente. `validado` permanece `false`. Os 6 testes do cadastro em `tests/test_mapa_18.py` passaram; total de 12 testes aprovados no projeto. Esses testes não substituem a auditoria dos pesos da TSP-004.
+  - **Histórico da entrega:** cadastro inicial com 18 IDs, coordenadas normalizadas e 45 ligações provisórias; 9–14 foi mantida com `null` até obter fonte explícita. A TSP-004 encerrou a pendência com o valor 1 fornecido pelo usuário e validou os 45 pesos.
 
 - [x] **TSP-004 — Auditar integralmente o mapa de 18 nós** · `P0 / High`
   - Revisar a linha/peso `9-14`, o rótulo `56` associado a `4-14` e todas as demais conexões.
@@ -50,13 +50,13 @@
   - Carregar JSON, validar nós, pares de arestas e pesos não negativos.
   - Gerar adjacência não orientada sem criar ligações inexistentes.
   - **Aceite:** mapas malformados produzem erro; mapa pendente bloqueia os algoritmos.
-  - **Conferido:** `tsp_core.py` carrega JSON UTF-8 e fornece `No`, `Aresta` e `Grafo` imutáveis. Valida metadados, IDs, coordenadas, duplicatas, extremos e pesos finitos não negativos. `Grafo.adjacencia()` exige mapa validado, preserva somente ligações reais e produz vizinhança simétrica imutável. O mapa 18 pode ser inspecionado sem habilitar cálculos. Os 19 testes do núcleo passaram; 33 testes aprovados no projeto com `python -B -m unittest discover -s tests -v`.
+  - **Conferido:** `tsp_core.py` carrega JSON UTF-8 e fornece `No`, `Aresta` e `Grafo` imutáveis. Valida metadados, IDs, coordenadas, duplicatas, extremos e pesos finitos não negativos. A adjacência exige mapa validado e preserva ligações reais nos dois sentidos. Guardas de mapas incompletos continuam testadas em fixture; o mapa 18 real está validado após a TSP-004.
 
 - [x] **TSP-007 — Implementar Dijkstra com reconstrução do caminho** · `P1 / Medium` · depende de TSP-006
   - Usar fila de prioridade e vetor de predecessores.
   - Entrada: grafo, origem e destino. Saída: sequência e custo.
   - **Aceite:** no mapa 5, de 1 até 3 a distância mínima é 6 (`1-2-3`).
-  - **Conferido:** `dijkstra(grafo, origem, destino)` usa heap mínimo, distâncias tentativas, nós finalizados e predecessores em `tsp_core.py`. Retorna `ResultadoDijkstra` imutável; caminho vazio e custo infinito sinalizam destino inalcançável. Os 18 testes em `tests/test_dijkstra.py` cobrem os 25 pares do mapa 5, o caso de custo 6, bloqueio do mapa 18, empates, pesos zero/fracionários e entradas inválidas. Total: 51 testes aprovados com `python -B -m unittest discover -s tests -v`.
+  - **Conferido:** Dijkstra usa heap mínimo, distâncias tentativas, nós finalizados e predecessores. Resultado imutável; caminho vazio/infinito sinaliza destino inalcançável. Testes cobrem mapa 5, mapas pendentes sintéticos, empates e entradas inválidas; após o complemento de peso, os 324 pares do mapa 18 foram conferidos contra Floyd–Warshall.
 
 - [x] **TSP-008 — Implementar TSP trivial por força bruta** · `P1 / Medium` · depende de TSP-006
   - Enumerar ordens com origem fixa e retorno à origem.
@@ -89,7 +89,7 @@
   - Renderizar nós e arestas sem recalcular pesos pela posição.
   - Permitir alternar os dois mapas e visualizar as referências originais.
   - **Aceite:** 5 ou 18 nós desenhados conforme o mapa escolhido; peso incerto apresentado como `?`.
-  - **Conferido:** renderiza os cadastros sem recalcular custos; botões/atalhos 1/2, O para referência original e P para pesos. O custo ausente de 9–14 é desenhado como `?`.
+  - **Conferido:** renderiza cadastros sem recalcular custos; botões/atalhos 1/2, O para referência e P para pesos. Há suporte a `?` em cadastros incompletos; no mapa 18 validado, 9–14 é exibida com peso 1.
 
 - [x] **TSP-013 — Implementar seleção de origem/destino e botões** · `P1 / Medium` · depende de TSP-011
   - Clique em nós; botões para força bruta, Dijkstra, comparação e alternância de mapas.
@@ -109,13 +109,13 @@
 - [x] **TSP-016 — Melhorar responsividade e legibilidade do grafo de 18 nós** · `P2 / Medium` · depende de TSP-012, TSP-004
   - Zoom, pan, exibição seletiva de pesos e labels que evitem colisões.
   - **Aceite:** arestas, IDs e pesos podem ser inspecionados sem ambiguidade visual.
-  - **Conferido:** zoom ancorado no cursor (roda ou +/−), arraste com botão direito/meio, Z para reset; P alterna todos/incidentes ao nó/ocultos. Labels evitam nós e outros labels; inspeção por cursor identifica pares e custos inclusive em cruzamentos. A pendência da TSP-004 não impede a inspeção visual; `?` permanece para 9–14.
+  - **Conferido:** zoom ancorado no cursor (roda ou +/−), arraste direito/meio, Z para reset; P alterna todos/incidentes ao nó/ocultos. Labels evitam nós e outros labels; inspeção identifica pares e custos em cruzamentos. As novas capturas exibem 9–14 com peso 1 e o ciclo real de custo 391.
 
 - [ ] **TSP-017 — Smoke test visual em Pygame** · `P1 / Medium` · depende de TSP-011 a TSP-014
   - Instalar requisitos, abrir programa e testar todos os botões.
   - Validar clique nos nós, desenhos, cores, teclado, alternância de mapas e mensagens de erro.
   - **Aceite:** testes manuais reproduzíveis registrados em `docs/` ou no relatório da equipe.
-  - **Avanço parcial:** requisitos instalados; 11 casos SDL passaram em `scripts/smoke_pygame.py`, com log e capturas inspecionadas em `docs/`. A janela nativa foi iniciada, mas a ferramenta de captura permaneceu na aprovação de acesso ao Python. A autorização verbal do usuário foi recebida; a confirmação na interface ainda precisa ser concluída. Teste manual nativo não foi declarado realizado. Roteiro em `docs/smoke_pygame.md`.
+  - **Avanço parcial:** requisitos instalados; 15 casos SDL passaram, incluindo Dijkstra e busca no mapa 18 validado. Logs/capturas revisados em `docs/`. A inspeção manual nativa permanece pendente de confirmação de acesso ao Python na ferramenta; autorização verbal recebida. O smoke SDL não é apresentado como teste manual. Roteiro em `docs/smoke_pygame.md`.
 
 ## Epic 04 — Comparação e validação acadêmica
 
@@ -131,17 +131,17 @@
   - **Aceite:** tela/relatório esclarece por que os problemas comparados são distintos.
   - **Conferido:** `comparacao.py` e script geram relatório/JSON com mediana sem histórico, contadores separados e um controle em que ambos recebem a mesma instância métrica. UI identifica Hamiltoniano versus passeio. Contraexemplos testados. A publicação do núcleo independe da inspeção manual nativa pendente na TSP-017.
 
-- [ ] **TSP-020 — Definir estratégia segura para o mapa de 18 nós** · `P1 / High` · depende de TSP-004
+- [x] **TSP-020 — Definir estratégia segura para o mapa de 18 nós** · `P1 / High` · depende de TSP-004
   - Dijkstra em pares funciona após validação; **não** executar força bruta ingênua de 18 nós.
   - Selecionar busca melhorada (Held–Karp, branch-and-bound ou OR-Tools) com justificativa.
   - **Aceite:** algoritmo para o mapa 18 termina dentro de um limite razoável e identifica se a solução é ótima comprovada ou apenas conhecida.
-  - **Avanço parcial:** branch-and-bound implementado com limite de 2 s/200 mil estados e estados de prova explícitos, integrado ao botão B. Testes cobrem anel sintético de 18 nós e cortes com/sem solução. O mapa real permanece recusado por faltar o peso de 9–14 (ausência confirmada pelo usuário). Estratégia em `docs/estrategia_18.md`; aceite de execução no mapa real depende da TSP-004.
+  - **Conferido:** branch-and-bound executado no mapa real com 9–14=1: custo 391, `otimo_comprovado`, 1159 estados, cerca de 18 ms na execução registrada. Held–Karp independente confirma 391 (153860 estados). Resultados em `docs/resultados_mapa_18.json`, reproduzidos por `scripts/validar_mapa_18.py`. Limites de 2 s/200 mil estados e guardas de dados pendentes preservados; UI e smoke incluem o mapa real.
 
 - [x] **TSP-021 — Elaborar relatório e demonstração da aula** · `P2 / Medium` · depende de TSP-017 a TSP-020
   - Explicar grafos incompletos, pesos, Dijkstra, força bruta, complexidade e resultados.
   - Incluir capturas da versão 2D, referências originais, limitações e casos de teste.
   - **Aceite:** roteiro permite apresentar o projeto do início ao fim.
-  - **Conferido:** `docs/RELATORIO.md` explica dados, algoritmos, complexidade, comparação, resultados, capturas, limitações e roteiro. README refeito para a aplicação executável; `scripts/verificar.py` registra a suíte. Entrega documental concluída com dependências manuais/de dados explicitamente abertas; não declara cálculo no mapa real ou smoke nativo concluídos.
+  - **Conferido:** relatório e README atualizados com dados, complexidade, comparação, capturas, roteiro e resultado real de custo 391, conferido independentemente. `scripts/verificar.py` registra a suíte de 89 testes. A única dependência ainda aberta até esta etapa é a inspeção manual nativa da TSP-017.
 
 ## Epic 05 — Conversão futura para 3D (não iniciar antes de concluir o 2D)
 
@@ -174,4 +174,4 @@ TSP-006..009 -> TSP-011..014 -> TSP-017 -> TSP-021
 
 ## Próxima ação recomendada
 
-Concluir a inspeção manual nativa da **TSP-017** conforme `docs/smoke_pygame.md`. Para fechar **TSP-004** e o aceite real da **TSP-020**, é necessária definição do custo de `9-14`, cuja ausência foi confirmada pelo usuário. Nenhuma tarefa 3D foi iniciada. Resultados e apresentação estão em `docs/RELATORIO.md`.
+Concluir a inspeção manual nativa da **TSP-017** conforme `docs/smoke_pygame.md`. As TSP-004 e TSP-020 estão concluídas após o complemento de peso informado pelo usuário; testes e resultados reais foram atualizados. Nenhuma tarefa 3D foi iniciada. Resultados e apresentação estão em `docs/RELATORIO.md`.

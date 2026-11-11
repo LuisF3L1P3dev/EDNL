@@ -90,6 +90,7 @@ class Aplicacao:
             if metodo not in ("dijkstra", "limitada") and len(self.mapa.nos) > 9:
                 raise LimiteTSPError("Busca didática limitada a 9 nós.")
         except ErroGrafo as erro:
+            self.limpar()
             self.status = str(erro)
             return
         mapa, origem, destino = self.mapa, self.origem, self.destino

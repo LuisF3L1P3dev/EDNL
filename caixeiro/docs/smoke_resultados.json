@@ -33,7 +33,19 @@
       "resultado": "passou"
     },
     {
-      "caso": "Mapa 18 recusa algoritmo citando custo ausente",
+      "caso": "Mapa 18 validado: Dijkstra 1–3 com custo 45",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Mapa 18: aresta 9–14 com peso 1",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Mapa 18 real: ciclo de custo 391, ótimo comprovado",
+      "resultado": "passou"
+    },
+    {
+      "caso": "Mapa 18 recusa enumeradores acima de 9 nós",
       "resultado": "passou"
     },
     {

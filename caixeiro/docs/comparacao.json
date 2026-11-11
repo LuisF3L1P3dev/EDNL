@@ -11,7 +11,7 @@
         3
       ],
       "ordem": [],
-      "tempo_ms_mediana": 0.009399838745594025,
+      "tempo_ms_mediana": 0.020399922505021095,
       "repeticoes": 7,
       "ordens_testadas": 0,
       "nos_finalizados_dijkstra": 4,
@@ -35,7 +35,7 @@
         4,
         1
       ],
-      "tempo_ms_mediana": 0.020300038158893585,
+      "tempo_ms_mediana": 0.046800123527646065,
       "repeticoes": 7,
       "ordens_testadas": 24,
       "nos_finalizados_dijkstra": 0,
@@ -59,7 +59,7 @@
         4,
         1
       ],
-      "tempo_ms_mediana": 0.30170008540153503,
+      "tempo_ms_mediana": 0.29939995147287846,
       "repeticoes": 7,
       "ordens_testadas": 24,
       "nos_finalizados_dijkstra": 75,
@@ -88,7 +88,7 @@
         4,
         1
       ],
-      "tempo_ms_mediana": 0.022300053387880325,
+      "tempo_ms_mediana": 0.022099819034337997,
       "repeticoes": 7,
       "ordens_testadas": 24,
       "nos_finalizados_dijkstra": 0,
@@ -112,7 +112,7 @@
         4,
         1
       ],
-      "tempo_ms_mediana": 0.25170017033815384,
+      "tempo_ms_mediana": 0.21309987641870975,
       "repeticoes": 7,
       "ordens_testadas": 24,
       "nos_finalizados_dijkstra": 75,

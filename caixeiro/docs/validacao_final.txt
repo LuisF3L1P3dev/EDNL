@@ -4,9 +4,9 @@ Comando: python -B -m unittest discover -s tests -v
 
 pygame-ce 2.5.8 (SDL 2.32.10, Python 3.14.0)
 test_concorda_com_forca_bruta_em_todas_as_origens (test_busca_limitada.BuscaLimitadaTests.test_concorda_com_forca_bruta_em_todas_as_origens) ... ok
+test_fixture_de_mapa_18_pendente_continua_bloqueada (test_busca_limitada.BuscaLimitadaTests.test_fixture_de_mapa_18_pendente_continua_bloqueada) ... ok
 test_instancia_sintetica_de_18_nos_termina_com_prova (test_busca_limitada.BuscaLimitadaTests.test_instancia_sintetica_de_18_nos_termina_com_prova) ... ok
 test_limites_invalidos (test_busca_limitada.BuscaLimitadaTests.test_limites_invalidos) ... ok
-test_mapa_real_18_continua_bloqueado (test_busca_limitada.BuscaLimitadaTests.test_mapa_real_18_continua_bloqueado) ... ok
 test_orcamento_nao_declara_inexistencia_ou_otimo (test_busca_limitada.BuscaLimitadaTests.test_orcamento_nao_declara_inexistencia_ou_otimo) ... ok
 test_prova_de_ausencia_e_cidade_unica (test_busca_limitada.BuscaLimitadaTests.test_prova_de_ausencia_e_cidade_unica) ... ok
 test_metricas_distintas_e_controle_equivalente (test_comparacao.ComparacaoTests.test_metricas_distintas_e_controle_equivalente) ... ok
@@ -20,6 +20,7 @@ test_estouro_numerico_nao_e_reportado_como_destino_inalcancavel (test_dijkstra.D
 test_grafo_sem_arestas_e_grafo_de_um_no (test_dijkstra.DijkstraTests.test_grafo_sem_arestas_e_grafo_de_um_no) ... ok
 test_inteiros_grandes_nao_perdem_precisao (test_dijkstra.DijkstraTests.test_inteiros_grandes_nao_perdem_precisao) ... ok
 test_mapa_18_bloqueado_mesmo_com_origem_igual_destino (test_dijkstra.DijkstraTests.test_mapa_18_bloqueado_mesmo_com_origem_igual_destino) ... ok
+test_mapa_18_real_usa_peso_1_no_caminho_minimo (test_dijkstra.DijkstraTests.test_mapa_18_real_usa_peso_1_no_caminho_minimo) ... ok
 test_mapa_nao_validado_com_pesos_conhecidos_tambem_bloqueia (test_dijkstra.DijkstraTests.test_mapa_nao_validado_com_pesos_conhecidos_tambem_bloqueia) ... ok
 test_melhoria_de_distancia_substitui_predecessor (test_dijkstra.DijkstraTests.test_melhoria_de_distancia_substitui_predecessor) ... ok
 test_origem_igual_destino_retorna_um_no_e_zero (test_dijkstra.DijkstraTests.test_origem_igual_destino_retorna_um_no_e_zero) ... ok
@@ -47,14 +48,16 @@ test_coordenadas_normalizadas_preservam_disposicao_da_figura (test_mapa_05.Mapa0
 test_ligacoes_ausentes_nao_completam_o_grafo (test_mapa_05.Mapa05Tests.test_ligacoes_ausentes_nao_completam_o_grafo) ... ok
 test_metadata_e_referencia_original (test_mapa_05.Mapa05Tests.test_metadata_e_referencia_original) ... ok
 test_oito_arestas_com_todos_os_pesos_da_figura (test_mapa_05.Mapa05Tests.test_oito_arestas_com_todos_os_pesos_da_figura) ... ok
-test_cadastro_permanece_nao_validado_com_referencia (test_mapa_18.Mapa18Tests.test_cadastro_permanece_nao_validado_com_referencia) ... ok
+test_cadastro_validado_com_referencia (test_mapa_18.Mapa18Tests.test_cadastro_validado_com_referencia) ... ok
 test_coordenadas_normalizadas_para_desenho (test_mapa_18.Mapa18Tests.test_coordenadas_normalizadas_para_desenho) ... ok
 test_dezoito_ids_unicos_preservados (test_mapa_18.Mapa18Tests.test_dezoito_ids_unicos_preservados) ... ok
 test_fontes_da_auditoria_preservadas_com_hash_e_resolucao (test_mapa_18.Mapa18Tests.test_fontes_da_auditoria_preservadas_com_hash_e_resolucao) ... ok
 test_ligacoes_sem_duplicatas_ou_extremos_invalidos (test_mapa_18.Mapa18Tests.test_ligacoes_sem_duplicatas_ou_extremos_invalidos) ... ok
-test_peso_desconhecido_9_14_nao_recebe_valor_inventado (test_mapa_18.Mapa18Tests.test_peso_desconhecido_9_14_nao_recebe_valor_inventado) ... ok
+test_peso_9_14_definido_pelo_usuario_com_proveniencia (test_mapa_18.Mapa18Tests.test_peso_9_14_definido_pelo_usuario_com_proveniencia) ... ok
 test_rotulo_56_confirmado_em_4_14 (test_mapa_18.Mapa18Tests.test_rotulo_56_confirmado_em_4_14) ... ok
-test_todos_os_pesos_e_ligacoes_conferidos_na_fonte (test_mapa_18.Mapa18Tests.test_todos_os_pesos_e_ligacoes_conferidos_na_fonte) ... ok
+test_todos_os_pesos_e_ligacoes_conferidos (test_mapa_18.Mapa18Tests.test_todos_os_pesos_e_ligacoes_conferidos) ... ok
+test_branch_bound_ciclo_real_otimo_391 (test_mapa_18_algoritmos.Mapa18AlgoritmosTests.test_branch_bound_ciclo_real_otimo_391) ... ok
+test_dijkstra_todos_os_pares_contra_floyd_warshall (test_mapa_18_algoritmos.Mapa18AlgoritmosTests.test_dijkstra_todos_os_pares_contra_floyd_warshall) ... ok
 test_limites_e_limpeza (test_reprodutor.ReprodutorTests.test_limites_e_limpeza) ... ok
 test_play_pause_passos_velocidade_e_retorno (test_reprodutor.ReprodutorTests.test_play_pause_passos_velocidade_e_retorno) ... ok
 test_cidade_unica_e_ciclo_de_duas_cidades (test_tsp.ForcaBrutaTests.test_cidade_unica_e_ciclo_de_duas_cidades) ... ok
@@ -72,6 +75,7 @@ test_dados_e_adjacencia_nao_podem_ser_mutados (test_tsp_core.GrafoTests.test_dad
 test_grafo_sem_arestas_e_nos_isolados_sao_representaveis (test_tsp_core.GrafoTests.test_grafo_sem_arestas_e_nos_isolados_sao_representaveis) ... ok
 test_mapa_05_adjacencia_completa_nos_dois_sentidos (test_tsp_core.GrafoTests.test_mapa_05_adjacencia_completa_nos_dois_sentidos) ... ok
 test_mapa_18_pode_ser_inspecionado_mas_bloqueia_calculos (test_tsp_core.GrafoTests.test_mapa_18_pode_ser_inspecionado_mas_bloqueia_calculos) ... ok
+test_mapa_18_real_validado_tem_aresta_9_14_nos_dois_sentidos (test_tsp_core.GrafoTests.test_mapa_18_real_validado_tem_aresta_9_14_nos_dois_sentidos) ... ok
 test_nao_validado_bloqueia_mesmo_com_todos_os_pesos_conhecidos (test_tsp_core.GrafoTests.test_nao_validado_bloqueia_mesmo_com_todos_os_pesos_conhecidos) ... ok
 test_pendente_sem_descricao_ainda_bloqueia (test_tsp_core.GrafoTests.test_pendente_sem_descricao_ainda_bloqueia) ... ok
 test_pesos_zero_e_fracionario_preservados_e_no_isolado (test_tsp_core.GrafoTests.test_pesos_zero_e_fracionario_preservados_e_no_isolado) ... ok
@@ -90,6 +94,6 @@ test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel (test_ui.InterfaceTes
 test_zoom_ancorado_reset_e_custos_preservados (test_ui.InterfaceTests.test_zoom_ancorado_reset_e_custos_preservados) ... ok
 
 ----------------------------------------------------------------------
-Ran 85 tests in 0.687s
+Ran 89 tests in 0.595s
 
 OK

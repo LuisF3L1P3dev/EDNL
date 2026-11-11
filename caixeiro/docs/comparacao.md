@@ -8,9 +8,9 @@ Dijkstra sozinho resolve A→B. O TSP direto exige ciclo Hamiltoniano nas aresta
 
 | Método / problema | Custo | Tempo mediano (ms) | Ordens TSP | Nós finalizados em Dijkstra | Chamadas Dijkstra |
 |---|---:|---:|---:|---:|---:|
-| dijkstra_A_B | 6 | 0.0094 | 0 | 4 | 1 |
-| hamiltoniano_direto | 15 | 0.0203 | 24 | 0 | 0 |
-| passeio_no_fecho | 15 | 0.3017 | 24 | 75 | 25 |
+| dijkstra_A_B | 6 | 0.0204 | 0 | 4 | 1 |
+| hamiltoniano_direto | 15 | 0.0468 | 24 | 0 | 0 |
+| passeio_no_fecho | 15 | 0.2994 | 24 | 75 | 25 |
 
 Nós finalizados contam retiradas definitivas da fila (somados entre todas as chamadas), não ordens de visitas. Ordens TSP contam permutações examinadas. O tempo do método composto inclui construir o fecho e expandir o percurso.
 
@@ -20,8 +20,8 @@ Construímos uma instância de controle completa com os menores custos do mapa 5
 
 | Método na mesma instância métrica | Custo | Tempo mediano (ms) | Ordens TSP |
 |---|---:|---:|---:|
-| forca_bruta | 15 | 0.0223 | 24 |
-| dijkstra_mais_busca_exata | 15 | 0.2517 | 24 |
+| forca_bruta | 15 | 0.0221 | 24 |
+| dijkstra_mais_busca_exata | 15 | 0.2131 | 24 |
 
 No controle métrico, atalhar um trecho não reduz sua distância abaixo do peso direto (desigualdade triangular). Assim os dois métodos resolvem o mesmo TSP em termos de ordem e custo mínimo. Este controle não autoriza tratar os dois problemas da malha original como iguais.
 
@@ -29,4 +29,4 @@ No controle métrico, atalhar um trecho não reduz sua distância abaixo do peso
 
 Triângulo com pesos 1–2=1, 2–3=1 e 1–3=10: o ciclo Hamiltoniano custa 12; o passeio 1–2–3–2–1 custa 4. A estrela 1–2, 1–3, 1–4 não tem ciclo Hamiltoniano, mas tem passeio fechado que visita todos os nós. Esses testes impedem confundir ausência de aresta direta com ausência de caminho.
 
-Reproduzir: `python scripts/comparar_metodos.py`. Dados completos e rotas: [comparacao.json](comparacao.json). A TSP-017 ainda requer inspeção manual nativa; as medições acima são do núcleo, independentes dela. O mapa 18 não recebe resultados por faltar o peso de 9–14.
+Reproduzir: `python scripts/comparar_metodos.py`. Dados completos e rotas: [comparacao.json](comparacao.json). A TSP-017 ainda requer inspeção manual nativa; as medições acima são do núcleo, independentes dela. O mapa 18 foi validado com 9–14=1 informado pelo usuário; sua busca limitada e o controle independente estão em [resultados_mapa_18.json](resultados_mapa_18.json). Os enumeradores didáticos continuam limitados a 9 nós.

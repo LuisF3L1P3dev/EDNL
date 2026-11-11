@@ -23,6 +23,13 @@ Os estados expandidos não são permutações completas; a interface os identifi
 
 Os testes comparam o resultado ao enumerador exato em todas as origens do mapa 5. Uma instância **sintética** de 18 nós em anel é resolvida com custo 18 e prova de ótimo dentro do orçamento. Também são testados cortes com/sem solução e ausência comprovada de ciclo.
 
-**A TSP-020 continua parcialmente pendente quanto ao mapa real de 18 nós.** Não é possível medir sua solução sem o custo de 9–14. O usuário confirmou que essa ligação não tem peso informado. Ela permanece com `null`; não foi removida, tratada como zero ou completada por distância visual. O solver recusa esse mapa antes de pesquisar. Os resultados sintéticos não são apresentados como resultados do mapa da aula.
+**TSP-020 concluída no mapa real**, após o usuário definir `9–14 = 1` e a TSP-004 validar o cadastro. Dijkstra 9→14 retorna custo 1; Dijkstra 1→18 retorna custo 93. A força bruta ingênua continua recusando 18 nós.
 
-Quando houver definição acadêmica do custo e a TSP-004 for concluída, executar `tsp_branch_bound(carregar_mapa('data/mapa_18.json'), 1)` e registrar custo, tempo, estados e classificação antes de fechar o aceite da TSP-020. Força bruta ingênua permanece limitada a 9 nós.
+Resultado real de `tsp_branch_bound(carregar_mapa('data/mapa_18.json'), 1)`:
+
+- Custo: **391**, `otimo_comprovado`.
+- Estados expandidos: **1159**; aproximadamente **18 ms** nesta execução, dentro do orçamento padrão de 2 segundos. O tempo varia por máquina.
+- Ciclo: `1 → 2 → 3 → 4 → 9 → 14 → 15 → 10 → 5 → 6 → 7 → 11 → 18 → 17 → 16 → 13 → 8 → 12 → 1`.
+- Controle independente por programação dinâmica Held–Karp: **391**, 153860 estados, aproximadamente 173 ms nesta execução. Esse controle não usa o limite inferior/MST do branch-and-bound.
+
+Reproduzir com `python scripts/validar_mapa_18.py`. Dados completos e tempos medidos: [resultados_mapa_18.json](resultados_mapa_18.json). A suíte compara também todos os 324 pares de Dijkstra com Floyd–Warshall e confere a soma das arestas reais do ciclo. Os testes de recusa de mapas pendentes continuam usando cópia sintética em memória.

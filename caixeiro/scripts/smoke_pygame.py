@@ -98,12 +98,26 @@ def main():
         tecla(pygame.K_2)
         assert len(app.mapa.nos) == 18
         clicar("dijkstra")
-        assert app.futuro is None and "9-14" in app.status
-        registrar("Mapa 18 recusa algoritmo citando custo ausente", "mapa_18.png")
+        aguardar()
+        assert app.resultados["dijkstra"].custo == 45
+        registrar("Mapa 18 validado: Dijkstra 1–3 com custo 45", "mapa_18.png")
+        for no in (9, 14):
+            evento(pygame.MOUSEBUTTONDOWN, button=1, pos=app.posicoes()[no])
+        clicar("dijkstra")
+        aguardar()
+        assert app.resultados["dijkstra"].caminho == (9, 14)
+        assert app.resultados["dijkstra"].custo == 1
+        registrar("Mapa 18: aresta 9–14 com peso 1", "mapa_18_dijkstra_9_14.png")
+        tecla(pygame.K_2)
+        clicar("limitada")
+        aguardar()
+        assert app.resultados["limitada"].custo == 391 and app.resultados["limitada"].otimo
+        registrar("Mapa 18 real: ciclo de custo 391, ótimo comprovado", "mapa_18_busca_limitada.png")
         clicar("forca")
-        assert app.futuro is None
+        assert app.futuro is None and "9 nós" in app.status and not app.resultados
         clicar("comparar")
-        assert app.futuro is None
+        assert app.futuro is None and "9 nós" in app.status
+        registrar("Mapa 18 recusa enumeradores acima de 9 nós", "mapa_18_limite.png")
         clicar("zoom_mais")
         assert app.zoom > 1
         clicar("zoom_menos")

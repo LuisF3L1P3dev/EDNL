@@ -1,0 +1,55 @@
+{
+  "mapa": "mapa_18",
+  "peso_9_14": 1,
+  "fonte_peso_9_14": "definicao_explicita_usuario",
+  "dijkstra_9_14": {
+    "caminho": [
+      9,
+      14
+    ],
+    "custo": 1
+  },
+  "dijkstra_1_18": {
+    "caminho": [
+      1,
+      13,
+      14,
+      17,
+      18
+    ],
+    "custo": 93
+  },
+  "branch_bound": {
+    "caminho": [
+      1,
+      2,
+      3,
+      4,
+      9,
+      14,
+      15,
+      10,
+      5,
+      6,
+      7,
+      11,
+      18,
+      17,
+      16,
+      13,
+      8,
+      12,
+      1
+    ],
+    "custo": 391,
+    "nos_expandidos": 1159,
+    "otimo": true,
+    "estado": "otimo_comprovado",
+    "tempo_ms": 17.73609989322722
+  },
+  "controle_independente_held_karp": {
+    "custo": 391,
+    "estados": 153860,
+    "tempo_ms": 173.27899998053908
+  }
+}

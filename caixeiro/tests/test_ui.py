@@ -74,6 +74,7 @@ class InterfaceTests(unittest.TestCase):
         a.acao("forca")
         self.assertIsNone(a.futuro)
         self.assertIn("9 nós", a.status)
+        self.assertEqual(a.resultados, {})
         a.desenhar()
 
     def test_selecoes_estaveis_durante_trabalho_e_erro_recuperavel(self):

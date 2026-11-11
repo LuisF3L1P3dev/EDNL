@@ -33,7 +33,7 @@ def main():
     linhas += ["", "No controle métrico, atalhar um trecho não reduz sua distância abaixo do peso direto (desigualdade triangular). Assim os dois métodos resolvem o mesmo TSP em termos de ordem e custo mínimo. Este controle não autoriza tratar os dois problemas da malha original como iguais.", "",
         "## Contraexemplo verificado nos testes", "",
         "Triângulo com pesos 1–2=1, 2–3=1 e 1–3=10: o ciclo Hamiltoniano custa 12; o passeio 1–2–3–2–1 custa 4. A estrela 1–2, 1–3, 1–4 não tem ciclo Hamiltoniano, mas tem passeio fechado que visita todos os nós. Esses testes impedem confundir ausência de aresta direta com ausência de caminho.", "",
-        "Reproduzir: `python scripts/comparar_metodos.py`. Dados completos e rotas: [comparacao.json](comparacao.json). A TSP-017 ainda requer inspeção manual nativa; as medições acima são do núcleo, independentes dela. O mapa 18 não recebe resultados por faltar o peso de 9–14.", ""]
+        "Reproduzir: `python scripts/comparar_metodos.py`. Dados completos e rotas: [comparacao.json](comparacao.json). A TSP-017 ainda requer inspeção manual nativa; as medições acima são do núcleo, independentes dela. O mapa 18 foi validado com 9–14=1 informado pelo usuário; sua busca limitada e o controle independente estão em [resultados_mapa_18.json](resultados_mapa_18.json). Os enumeradores didáticos continuam limitados a 9 nós.", ""]
     (ROOT / "docs/comparacao.md").write_text("\n".join(linhas), encoding="utf-8")
     print("Comparação registrada em docs/comparacao.md e .json")
 

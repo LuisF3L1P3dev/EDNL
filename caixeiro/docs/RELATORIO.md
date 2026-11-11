@@ -6,7 +6,7 @@ Representar os dois grafos fixos da aula de Estrutura de Dados Não Linear em Py
 
 As capturas recebidas estão em `assets/referencias/mapa_05_original.png` e `mapa_18_original.png`; os materiais da aula estão em `docs/ativ/`. A auditoria utilizou também as figuras de maior resolução de [Dhiego Pardini, O Problema do Caixeiro Viajante](https://otimizacaonapratica.wordpress.com/2015/11/09/o-problema-do-caixeiro-viajante/). Cópias, hashes, tabela e pendências: [auditoria_mapa_18.md](auditoria_mapa_18.md).
 
-O mapa 5 tem as arestas `1–2:2`, `1–4:3`, `1–5:6`, `2–3:4`, `2–4:3`, `3–4:7`, `3–5:3` e `4–5:3`. Não há ligações diretas 1–3 ou 2–5. O mapa 18 tem 45 ligações e 44 pesos conferidos. A linha 9–14 existe, mas não tem peso informado nem na figura do autor; essa ausência foi confirmada pelo usuário. O rótulo 56 pertence a 4–14, e 43 a 9–16. Esse mapa permanece não validado para cálculos.
+O mapa 5 tem as arestas `1–2:2`, `1–4:3`, `1–5:6`, `2–3:4`, `2–4:3`, `3–4:7`, `3–5:3` e `4–5:3`. Não há ligações diretas 1–3 ou 2–5. O mapa 18 tem 45 ligações e 45 pesos: 44 conferidos nas figuras e **9–14 = 1**, definido posteriormente pelo usuário. A proveniência desse complemento está no JSON; as imagens permanecem preservadas sem alteração. O rótulo 56 pertence a 4–14, e 43 a 9–16. Ambos os mapas estão validados para cálculos.
 
 Coordenadas normalizadas x/y são exclusivamente visuais. Zoom, pan e resize não alteram custos. Cruzamentos não geram vértices. Os grafos são não direcionados; o núcleo aceita pesos não negativos, rejeita valores não finitos/booleanos e não completa arestas ausentes.
 
@@ -41,9 +41,12 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 | Cinco origens do mapa 5 | Custo ótimo 15 em ambos os TSP |
 | Anel sintético de 18 nós | Branch-and-bound: custo 18 e prova de ótimo no orçamento de teste |
 | Busca cortada | Diferencia solução conhecida, limite sem solução e inexistência comprovada |
-| Mapa 18 real | Algoritmos recusados antes da busca; nenhum custo inventado |
+| Mapa 18 real, Dijkstra 9→14 | Caminho direto, custo 1 |
+| Mapa 18 real, Dijkstra 1→18 | 1–13–14–17–18, custo 93 |
+| Mapa 18 real, TSP Hamiltoniano | Custo ótimo **391**, branch-and-bound com 1159 estados |
+| Controle independente do ótimo real | Held–Karp confirma **391**, com 153860 estados |
 
-**85 testes automáticos aprovados**, incluindo todos os pares do mapa 5, dados imutáveis, snapshots reproduzíveis, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 12 casos, com capturas renderizadas. A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
+**89 testes automáticos aprovados**, incluindo os 324 pares do mapa 18 contra Floyd–Warshall, ciclo real de custo 391, dados imutáveis, snapshots, controles, worker, zoom e eventos SDL. Saída: [validacao_final.txt](validacao_final.txt). O [smoke SDL](smoke_pygame.md) passou em 15 casos, com capturas renderizadas. O controle independente é reproduzido por `python scripts/validar_mapa_18.py`; resultados e tempos em [resultados_mapa_18.json](resultados_mapa_18.json). A inspeção manual nativa ainda está pendente e não foi declarada substituída por esses testes.
 
 ## Capturas da versão 2D
 
@@ -59,9 +62,13 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 
 ![Animação](capturas/animacao.png)
 
-### Inspeção do mapa grande e bloqueio
+### Inspeção do mapa grande validado
 
 ![Mapa 18](capturas/mapa_18.png)
+
+![Dijkstra usando peso 1](capturas/mapa_18_dijkstra_9_14.png)
+
+![Ciclo ótimo real de custo 391](capturas/mapa_18_busca_limitada.png)
 
 ### Busca com orçamento
 
@@ -76,14 +83,14 @@ Ordens TSP são permutações completas; nós finalizados em Dijkstra são retir
 5. **Comparação:** restaurar o mapa com 1 e clicar C. Os custos são 15 neste exemplo. Distinguir ordem de entregas e percurso físico, usando o triângulo de contraexemplo e o controle comum do relatório.
 6. **Animação:** testar Play/Pausar, `<`, `>`, velocidade e Final. Explicar histórico separado do relógio e cálculo em segundo plano.
 7. **Busca limitada:** clicar B no mapa pequeno e ler `otimo_comprovado`. Explicar os outros estados e que corte por tempo não prova ótimo ou inexistência.
-8. **Mapa grande:** escolher 2, usar zoom, pan, P e inspeção pelo cursor. Mostrar `?` em 9–14 e a referência original. Clicar D/F/C/B e apresentar o bloqueio de cálculo.
-9. **Encerramento:** mostrar testes e relatórios. Distinguir o anel sintético de 18 nós do mapa real. Explicar pendências e a futura representação 3D sem mudar dados.
+8. **Mapa grande:** escolher 2, usar zoom, pan, P e inspeção pelo cursor. Mostrar o peso 1 em 9–14, definido pelo usuário; a referência original continua sem esse rótulo. Selecionar origem 9/destino 14 e clicar D: custo 1. Restaurar a origem 1 e clicar B: ciclo ótimo de custo 391. F/C continuam recusados pelo limite didático de 9 nós.
+9. **Encerramento:** mostrar testes, relatório e controle Held–Karp do ótimo real. Distinguir os testes sintéticos dos resultados do mapa da aula. Explicar a inspeção manual nativa ainda pendente e a futura representação 3D sem mudar dados.
 
 ## Limitações e aceite restante
 
-- **TSP-004:** falta o custo acadêmico de 9–14. Sem definição explícita, o mapa real não pode passar a `validado: true`.
+- **TSP-004 concluída:** o usuário definiu 9–14 = 1, com origem do dado documentada e cadastro validado.
 - **TSP-017:** a ferramenta de controle solicitou confirmação de acesso ao Python e não forneceu captura utilizável da janela. O usuário autorizou em mensagem, mas a confirmação na interface estava pendente na última tentativa. O roteiro de inspeção manual local está documentado no smoke.
-- **TSP-020:** estratégia e testes implementados; aceite no mapa real depende da TSP-004. Uma busca por orçamento pode retornar apenas uma solução conhecida ou não encontrar nenhuma, sem provar inexistência.
+- **TSP-020 concluída:** a execução real provou o custo 391 dentro do orçamento e foi conferida independentemente. Em outras instâncias, o orçamento ainda pode encerrar a busca sem prova ou sem rota encontrada.
 - Muitos pesos em janela pequena exigem zoom, modo por nó e inspeção por cursor.
 
-O relatório e o roteiro constituem a entrega documental da TSP-021, com dependências abertas explicitadas. Não declaram o smoke nativo ou a validação numérica do mapa grande concluídos. As tarefas 3D TSP-022 a TSP-024 não foram iniciadas.
+O relatório e o roteiro constituem a entrega documental da TSP-021, atualizada com os resultados reais após completar o dado faltante. Permanece pendente o smoke manual nativo; a validação numérica do mapa grande está concluída. As tarefas 3D TSP-022 a TSP-024 não foram iniciadas.

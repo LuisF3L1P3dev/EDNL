@@ -45,13 +45,13 @@ Os algoritmos rodam em um worker; a reprodução usa o tempo entre frames. Sele�
 | Mapa 5 | 5 IDs, 8 arestas; sem ligações 1–3 e 2–5 |
 | Dijkstra 1→3 | 1–2–3, custo **6** |
 | TSP direto e TSP no fecho, mapa 5 | Ambos com custo **15**; 24 ordens por origem fixa |
-| Branch-and-bound | Testado no mapa 5 e em instância sintética de 18 nós |
-| Mapa 18 real | 45 ligações, 44 pesos; custo de 9–14 ausente |
-| Testes automáticos | **85 aprovados**, incluindo integração SDL |
-| Roteiro SDL | **12 casos aprovados**, com capturas renderizadas |
+| Branch-and-bound | Mapa 18 real: custo ótimo **391**, confirmado também por Held–Karp |
+| Mapa 18 real | Validado: 45 ligações e 45 pesos; **9–14 = 1** definido pelo usuário |
+| Testes automáticos | **89 aprovados**, incluindo os 324 pares do mapa 18 e integração SDL |
+| Roteiro SDL | **15 casos aprovados**, com capturas renderizadas |
 | Inspeção manual nativa | Pendente de conclusão |
 
-**O mapa 18 pode ser desenhado, mas seus cálculos permanecem bloqueados.** O usuário confirmou que não há peso informado em 9–14; as figuras do autor também não o indicam. O JSON mantém `peso: null` e `validado: false`. Não foi atribuído zero, média ou distância visual, nem removida a ligação. Ver [auditoria](docs/auditoria_mapa_18.md).
+**O mapa 18 está liberado para Dijkstra e para a busca limitada (B).** O usuário definiu explicitamente **9–14 = 1**, complementando o rótulo ausente nas imagens. O JSON registra a proveniência, todos os pesos e `validado: true`. A força bruta didática e o enumerador do fecho continuam limitados a 9 nós; no mapa 18 use B. Ver [auditoria](docs/auditoria_mapa_18.md) e [resultados reais](docs/resultados_mapa_18.json).
 
 Dijkstra sozinho resolve A→B. O TSP direto exige ciclo Hamiltoniano nas arestas existentes; o TSP no fecho permite repetir cidades de passagem. São problemas distintos na malha original, mesmo quando os custos coincidem. A [comparação formal](docs/comparacao.md) apresenta também um controle em que os dois métodos recebem exatamente a mesma instância métrica.
 
@@ -63,6 +63,7 @@ Força bruta ingênua é limitada a 9 nós antes da enumeração. A busca limita
 .venv\Scripts\python.exe -B -m unittest discover -s tests -v
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 .venv\Scripts\python.exe -B scripts\comparar_metodos.py
+.venv\Scripts\python.exe -B scripts\validar_mapa_18.py
 .venv\Scripts\python.exe -B scripts\verificar.py
 ```
 
@@ -97,4 +98,4 @@ Destino inalcançável retorna caminho vazio e custo infinito. `GrafoInvalidoErr
 
 [Relatório e roteiro da aula](docs/RELATORIO.md) · [Comparação](docs/comparacao.md) · [Auditoria](AUDITORIA_MAPAS.md) · [Checklist](TASKS.md).
 
-Há um commit por tarefa da TSP-008 à TSP-021, incluindo os avanços parciais das TSP-017 e TSP-020. Permanecem abertas: TSP-004 (peso ausente), TSP-017 (inspeção nativa) e aceite do mapa real na TSP-020. O relatório TSP-021 explicita essas dependências. A fase 3D (TSP-022 a TSP-024) não foi iniciada.
+Há um commit por tarefa da TSP-008 à TSP-021, com commits posteriores concluindo as TSP-004 e TSP-020 após a definição do peso 1. Permanece aberta a TSP-017 (inspeção manual nativa). O relatório TSP-021 foi atualizado com os resultados do mapa real. A fase 3D (TSP-022 a TSP-024) não foi iniciada.

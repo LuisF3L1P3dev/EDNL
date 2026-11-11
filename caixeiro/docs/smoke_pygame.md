@@ -8,7 +8,7 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 .venv\Scripts\python.exe -B scripts\smoke_pygame.py
 ```
 
-**12 casos passaram**, via eventos Pygame/SDL dummy, incluindo a busca limitada acrescentada na TSP-020. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas visualmente as telas de comparação, animação e janela mínima.
+**15 casos passaram**, via eventos Pygame/SDL dummy, incluindo o mapa 18 validado com `9–14 = 1`. O resultado está em [smoke_resultados.json](smoke_resultados.json). As capturas são da superfície renderizada do aplicativo, sem captura de outros programas. Foram inspecionadas visualmente as telas de comparação, animação, janela mínima e os novos resultados do mapa 18.
 
 | Caso executado | Resultado |
 |---|---|
@@ -19,7 +19,10 @@ Ambiente: Windows, Python 3.14, pygame-ce 2.5.8 / SDL 2.32.10. Requisitos instal
 | Comparação pela tecla C | Dois TSP com custo 15 |
 | Play, pausar, avançar, voltar, velocidade e final | Índice do histórico muda e pausa; retorno ao resultado final |
 | Referência do mapa 5 | Imagem original carregada |
-| Mapa 18, botões Dijkstra/força bruta/comparação | Cálculo recusado com motivo sobre 9–14 |
+| Mapa 18, Dijkstra 1→3 | Custo 45 |
+| Mapa 18, Dijkstra 9→14 | Caminho direto, custo 1 |
+| Mapa 18, busca limitada B | Ciclo de custo 391, ótimo comprovado |
+| Mapa 18, força bruta/comparação didática | Recusados pelo limite de 9 nós; mensagem visível mesmo após cálculo bem-sucedido |
 | Zoom, pan e Z | Transformação visual e reset sem alterar custos |
 | Referência do mapa 18 | Imagem original carregada |
 | Redimensionamento | Renderização em 1000 × 760 |
@@ -45,4 +48,6 @@ Também é possível acompanhar a execução automatizada em janela com `python 
 
 ![Comparação dos dois métodos TSP](capturas/comparacao.png)
 ![Animação](capturas/animacao.png)
-![Mapa 18 com custo ausente](capturas/mapa_18.png)
+![Mapa 18 validado](capturas/mapa_18.png)
+![Aresta de peso 1](capturas/mapa_18_dijkstra_9_14.png)
+![Ciclo ótimo no mapa real](capturas/mapa_18_busca_limitada.png)
