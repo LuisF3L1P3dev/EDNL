@@ -106,9 +106,10 @@
   - **Aceite:** animação não bloqueia processamento de eventos do Pygame.
   - **Conferido:** `Reprodutor` desacoplado, controle por delta de tempo, Play/Pausar/Voltar/Próximo/Velocidade/Final. Mostra distâncias, fila, visitados, relaxamentos e candidatos; candidatos no fecho têm percurso físico expandido. Testes de relógio e histórico sem Pygame.
 
-- [ ] **TSP-016 — Melhorar responsividade e legibilidade do grafo de 18 nós** · `P2 / Medium` · depende de TSP-012, TSP-004
+- [x] **TSP-016 — Melhorar responsividade e legibilidade do grafo de 18 nós** · `P2 / Medium` · depende de TSP-012, TSP-004
   - Zoom, pan, exibição seletiva de pesos e labels que evitem colisões.
   - **Aceite:** arestas, IDs e pesos podem ser inspecionados sem ambiguidade visual.
+  - **Conferido:** zoom ancorado no cursor (roda ou +/−), arraste com botão direito/meio, Z para reset; P alterna todos/incidentes ao nó/ocultos. Labels evitam nós e outros labels; inspeção por cursor identifica pares e custos inclusive em cruzamentos. A pendência da TSP-004 não impede a inspeção visual; `?` permanece para 9–14.
 
 - [ ] **TSP-017 — Smoke test visual em Pygame** · `P1 / Medium` · depende de TSP-011 a TSP-014
   - Instalar requisitos, abrir programa e testar todos os botões.

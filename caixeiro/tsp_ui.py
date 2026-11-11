@@ -34,6 +34,10 @@ class Aplicacao:
         self.indice_mapa = 0
         self.original = False
         self.pesos = True
+        self.modo_pesos = 0
+        self.zoom = 1.0
+        self.pan = pygame.Vector2()
+        self.arrastando = False
         self.imagens = {}
         self.origem, self.destino = 1, 3
         self.selecao = "origem"
@@ -52,6 +56,8 @@ class Aplicacao:
     def trocar_mapa(self, indice):
         self.indice_mapa = indice
         self.original = False
+        self.zoom = 1.0
+        self.pan.update(0, 0)
         self.origem, self.destino = self.mapa.ids[0], self.mapa.ids[2]
         self.selecao = "origem"
         self.limpar()
@@ -111,12 +117,28 @@ class Aplicacao:
         self.lateral = pygame.Rect(24, 100, 252, h - 124)
         self.mapa_rect = pygame.Rect(294, 100, w - 318, h - 360)
         self.resultados_rect = pygame.Rect(294, h - 244, w - 318, 220)
-        self.plot = self.mapa_rect.inflate(-80, -130)
-        self.plot.y += 20
+        self.viewport = pygame.Rect(self.mapa_rect.x + 16, self.mapa_rect.y + 90,
+                                    self.mapa_rect.w - 32, self.mapa_rect.h - 155)
+        self.plot = self.viewport.inflate(-26, -12)
 
     def posicoes(self):
-        return {no.id: pygame.Vector2(self.plot.x + no.x * self.plot.w,
-                                     self.plot.y + no.y * self.plot.h) for no in self.mapa.nos}
+        centro = pygame.Vector2(self.plot.center)
+        return {no.id: centro + (pygame.Vector2(self.plot.x + no.x * self.plot.w,
+                                     self.plot.y + no.y * self.plot.h) - centro) * self.zoom + self.pan
+                for no in self.mapa.nos}
+
+    def mudar_zoom(self, fator, ancora=None):
+        ancora = pygame.Vector2(ancora or self.plot.center)
+        novo = max(.5, min(4, self.zoom * fator))
+        relativo = ancora - pygame.Vector2(self.plot.center)
+        self.pan = relativo - (relativo - self.pan) * (novo / self.zoom)
+        self.zoom = novo
+
+    @staticmethod
+    def distancia_aresta(ponto, a, b):
+        delta = b - a
+        t = max(0, min(1, (ponto - a).dot(delta) / delta.length_squared())) if delta.length_squared() else 0
+        return ponto.distance_to(a + t * delta)
 
     def fonte(self, tamanho=16, bold=False):
         chave = (tamanho, bold)
@@ -175,17 +197,18 @@ class Aplicacao:
         self.botao("dijkstra", "D  Dijkstra: origem → destino", (42, 396, 216, 38), BLUE, livre)
         self.botao("comparar", "C  Comparar os dois TSP", (42, 442, 216, 38), ativo=livre)
         self.botao("original", "O  Referência original", (42, 504, 216, 38), MUTED)
-        self.botao("pesos", "P  Mostrar / ocultar pesos", (42, 550, 216, 38), MUTED)
+        titulo_pesos = ("todos", "do nó", "ocultos")[self.modo_pesos]
+        self.botao("pesos", f"P  Pesos: {titulo_pesos}", (42, 550, 216, 38), MUTED)
         self.botao("limpar", "L  Limpar resultados", (42, 596, 216, 38), MUTED, livre)
         passo = self.player.passo
         if passo is None:
             self.linhas("Dijkstra calcula A → B. O caixeiro visita todas as cidades e retorna à origem.",
                         (42, 660), 210, tamanho=13)
         else:
-            self.linhas(f"{passo.algoritmo}: {passo.tipo}", (42, 650), 210, 13, INK, 2)
+            self.linhas(f"{passo.algoritmo}: {passo.tipo}", (42, 650), 210, 13, INK, 1)
             dist = ", ".join(f"{i}:{d:g}" for i, d in passo.distancias)
-            self.linhas(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 695), 210, 12, max_linhas=2)
-            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 742), 210, 12, max_linhas=3)
+            self.linhas(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 677), 210, 12, max_linhas=1)
+            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 704), 210, 12, max_linhas=1)
 
     def rotas_exibidas(self):
         passo = self.player.passo
@@ -199,6 +222,11 @@ class Aplicacao:
         self.painel(self.mapa_rect)
         self.texto("VISUALIZAÇÃO DO GRAFO", (self.mapa_rect.x + 22, 119), 12, MUTED, True)
         self.texto(f"Mapa {self.indice_mapa + 1} · {len(self.mapa.nos)} cidades", (self.mapa_rect.x + 22, 145), 22, INK, True)
+        for i, (chave, titulo) in enumerate((("zoom_menos", "−"), ("zoom_mais", "+"), ("reset", "Z"))):
+            self.botao(chave, titulo, (self.mapa_rect.right - 198 + i * 59, 142, 53, 30), MUTED)
+        clip_anterior = self.tela.get_clip()
+        self.tela.set_clip(self.viewport)
+        inspecao = ""
         if self.original:
             if self.mapa.id not in self.imagens:
                 self.imagens[self.mapa.id] = pygame.image.load(str(ROOT / self.mapa.referencia)).convert_alpha()
@@ -207,6 +235,10 @@ class Aplicacao:
             self.tela.blit(pygame.transform.smoothscale(imagem, destino.size), destino)
         else:
             pos = self.posicoes()
+            mouse = pygame.Vector2(pygame.mouse.get_pos())
+            hover = next((i for i, p in pos.items() if p.distance_to(mouse) < 22), None) if self.viewport.collidepoint(mouse) else None
+            ocupados = [pygame.Rect(p.x - 22, p.y - 22, 44, 44) for p in pos.values()]
+            inspecionadas = []
             labels = []
             for aresta in self.mapa.arestas:
                 a, b = pos[aresta.origem], pos[aresta.destino]
@@ -223,11 +255,23 @@ class Aplicacao:
                 normal = pygame.Vector2(-delta.y, delta.x)
                 if normal.length():
                     normal.scale_to_length(12)
-                labels.append(("?" if aresta.peso is None else str(aresta.peso), (a + b) / 2 + normal))
+                titulo = "?" if aresta.peso is None else str(aresta.peso)
+                if self.viewport.collidepoint(mouse) and self.distancia_aresta(mouse, a, b) < 6:
+                    inspecionadas.append(f"{aresta.origem}–{aresta.destino}: {titulo}")
+                if self.modo_pesos != 1 or (hover or self.origem) in (aresta.origem, aresta.destino):
+                    labels.append((titulo, (a + b) / 2, normal))
             if self.pesos:
-                for titulo, centro in labels:
+                for titulo, meio, normal in labels:
                     label = self.fonte(13, True).render(titulo, True, MUTED if titulo != "?" else ORANGE)
-                    rect = label.get_rect(center=centro)
+                    rect = label.get_rect(center=meio + normal)
+                    for multiplicador in (1, -1, 2, -2, 3, -3, 0, 4, -4):
+                        candidato = label.get_rect(center=meio + normal * multiplicador).inflate(9, 5)
+                        if self.viewport.contains(candidato) and not any(candidato.colliderect(r) for r in ocupados):
+                            rect = label.get_rect(center=candidato.center)
+                            break
+                    ocupados.append(rect.inflate(12, 8))
+                    if pygame.Vector2(rect.center).distance_to(meio) > 18:
+                        pygame.draw.line(self.tela, LINE, meio, rect.center, 1)
                     pygame.draw.rect(self.tela, WHITE, rect.inflate(9, 5), border_radius=4)
                     self.tela.blit(label, rect)
             for node_id, centro in pos.items():
@@ -237,10 +281,15 @@ class Aplicacao:
                 pygame.draw.circle(self.tela, cor, centro, 17, width=3)
                 label = self.fonte(15, True).render(str(node_id), True, INK)
                 self.tela.blit(label, label.get_rect(center=centro))
+            if hover:
+                inspecao = f"Nó {hover} · clique para definir {self.selecao}"
+            elif inspecionadas:
+                inspecao = "Arestas sob o cursor: " + " | ".join(inspecionadas)
+        self.tela.set_clip(clip_anterior)
         self.texto(f"{len(self.mapa.arestas)} ligações · pesos fixos · não direcionado",
                    (self.mapa_rect.x + 22, self.mapa_rect.bottom - 28), 12, MUTED)
         legenda = f"Etapa {self.player.indice + 1}/{len(self.historico)} · {self.player.passo.tipo}" if self.player.passo else "Origem: laranja   Destino: azul   TSP direto: verde   Fecho: roxo"
-        self.texto(legenda,
+        self.texto(inspecao or legenda,
                    (self.mapa_rect.x + 22, self.mapa_rect.bottom - 49), 12, MUTED)
 
     def desenhar_resultados(self):
@@ -289,7 +338,7 @@ class Aplicacao:
             self.layout()
         elif evento.type == pygame.KEYDOWN:
             atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
-                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar"}
+                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_c: "comparar", pygame.K_l: "limpar", pygame.K_z: "reset"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -298,11 +347,19 @@ class Aplicacao:
                     self.acao(chave)
                     break
             else:
-                if self.plot.collidepoint(evento.pos) and not self.original:
+                if self.viewport.collidepoint(evento.pos) and not self.original:
                     for node_id, pos in self.posicoes().items():
                         if pos.distance_to(evento.pos) <= 22:
                             self.selecionar_no(node_id)
                             break
+        elif evento.type == pygame.MOUSEWHEEL and self.viewport.collidepoint(pygame.mouse.get_pos()):
+            self.mudar_zoom(1.15 ** evento.y, pygame.mouse.get_pos())
+        elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button in (2, 3) and self.viewport.collidepoint(evento.pos):
+            self.arrastando = True
+        elif evento.type == pygame.MOUSEBUTTONUP and evento.button in (2, 3):
+            self.arrastando = False
+        elif evento.type == pygame.MOUSEMOTION and self.arrastando:
+            self.pan += pygame.Vector2(evento.rel)
 
     def acao(self, chave):
         if self.futuro is not None and chave not in ("original", "pesos"):
@@ -312,7 +369,15 @@ class Aplicacao:
         elif chave == "original":
             self.original = not self.original
         elif chave == "pesos":
-            self.pesos = not self.pesos
+            self.modo_pesos = (self.modo_pesos + 1) % 3
+            self.pesos = self.modo_pesos != 2
+        elif chave == "zoom_mais":
+            self.mudar_zoom(1.25)
+        elif chave == "zoom_menos":
+            self.mudar_zoom(.8)
+        elif chave == "reset":
+            self.zoom = 1
+            self.pan.update(0, 0)
         elif chave in ("forca", "dijkstra", "comparar"):
             self.iniciar(chave)
         elif chave == "limpar":
