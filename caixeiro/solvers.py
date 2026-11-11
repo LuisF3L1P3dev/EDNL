@@ -11,6 +11,8 @@ from time import perf_counter
 from types import MappingProxyType
 import math
 import sys
+import importlib.util
+from fractions import Fraction
 
 from tsp_core import Aresta, Grafo, Passo, ErroGrafo, dijkstra
 from busca_limitada import tsp_branch_bound
@@ -565,3 +567,124 @@ def christofides(p, ctx):
 
 
 registrar("christofides", christofides, (ORIGINAL, FECHO), FECHO, 18, "A")
+
+
+def dependencia_ortools():
+    if importlib.util.find_spec("ortools") is None:
+        return "OR-Tools opcional ausente: instale requirements-ortools.txt neste Python."
+    return ""
+
+
+def _custos_inteiros(custos, n):
+    """Escala decimal exata, sem arredondar pesos nem ultrapassar int64."""
+    fracoes = {par: Fraction(str(peso)) for par, peso in custos.items()}
+    escala = math.lcm(*(f.denominator for f in fracoes.values()))
+    inteiros = {par: f.numerator * (escala // f.denominator) for par, f in fracoes.items()}
+    if max(inteiros.values(), default=0) * max(1, n) >= 2**62:
+        raise ErroGrafo("Precisão dos pesos excede a capacidade int64 do OR-Tools; não houve arredondamento.")
+    return inteiros, escala
+
+
+def ortools_solver(p, ctx, *, busca_local="GUIDED_LOCAL_SEARCH", limite_solucoes=None):
+    try:
+        import ortools
+        from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+    except (ImportError, OSError) as erro:
+        ctx.parametros.append(("indisponibilidade", str(erro)))
+        return (), "indisponivel", "OR-Tools indisponível neste Python"
+    if busca_local not in ("GUIDED_LOCAL_SEARCH", "GREEDY_DESCENT"):
+        raise ValueError("Busca local deve ser GUIDED_LOCAL_SEARCH ou GREEDY_DESCENT.")
+    if limite_solucoes is not None and (type(limite_solucoes) is not int or limite_solucoes < 1):
+        raise ValueError("limite_solucoes deve ser inteiro positivo.")
+    ctx.fase("OR-Tools: modelando arcos e custos inteiros")
+    ids = sorted(p.grafo.ids)
+    inteiros, escala = _custos_inteiros(p.custos, len(ids))
+    manager = pywrapcp.RoutingIndexManager(len(ids), 1, ids.index(p.origem))
+    routing = pywrapcp.RoutingModel(manager)
+    solver = routing.solver()
+    def cidade(indice):
+        return ids[manager.IndexToNode(indice)]
+    def custo(a, b):
+        # Arcos ausentes são removidos do domínio abaixo. Não há penalidades.
+        return inteiros.get((cidade(a), cidade(b)), 0)
+    callback = routing.RegisterTransitCallback(custo)
+    routing.SetArcCostEvaluatorOfAllVehicles(callback)
+    proibidos = 0
+    for a in range(routing.Size()):
+        for b in range(routing.Size() + 1):
+            if (cidade(a), cidade(b)) not in p.custos:
+                routing.NextVar(a).RemoveValue(b)
+                proibidos += 1
+    params = pywrapcp.DefaultRoutingSearchParameters()
+    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    params.local_search_metaheuristic = getattr(routing_enums_pb2.LocalSearchMetaheuristic, busca_local)
+    restante = max(0, ctx.orcamento.segundos - (perf_counter() - ctx.inicio))
+    params.time_limit.FromMilliseconds(max(1, int(restante * 1000)))
+    if limite_solucoes is not None:
+        params.solution_limit = limite_solucoes
+    ctx.parametros.extend((("versao_ortools", ortools.__version__), ("escala_inteira", str(escala)),
+                           ("primeira_solucao", "PATH_CHEAPEST_ARC"), ("busca_local", busca_local),
+                           ("limite_ms_busca", str(max(1, int(restante * 1000)))),
+                           ("limite_solucoes", str(limite_solucoes))))
+    parada = None
+    def verificar_limite():
+        nonlocal parada
+        if ctx.cancelar.is_set():
+            parada = "cancelado"
+        elif perf_counter() - ctx.inicio >= ctx.orcamento.segundos:
+            parada = "limite_tempo"
+        elif solver.Branches() >= ctx.orcamento.max_estados:
+            parada = "limite_estados"
+        return parada is not None
+    monitor = solver.CustomLimit(verificar_limite)
+    routing.AddSearchMonitor(monitor)
+    solucoes = 0
+    def registrar_solucao():
+        nonlocal solucoes
+        indice, rota = routing.Start(0), []
+        while not routing.IsEnd(indice) and len(rota) <= len(ids):
+            rota.append(cidade(indice))
+            indice = routing.NextVar(indice).Value()
+        if not routing.IsEnd(indice):
+            return
+        if len(ids) > 1:
+            rota.append(p.origem)
+        rota = tuple(rota)
+        if len(ids) == 1:
+            rota = (p.origem,)
+        solucoes += 1
+        if not ctx.melhor or p.custo(rota) < p.custo(ctx.melhor):
+            ctx.melhor = rota
+            ctx.evento("solucao_ortools", candidato=rota, caminho=p.expandir(rota),
+                       custo=p.custo(rota), contador=solucoes)
+    routing.AddAtSolutionCallback(registrar_solucao)
+    ctx.fase("OR-Tools: busca local com orçamento")
+    solucao = routing.SolveWithParameters(params)
+    status = routing.status()
+    nomes = {0: "NOT_SOLVED", 1: "SUCCESS", 2: "PARTIAL_SUCCESS_LOCAL_OPTIMUM_NOT_REACHED",
+             3: "FAIL", 4: "FAIL_TIMEOUT", 5: "INVALID", 6: "INFEASIBLE", 7: "OPTIMAL"}
+    ctx.parametros.append(("status_ortools", f"{status}:{nomes.get(status, 'DESCONHECIDO')}"))
+    ctx.estados = solver.Branches()
+    ctx.contadores.extend((Contador("soluções OR-Tools", solucoes, "soluções"),
+                           Contador("arcos proibidos", proibidos, "arcos")))
+    # Uma atribuição retornada pode ser melhor que o último callback registrado.
+    if solucao is not None:
+        indice, rota = routing.Start(0), []
+        while not routing.IsEnd(indice):
+            rota.append(cidade(indice))
+            indice = solucao.Value(routing.NextVar(indice))
+        if len(ids) > 1:
+            rota.append(p.origem)
+        ctx.melhor = tuple(rota)
+    verificar_limite()
+    if status == 4:
+        parada = parada or "limite_tempo"
+    if parada:
+        return ctx.melhor, parada, "Melhor conhecida · sem prova" if ctx.melhor else "Limite/cancelamento · nenhuma rota encontrada"
+    if ctx.melhor:
+        return ctx.melhor, "heuristica", "OR-Tools: rota viável · sem certificado de ótimo"
+    # O adaptador não converte o status do Routing Solver em certificado global.
+    return (), "sem_solucao", "Nenhuma rota encontrada pelo OR-Tools · sem prova"
+
+
+registrar("ortools_solver", ortools_solver, (ORIGINAL, FECHO), FECHO, 18, "R", dependencia_ortools)

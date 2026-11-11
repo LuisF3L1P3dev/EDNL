@@ -1,0 +1,2 @@
+# Opcional. Wheel cp314-win_amd64 validado no Python 3.14.0 do projeto.
+ortools==9.15.6755

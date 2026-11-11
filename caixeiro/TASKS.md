@@ -187,7 +187,7 @@ O usuário pediu primeiro a identificação visual dos métodos atuais e o plane
   - Reconstruir o passeio físico e registrar as etapas para visualização; escolher e documentar eventual dependência de matching.
   - **Aceite:** pré-condições verificadas; testes métricos pequenos com custo até 1,5 vezes o ótimo de Held–Karp para a mesma instância; saída viável nos mapas conectados e erro em desconectados. Não aplicar essa garantia ao ótimo Hamiltoniano da malha esparsa original.
 
-- [ ] **TSP-031 — Integrar `ortools_solver` como dependência opcional** · `P2 / High` · depende de TSP-026, TSP-029
+- [x] **TSP-031 — Integrar `ortools_solver` como dependência opcional** · `P2 / High` · depende de TSP-026, TSP-029
   - Verificar compatibilidade com o Python suportado; manter instalação opcional e mostrar indisponibilidade compreensível quando faltar OR-Tools.
   - Modelar origem/retorno, limites, estratégia inicial e busca local; tratar custos inteiros/escalonamento sem alterar a unidade dos resultados.
   - No modo direto, proibir arcos ausentes; não usar uma penalidade arbitrária como se tornasse o percurso válido. No modo fecho, expandir a solução nas arestas reais.
