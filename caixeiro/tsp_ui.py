@@ -15,6 +15,8 @@ LINE = (219, 228, 221)
 GREEN = (26, 107, 75)
 BLUE = (57, 108, 178)
 ORANGE = (200, 117, 76)
+PURPLE = (128, 86, 166)
+CORES_METODOS = {"forca": GREEN, "dijkstra": BLUE, "fecho": PURPLE}
 
 
 class Aplicacao:
@@ -192,6 +194,10 @@ class Aplicacao:
                 a, b = pos[aresta.origem], pos[aresta.destino]
                 cor = LINE if aresta.peso is not None else ORANGE
                 pygame.draw.line(self.tela, cor, a, b, 2)
+                for nome, resultado in self.resultados.items():
+                    pares = {frozenset((i, j)) for i, j in zip(resultado.caminho, resultado.caminho[1:])}
+                    if frozenset((aresta.origem, aresta.destino)) in pares:
+                        pygame.draw.line(self.tela, CORES_METODOS[nome], a, b, 7 if nome == "forca" else 3)
                 delta = b - a
                 normal = pygame.Vector2(-delta.y, delta.x)
                 if normal.length():
@@ -211,12 +217,30 @@ class Aplicacao:
                 self.tela.blit(label, label.get_rect(center=centro))
         self.texto(f"{len(self.mapa.arestas)} ligações · pesos fixos · não direcionado",
                    (self.mapa_rect.x + 22, self.mapa_rect.bottom - 28), 12, MUTED)
+        self.texto("Origem: laranja   Destino: azul   TSP direto: verde   Fecho: roxo",
+                   (self.mapa_rect.x + 22, self.mapa_rect.bottom - 49), 12, MUTED)
 
     def desenhar_resultados(self):
         self.painel(self.resultados_rect)
         x, y = self.resultados_rect.topleft
         self.texto("02  RESULTADOS", (x + 22, y + 17), 12, GREEN, True)
-        self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 16)
+        if not self.resultados:
+            self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 15, max_linhas=6)
+            return
+        largura = (self.resultados_rect.w - 56) // max(1, len(self.resultados))
+        titulos = {"forca": "Força bruta · ciclo Hamiltoniano", "dijkstra": "Dijkstra · caminho A → B",
+                   "fecho": "Dijkstra + TSP · passeio fechado"}
+        for indice, (nome, resultado) in enumerate(self.resultados.items()):
+            cx = x + 22 + indice * (largura + 12)
+            cor = CORES_METODOS[nome]
+            self.texto(titulos[nome], (cx, y + 49), 15, cor, True)
+            custo = resultado.custo if resultado.caminho else "sem percurso"
+            self.texto(f"Custo: {custo}", (cx, y + 75), 21, INK, True)
+            self.texto(f"{self.tempos.get(nome, 0):.3f} ms · com histórico", (cx, y + 106), 12, MUTED)
+            rota = " → ".join(map(str, resultado.caminho)) or "Não existe percurso viável."
+            self.linhas(rota, (cx, y + 130), largura, 14, cor, max_linhas=2)
+            if hasattr(resultado, "estados_testados"):
+                self.texto(f"{resultado.estados_testados} ordens testadas · ótimo comprovado", (cx, y + 184), 12, MUTED)
 
     def desenhar(self):
         self.botoes.clear()

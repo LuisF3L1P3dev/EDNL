@@ -96,9 +96,10 @@
   - **Aceite:** comandos de teclado e mouse implementados.
   - **Conferido:** seleção alternada de origem/destino por clique; F/D/C executam algoritmos em worker, com validação antes de iniciar; 1/2/O/P/L e botões implementados. Seleções ficam estáveis durante cálculo; resultados são entregues ao loop sem bloquear eventos.
 
-- [ ] **TSP-014 — Destacar caminho calculado** · `P1 / Medium` · depende de TSP-007, TSP-008
+- [x] **TSP-014 — Destacar caminho calculado** · `P1 / Medium` · depende de TSP-007, TSP-008
   - Mostrar caminho em cor distinta, custo e rota textual.
   - **Aceite:** caminho visual segue os IDs resultantes do algoritmo.
+  - **Conferido:** caminhos físicos destacados nas arestas reais; força bruta em verde, Dijkstra em azul e fecho em roxo. Resultados exibem tipo do problema, custo, percurso e ordens testadas; limpar remove o destaque.
 
 - [ ] **TSP-015 — Criar animação passo a passo** · `P2 / High` · depende de TSP-010
   - Botões Reproduzir, Pausar, Próxima etapa, Voltar e Velocidade.
