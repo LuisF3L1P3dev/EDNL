@@ -23,6 +23,7 @@ Linux/macOS: usar `.venv/bin/python`. Não é necessário ativar o ambiente ou a
 | `1` / `2` | Alternar mapas |
 | Clique nos nós | Definir origem e destino, alternadamente |
 | `D` | Dijkstra: menor caminho A→B |
+| `V` | Alternar entre visita unica e revisitas no TSP |
 | `F` | TSP Hamiltoniano por força bruta, até 9 nós |
 | `X` / Cancelar | Cancelamento cooperativo da execução |
 | Play / Pausar / `<` / `>` | Reproduzir histórico e navegar |
@@ -45,6 +46,8 @@ Os algoritmos rodam em um worker; a reprodução usa o tempo entre frames. Sele�
 | Dijkstra 1→3 | 1–2–3, custo **6** |
 | Força bruta, mapa 5 | Ciclo ótimo com custo **15**; 24 ordens por origem fixa |
 | Mapa 18 real | Validado: 45 ligações e 45 pesos; **9–14 = 1** definido pelo usuário |
+
+No TSP, a rota visita todas as cidades e retorna à origem. Selecione a mesma cidade como origem e destino e execute Dijkstra para buscar o ciclo. A busca acompanha a cidade atual e as cidades visitadas, respeitando a escolha de permitir ou não revisitas. A quantidade de estados cresce exponencialmente; limites de tempo, estados e memória podem interromper a busca antes de encontrar uma solução.
 
 Dijkstra funciona nos dois mapas. A força bruta está limitada a 9 cidades; no mapa de 18 cidades o cartão fica indisponível. O mapa e os pesos permanecem em `data/` e podem ser auditados em [auditoria](docs/auditoria_mapa_18.md).
 

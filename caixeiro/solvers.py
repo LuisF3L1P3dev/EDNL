@@ -5,6 +5,7 @@ escondida. Pesos e custos mantêm a unidade do cadastro, nunca pixels.
 """
 from dataclasses import dataclass, field, replace
 from itertools import permutations
+from heapq import heappush, heappop
 from functools import lru_cache
 from threading import Event
 from time import perf_counter
@@ -236,12 +237,55 @@ def validar_saida(p, ordem, fisico, custo):
         raise ErroGrafo("Custo físico diverge do custo informado.")
 
 
+def dijkstra_ciclo(grafo, origem, permitir_revisitas, ctx):
+    """Menor passeio fechado em estados (cidade, conjunto de cidades visitadas)."""
+    ids = sorted(grafo.ids)
+    bits = {cidade: 1 << i for i, cidade in enumerate(ids)}
+    todos = (1 << len(ids)) - 1
+    inicial = (origem, bits[origem])
+    if len(ids) == 1:
+        return (origem,), 0
+    dist = {inicial: 0}
+    pais = {}
+    fila = [(0, *inicial)]
+    adj = grafo.adjacencia()
+    ctx.fase("Dijkstra: buscando ciclo com todas as cidades")
+    while fila:
+        ctx.verificar(1)
+        custo, atual, mascara = heappop(fila)
+        estado = (atual, mascara)
+        if custo != dist[estado]:
+            continue
+        if atual == origem and mascara == todos:
+            caminho = [atual]
+            while estado != inicial:
+                estado = pais[estado]
+                caminho.append(estado[0])
+            caminho.reverse()
+            return tuple(caminho), custo
+        for vizinho, peso in sorted(adj[atual].items()):
+            visitado = bool(mascara & bits[vizinho])
+            if not permitir_revisitas and visitado and not (vizinho == origem and mascara == todos):
+                continue
+            proximo = (vizinho, mascara | bits[vizinho])
+            novo = custo + peso
+            if novo < dist.get(proximo, math.inf):
+                dist[proximo] = novo
+                pais[proximo] = estado
+                heappush(fila, (novo, *proximo))
+                if len(dist) * 256 > ctx.orcamento.memoria_bytes:
+                    raise Interrompido("limite_memoria")
+    return (), math.inf
+
+
 def executar(nome, grafo, origem, *, destino=None, variante=None, orcamento=None,
              cancelar=None, progresso=None, **opcoes):
     grafo.exigir_validado()
     if type(origem) is not int or origem not in grafo.ids:
         raise ErroGrafo("Origem inexistente.")
     registro = REGISTRO.get(nome)
+    if nome == "dijkstra" and origem == destino and variante in (None, CAMINHO):
+        variante = FECHO
     variante = variante or (registro.padrao if registro else ORIGINAL)
     ctx = Contexto(nome, orcamento or Orcamento(), cancelar or Event(), progresso)
     p, ordem, fisico, custo = None, (), (), math.inf
@@ -263,6 +307,12 @@ def executar(nome, grafo, origem, *, destino=None, variante=None, orcamento=None
                 ctx.eventos = [replace(e, metodo_origem=nome) for e in eventos[:ctx.orcamento.max_eventos]]
                 termino = "otimo_comprovado" if ordem else "inviavel_comprovado"
                 garantia = "Caminho mínimo exato" if ordem else "Destino inalcançável"
+            elif nome == "dijkstra":
+                fisico, custo = dijkstra_ciclo(grafo, origem, variante == FECHO, ctx)
+                ordem = fisico
+                termino = "otimo_comprovado" if fisico else "inviavel_comprovado"
+                garantia = "Ciclo minimo exato" if fisico else "Ciclo inexistente"
+                ctx.evento("fim", candidato=ordem, caminho=fisico, custo=custo, melhor=ordem, melhor_custo=custo, contador=ctx.estados)
             else:
                 p = preparar(grafo, origem, variante, ctx)
                 ctx.fase("Buscando a ordem de visitas")
@@ -323,8 +373,8 @@ def _limitada(p, ctx):
         "Ótimo comprovado" if r.ordem else "Ausência de ciclo comprovada")
 
 
-registrar("dijkstra", None, (CAMINHO,), CAMINHO, atalho="D")
-registrar("forca", _forca, (ORIGINAL,), ORIGINAL, 9, "F")
+registrar("dijkstra", None, (CAMINHO, ORIGINAL, FECHO), CAMINHO, atalho="D")
+registrar("forca", _forca, (ORIGINAL, FECHO), ORIGINAL, 9, "F")
 
 # Métodos preservados para uso futuro; descomente o registro para reativá-los.
 # registrar("fecho", _forca, (FECHO,), FECHO, 9, "T")

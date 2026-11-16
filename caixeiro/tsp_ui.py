@@ -9,7 +9,7 @@ import pygame
 from tsp_core import carregar_mapa, ErroGrafo, LimiteTSPError
 from reprodutor import Reprodutor
 from identidade_algoritmos import METODOS, garantia_resultado
-from solvers import executar, disponibilidade, MODELOS, REGISTRO, ORIGINAL, CAMINHO, Orcamento
+from solvers import executar, disponibilidade, MODELOS, REGISTRO, ORIGINAL, FECHO, CAMINHO, Orcamento
 
 
 ROOT = Path(__file__).resolve().parent
@@ -92,7 +92,7 @@ class Aplicacao:
             self.fase_execucao = motivo
 
     def variante_metodo(self, nome):
-        return {"dijkstra": CAMINHO, "forca": ORIGINAL}.get(nome, ORIGINAL)
+        return CAMINHO if nome == "dijkstra" and self.origem != self.destino else self.variante
 
     def motivo_indisponivel(self, nome):
         return disponibilidade(nome, self.mapa, self.variante_metodo(nome))
@@ -318,27 +318,28 @@ class Aplicacao:
         self.texto("Escolha o percurso", (42, 145), 21, INK, True)
         self.botao("mapa1", "1 · 5 nós", (42, 184, 116, 33), selecionado=self.indice_mapa == 0)
         self.botao("mapa2", "2 · 18 nós", (170, 184, 116, 33), BLUE, selecionado=self.indice_mapa == 1)
-        self.texto(f"Origem: {self.origem}    Destino: {self.destino}", (42, 239), 16, INK, True)
+        self.texto(f"Origem: {self.origem}  |  Dijkstra destino: {self.destino}", (42, 239), 13, INK, True)
         livre = self.futuro is None
-        self.texto("ALGORITMOS", (42, 270), 11, MUTED, True)
+        self.botao("variante", "V  " + ("Uma visita" if self.variante == ORIGINAL else "Permitir revisitas"), (42, 265, 244, 28), PURPLE, livre)
+        self.texto("ALGORITMOS", (42, 300), 11, MUTED, True)
         for i, chave in enumerate(("dijkstra", "forca")):
-            self.cartao_metodo(chave, (42, 294 + i * 42, 244, 38))
-        self.botao("original", "O  Referência", (42, 390, 116, 28), MUTED)
+            self.cartao_metodo(chave, (42, 320 + i * 42, 244, 38))
+        self.botao("original", "O  Referência", (42, 455, 116, 28), MUTED)
         titulo_pesos = ("todos", "do nó", "ocultos")[self.modo_pesos]
-        self.botao("pesos", f"P  {titulo_pesos}", (170, 390, 116, 28), MUTED)
-        self.botao("limpar", "L  Limpar resultados", (42, 427, 244, 28), MUTED, livre)
+        self.botao("pesos", f"P  {titulo_pesos}", (170, 455, 116, 28), MUTED)
+        self.botao("limpar", "L  Limpar resultados", (42, 490, 244, 28), MUTED, livre)
         passo = self.player.passo
         if passo is None:
             metodo = METODOS[self.identidade_visual()["metodo"]]
             self.linhas(f"{metodo.descricao}. {metodo.garantia}.",
-                        (42, 470), 244, tamanho=12, max_linhas=max(1, (self.lateral.bottom - 477) // 18))
+                        (42, 530), 244, tamanho=12, max_linhas=max(1, (self.lateral.bottom - 537) // 18))
         else:
-            self.texto_ajustado(f"Etapa: {passo.algoritmo} · {passo.tipo}", (42, 470), 244, 12, INK)
+            self.texto_ajustado(f"Etapa: {passo.algoritmo} · {passo.tipo}", (42, 530), 244, 12, INK)
             dist = ", ".join(f"{i}:{d:g}" for i, d in passo.distancias)
             if passo.adicionadas:
                 dist = "Novas arestas: " + str(passo.adicionadas)
-            self.texto_ajustado(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 496), 244, 11, MUTED)
-            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 522), 244, 12, max_linhas=3)
+            self.texto_ajustado(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 556), 244, 11, MUTED)
+            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 582), 244, 12, max_linhas=3)
 
     def rotas_exibidas(self):
         passo = self.player.passo
@@ -494,7 +495,7 @@ class Aplicacao:
             self.layout()
         elif evento.type == pygame.KEYDOWN:
             atalhos = {pygame.K_1: "mapa1", pygame.K_2: "mapa2", pygame.K_o: "original", pygame.K_p: "pesos",
-                       pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_x: "cancelar"}
+                       pygame.K_v: "variante", pygame.K_f: "forca", pygame.K_d: "dijkstra", pygame.K_l: "limpar", pygame.K_z: "reset", pygame.K_x: "cancelar"}
             if evento.key in atalhos:
                 self.acao(atalhos[evento.key])
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -526,6 +527,10 @@ class Aplicacao:
             return
         if chave in ("mapa1", "mapa2"):
             self.trocar_mapa(0 if chave == "mapa1" else 1)
+        elif chave == "variante":
+            self.variante = FECHO if self.variante == ORIGINAL else ORIGINAL
+            self.limpar()
+            self.status = "TSP: " + ("revisitas permitidas." if self.variante == FECHO else "cada cidade uma vez.")
         elif chave == "original":
             self.original = not self.original
         elif chave == "pesos":
