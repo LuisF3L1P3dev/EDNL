@@ -85,6 +85,7 @@ class Decoracao:
     y: float
     raio: float
     altura: float
+    no: int | None = None
 
 
 class Cena3D:
@@ -98,6 +99,10 @@ class Cena3D:
         self.rota = base.render.attachNewNode("rota-calculada")
         self.rota.setLightOff()
         self.decoracoes = []
+        # Endereços persistentes, um para cada nó matemático. As chaves são
+        # ids do grafo; as âncoras só servem para projetar o marcador no HUD.
+        self.construcoes_no = {}
+        self.marcadores_no = {}
         self.modelos_usados = set()
         self.trechos_rua = 0
         self.pontes = 0
@@ -278,23 +283,41 @@ class Cena3D:
         self.decoracoes.append(Decoracao(tipo, kit, nome, x, y, raio, (hi.z - lo.z) * escala))
         return True
 
+    def _adicionar_construcao_no(self, no_visual, indice):
+        """Instancia o endereço imutável associado a um nó do grafo."""
+        endereco = no_visual.construcao
+        modelo, lo, hi, escala, _ = self._dimensoes(endereco.kit, endereco.nome,
+                                                     endereco.tamanho)
+        x, y, _ = endereco.posicao
+        altura = (hi.z - lo.z) * escala
+        # O raio circunscreve o lote quadrado, impedindo decoração aleatória
+        # de encostar em qualquer canto da construção persistente.
+        metade_lote = endereco.tamanho / 2 + endereco.margem_lote
+        raio = hypot(metade_lote, metade_lote)
+        suporte = self.raiz.attachNewNode(f"construcao-no-{no_visual.id}")
+        suporte.setPos(x, y, NIVEL_GRAMA + .055)
+        suporte.setH(90 * (indice % 4))
+        malha = modelo.copyTo(suporte)
+        malha.setScale(escala)
+        malha.setPos(-(lo.x + hi.x) * escala / 2,
+                     -(lo.y + hi.y) * escala / 2, -lo.z * escala)
+        metade = metade_lote
+        superficie(suporte, "lote-do-no", [(-metade, -metade, -.025),
+                   (metade, -metade, -.025), (metade, metade, -.025),
+                   (-metade, metade, -.025)], (.79, .81, .71, 1))
+        self._sombra(x, y, raio)
+        construcao = Decoracao("edificio", endereco.kit, endereco.nome, x, y,
+                               raio, altura, no_visual.id)
+        self.decoracoes.append(construcao)
+        self.construcoes_no[no_visual.id] = construcao
+        # A âncora está acima do telhado e evita que o marcador numérico cubra
+        # o prédio ou a rua de chegada.
+        self.marcadores_no[no_visual.id] = (x, y, NIVEL_GRAMA + .055 + altura + .65)
+
     def _decorar(self):
-        # Primeiro garantir um endereço construído perto de cada ponto, recuado.
-        for indice, (x, y, _) in enumerate(self.posicoes.values()):
-            kit = "cidade" if indice % 3 == 0 else "suburbio"
-            nome = f"building-{chr(97 + indice % 8)}" if kit == "cidade" else f"building-type-{chr(97 + indice % 10)}"
-            encontrou = False
-            for distancia in (3.8, 5.2, 6.6):
-                for passo in range(16):
-                    # Começar atrás do nó no enquadramento isométrico padrão.
-                    angulo = 3 * pi / 4 + passo * 2 * pi / 16
-                    if self._adicionar_decoracao("edificio", kit, nome,
-                            x + cos(angulo) * distancia, y + sin(angulo) * distancia,
-                            2.3 if kit == "suburbio" else 2., orientacao=90 * (indice % 4)):
-                        encontrou = True
-                        break
-                if encontrou:
-                    break
+        # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
+        for indice, no_visual in enumerate(self.mapa_visual.nos):
+            self._adicionar_construcao_no(no_visual, indice)
         alvo_edificios = 28 + len(self.posicoes)
         for tentativa in range(1600):
             if sum(d.tipo == "edificio" for d in self.decoracoes) >= alvo_edificios:

@@ -207,11 +207,18 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
         raise ValueError("O layout deve fornecer posições para exatamente os nós do grafo.")
     posicoes = {no: _xyz(posicoes[no]) for no in grafo.ids}
     enderecos = {}
+    centro_x = sum(p[0] for p in posicoes.values()) / len(posicoes)
+    centro_y = sum(p[1] for p in posicoes.values()) / len(posicoes)
     for i, no in enumerate(grafo.ids):
         x, y, _ = posicoes[no]
         kit = 'cidade' if i % 3 == 1 else 'suburbio'
         nome = f'building-{chr(97 + i % 8)}' if kit == 'cidade' else f'building-type-{chr(97 + i % 12)}'
-        enderecos[no] = ConstrucaoVisual((x - 2.2, y + 2.6, -.295), kit, nome)
+        # Lote persistente no lado voltado ao centro da cidade, fora da praça
+        # e das oito portas do nó. Assim os telhados e seus pins se distribuem
+        # pelo mapa em vez de acumular todos no mesmo canto da câmera.
+        dx = 4.5 if x < centro_x else -4.5
+        dy = 4.5 if y < centro_y else -4.5
+        enderecos[no] = ConstrucaoVisual((x + dx, y + dy, -.295), kit, nome)
     if construcoes is not None:
         if not set(construcoes) <= set(grafo.ids):
             raise ValueError("Endereço associado a um nó inexistente.")

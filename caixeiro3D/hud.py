@@ -146,7 +146,8 @@ class HUD:
         self.ancoras_tela = {}
         self.etiquetas_tela = {}
         explorados = set(a.etapa.explorados if a.etapa else ())
-        for no, ponto in a.cena.posicoes.items():
+        marcadores = getattr(a.cena, 'marcadores_no', a.cena.posicoes)
+        for no, ponto in marcadores.items():
             p = a.camera_iso.projetar(ponto)
             if not p or not viewport.collidepoint(p):
                 continue
@@ -159,6 +160,14 @@ class HUD:
             largura_label = self.fonte(10, True).size(label)[0] + 12 if label else 0
             margem_x = max(23, largura_label // 2 + 1)
             abaixo = p[1] - 46 - (44 if label else 23) < viewport.top + 2
+            # O título da cena também fica dentro do viewport. Quando a
+            # origem está no canto superior esquerdo, a etiqueta acima do pin
+            # invadiria “Cidade das rotas”; neste caso a haste a leva abaixo.
+            titulo_cena = pygame.Rect(258, 100, 230, 50)
+            etiqueta_acima = pygame.Rect(round(p[0] - largura_label / 2),
+                                         round(p[1] - 89), largura_label, 18)
+            if label and etiqueta_acima.colliderect(titulo_cena):
+                abaixo = True
             cima, baixo = (23, 44) if abaixo and label else (44, 23) if label else (23, 23)
             centro = (
                 round(max(viewport.left + margem_x + 2, min(viewport.right - margem_x - 2, p[0]))),

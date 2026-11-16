@@ -8,7 +8,7 @@ from panda3d.core import NodePath
 
 from assets3d import Biblioteca
 from geometria3d import posicoes_mundo, ruas_mundo
-from render3d import Cena3D, LARGURA_RUA
+from render3d import Cena3D, LARGURA_RUA, NIVEL_GRAMA
 from solvers import executar
 from tsp_core import carregar_mapa
 
@@ -80,6 +80,26 @@ class TestRender3D(unittest.TestCase):
                                             d.raio + LARGURA_RUA / 2 + .4)
                     for x, y, _ in cena.posicoes.values():
                         self.assertGreater((d.x - x) ** 2 + (d.y - y) ** 2, (d.raio + 1.2) ** 2)
+
+    def test_cada_no_tem_construcao_fixa_e_ancora_no_telhado(self):
+        for grafo in self.grafos:
+            with self.subTest(grafo=grafo.id):
+                _, cena = self.construir(grafo)
+                self.assertEqual(set(cena.construcoes_no), set(grafo.ids))
+                self.assertEqual(set(cena.marcadores_no), set(grafo.ids))
+                for no_visual in cena.mapa_visual.nos:
+                    endereco = no_visual.construcao
+                    edificio = cena.construcoes_no[no_visual.id]
+                    self.assertEqual(edificio.no, no_visual.id)
+                    self.assertEqual((edificio.kit, edificio.modelo),
+                                     (endereco.kit, endereco.nome))
+                    self.assertEqual((edificio.x, edificio.y), endereco.posicao[:2])
+                    self.assertGreater(cena.marcadores_no[no_visual.id][2],
+                                       NIVEL_GRAMA + edificio.altura)
+                    metade = endereco.tamanho / 2 + endereco.margem_lote
+                    # O círculo que contém o lote não alcança o eixo de uma via.
+                    self.assertGreaterEqual(cena.distancia_rua(edificio.x, edificio.y),
+                                            (2 * metade ** 2) ** .5 + LARGURA_RUA / 2)
 
     def test_rota_independente_da_cena_e_validada(self):
         for grafo in self.grafos:

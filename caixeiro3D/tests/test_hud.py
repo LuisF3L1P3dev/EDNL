@@ -134,6 +134,21 @@ class TestHUD(unittest.TestCase):
         self.assertEqual(app.origem, 3)
         self.assertEqual(app.limpezas, 1)
 
+    def test_marcadores_usam_ancoras_das_construcoes_e_identificam_origem(self):
+        app = self.construir(numero_mapa=5)
+        app.cena.marcadores_no = {
+            no: (ponto[0] - 4.5, ponto[1] - 4.5, ponto[2] + 3.)
+            for no, ponto in app.cena.posicoes.items()
+        }
+        app.ui.textos.clear()
+        app.ui.desenhar()
+        for no, ancora in app.cena.marcadores_no.items():
+            esperado = app.camera_iso.projetar(ancora)
+            self.assertAlmostEqual(app.ui.ancoras_tela[no][0], esperado[0])
+            self.assertAlmostEqual(app.ui.ancoras_tela[no][1], esperado[1])
+            self.assertTrue(app.camera_iso.viewport.contains(app.ui.etiquetas_tela[no]))
+        self.assertTrue(any(texto == 'ORIGEM' for texto, _, _ in app.ui.textos))
+
     def test_modal_config_captura_cliques_e_volta_ao_mapa(self):
         for tamanho in [(1100, 760), (1440, 960)]:
             app = self.construir(tamanho)
@@ -143,7 +158,7 @@ class TestHUD(unittest.TestCase):
             for _, (rect, _) in app.ui.botoes.items():
                 self.assertTrue(app.ui.canvas.get_rect().contains(rect))
             origem = app.origem
-            app.mouse = app.ui.posicoes_tela[3]
+            app.mouse = next(iter(app.ui.posicoes_tela.values()))
             Aplicacao3D.clicar(app)
             self.assertEqual(app.origem, origem)
             self.assertEqual(app.limpezas, 0)
