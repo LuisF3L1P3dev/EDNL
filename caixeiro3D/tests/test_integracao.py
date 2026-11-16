@@ -15,11 +15,17 @@ class CenaTeste:
         self.posicoes = posicoes_mundo(grafo)
         self.ruas = ruas_mundo(grafo)
         self.caminho = ()
+        self.trechos = []
 
     def mostrar_rota(self, caminho):
         self.caminho = tuple(caminho)
         for a, b in zip(caminho, caminho[1:]):
             assert (a, b) in self.ruas
+
+    def mostrar_trecho(self, origem, destino):
+        self.trechos.append((origem, destino))
+        self.mostrar_rota((origem, destino))
+        return True
 
     def limpar_rota(self):
         self.caminho = ()
@@ -105,6 +111,21 @@ class IntegracaoTest(unittest.TestCase):
         app.atualizar(1)
         self.assertIsNone(app.resultado)
         self.assertFalse(app.ocupado)
+
+    def test_destaque_mostra_somente_trecho_durante_viagem_e_rota_no_fim(self):
+        app = self.app
+        app.ui.animar_busca = False
+        app.acao('iniciar')
+        self.aguardar_calculo()
+        atual = app.viagem.caminho[:2]
+        self.assertEqual(app.cena.caminho, atual)
+        self.assertEqual(app.cena.trechos, [atual])
+        # Sem trocar de aresta, o frame seguinte não redesenha a rota.
+        app.atualizar(.01)
+        self.assertEqual(app.cena.trechos, [atual])
+        app.atualizar(100)
+        self.assertTrue(app.viagem.concluida)
+        self.assertEqual(app.cena.caminho, app.viagem.caminho)
 
     def test_modal_bloqueia_acao(self):
         app = self.app

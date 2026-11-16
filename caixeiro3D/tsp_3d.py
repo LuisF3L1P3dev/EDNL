@@ -54,6 +54,7 @@ class Aplicacao3D(ShowBase):
         self._replay_pausado = False
         self._fechada = False
         self._hud_relogio = 0.
+        self._trecho_visual = None
         self.arraste = None
         self._luzes()
         from render3d import Cena3D
@@ -193,6 +194,7 @@ class Aplicacao3D(ShowBase):
         self.viagem = Viagem(velocidade=velocidade)
         self.resultado = None
         self.cena.limpar_rota()
+        self._trecho_visual = None
         self.carro.setPos(*self.cena.posicoes[self.origem])
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
 
@@ -298,6 +300,7 @@ class Aplicacao3D(ShowBase):
         if r and r.caminho and r.termino == 'concluido':
             self.viagem.carregar(self.mapa, r.caminho, ciclo=self.metodo != 'dijkstra')
             self.cena.mostrar_rota(r.caminho)
+            self._trecho_visual = None
             self._posicionar_carro()
             self.fase, self.status = 'Percurso calculado', r.garantia
         elif r:
@@ -315,6 +318,27 @@ class Aplicacao3D(ShowBase):
             self.carro.setPos(*ponto)
             self.carro.setHpr(-degrees(atan2(direcao[0], direcao[1])),
                               degrees(atan2(direcao[2], hypot(*direcao[:2]))), 0)
+
+    def _destacar_trecho_atual(self):
+        if not self.viagem.pesos:
+            return
+        if self.viagem.concluida:
+            # Após a entrega, HUD e cena voltam a mostrar o percurso inteiro
+            # uma única vez; durante execução/pausa permanece só o trecho.
+            if self._trecho_visual != ():
+                self.cena.mostrar_rota(self.viagem.caminho)
+                self._trecho_visual = ()
+            return
+        indice, _ = self.viagem.trecho
+        trecho = tuple(self.viagem.caminho[indice:indice + 2])
+        if len(trecho) != 2 or trecho == self._trecho_visual:
+            return
+        desenhar = getattr(self.cena, 'mostrar_trecho', None)
+        if desenhar:
+            desenhar(*trecho)
+        else:  # Dobles de teste e cenas externas preservam o mesmo contrato.
+            self.cena.mostrar_rota(trecho)
+        self._trecho_visual = trecho
 
     def atualizar(self, dt):
         if self.futuro:
@@ -347,6 +371,7 @@ class Aplicacao3D(ShowBase):
             if not self._etapas:
                 self._finalizar_busca()
         self.viagem.atualizar(dt)
+        self._destacar_trecho_atual()
         if self.ocupado and self._replay_pausado:
             self.fase = 'Busca pausada'
         elif self.viagem.caminho:

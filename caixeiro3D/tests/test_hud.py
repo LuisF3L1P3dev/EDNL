@@ -149,6 +149,42 @@ class TestHUD(unittest.TestCase):
             self.assertTrue(app.camera_iso.viewport.contains(app.ui.etiquetas_tela[no]))
         self.assertTrue(any(texto == 'ORIGEM' for texto, _, _ in app.ui.textos))
 
+    def test_pesos_das_ruas_nao_colidem_com_pins_ou_entre_si(self):
+        for mapa in (5, 18):
+            app = self.construir(numero_mapa=mapa)
+            # A câmera de teste não é a câmera isométrica real; enquadrar a
+            # malha inteira permite validar as 45 etiquetas, inclusive as
+            # ruas no perímetro da cidade.
+            def projetar_malha(ponto, camera=app.camera_iso):
+                r = camera.viewport
+                return r.centerx + ponto[0] / 145 * r.w, r.centery - ponto[1] / 110 * r.h
+            app.camera_iso.projetar = projetar_malha
+            app.ui.desenhar()
+            pesos = app.ui.pesos_tela
+            self.assertEqual(len(pesos), len(app.mapa.arestas))
+            caixas = list(pesos.values())
+            for i, caixa in enumerate(caixas):
+                self.assertTrue(app.camera_iso.viewport.contains(caixa))
+                self.assertFalse(caixa.colliderect(pygame.Rect(258, 100, 230, 50)))
+                self.assertFalse(any(caixa.colliderect(pin)
+                                     for pin in app.ui.etiquetas_tela.values()))
+                self.assertFalse(any(caixa.colliderect(outra)
+                                     for outra in caixas[i + 1:]))
+
+    def test_destaque_de_peso_acompanha_somente_trecho_atual(self):
+        app = self.construir(numero_mapa=5)
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+        app.ui.desenhar()
+        self.assertEqual(app.ui.pesos_ativos, {frozenset((1, 2))})
+        app.viagem.reproduzindo = False  # pausa mantém o mesmo trecho
+        app.ui.desenhar()
+        self.assertEqual(app.ui.pesos_ativos, {frozenset((1, 2))})
+        app.viagem.reproduzir()
+        app.viagem.atualizar(100)
+        app.ui.desenhar()
+        self.assertEqual(app.ui.pesos_ativos,
+                         {frozenset((1, 2)), frozenset((2, 3))})
+
     def test_modal_config_captura_cliques_e_volta_ao_mapa(self):
         for tamanho in [(1100, 760), (1440, 960)]:
             app = self.construir(tamanho)

@@ -147,6 +147,15 @@ class TestRender3D(unittest.TestCase):
         # Os vértices amarelos ficam acima da rua, sem alterar a polilinha.
         self.assertGreater(cena.rota.getTightBounds()[0].z, .12)
 
+    def test_trecho_ativo_nao_reconstroi_mesh_sem_mudar_aresta(self):
+        _, cena = self.construir(self.grafos[0])
+        self.assertTrue(cena.mostrar_trecho(1, 2))
+        filhos = cena.rota.getNumChildren()
+        self.assertFalse(cena.mostrar_trecho(1, 2))
+        self.assertEqual(cena.rota.getNumChildren(), filhos)
+        self.assertTrue(cena.mostrar_trecho(2, 3))
+        self.assertEqual(cena._trecho_destacado, (2, 3))
+
 
 if __name__ == "__main__":
     unittest.main()

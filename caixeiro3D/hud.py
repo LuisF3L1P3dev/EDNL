@@ -31,6 +31,8 @@ class HUD:
         self.posicoes_tela = {}
         self.ancoras_tela = {}
         self.etiquetas_tela = {}
+        self.pesos_tela = {}
+        self.pesos_ativos = set()
         self.config_aberta = False
         self.mostrar_pesos = True
         self.mostrar_legendas = True
@@ -127,24 +129,16 @@ class HUD:
         viewport = a.camera_iso.viewport
         self.canvas.set_clip(viewport)
         caminho = a.viagem.caminho or (a.etapa.caminho if a.etapa else ())
-        selecionadas = {frozenset((u, v)) for u, v in zip(caminho, caminho[1:])}
-        if self.mostrar_pesos:
-            for e in a.mapa.arestas:
-                ponto, _ = interpolar(a.cena.ruas[e.origem, e.destino], .5)
-                p = a.camera_iso.projetar(ponto)
-                if not p or not viewport.collidepoint(p):
-                    continue
-                label = f'{e.peso:g}'
-                fonte = self.fonte(12, True)
-                box = pygame.Rect(0, 0, fonte.size(label)[0] + 14, 22)
-                box.center = int(p[0]), int(p[1])
-                ativa = frozenset((e.origem, e.destino)) in selecionadas
-                pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235), box, border_radius=6)
-                pygame.draw.rect(self.canvas, YELLOW if ativa else LINE, box, 1, border_radius=6)
-                self.texto(label, box.x + 7, box.y + 2, 12, INK, True)
+        if a.viagem.pesos and not a.viagem.concluida:
+            indice, _ = a.viagem.trecho
+            selecionadas = {frozenset(a.viagem.caminho[indice:indice + 2])}
+        else:
+            selecionadas = {frozenset((u, v)) for u, v in zip(caminho, caminho[1:])}
         self.posicoes_tela = {}
         self.ancoras_tela = {}
         self.etiquetas_tela = {}
+        self.pesos_tela = {}
+        self.pesos_ativos = set()
         explorados = set(a.etapa.explorados if a.etapa else ())
         marcadores = getattr(a.cena, 'marcadores_no', a.cena.posicoes)
         for no, ponto in marcadores.items():
@@ -201,11 +195,57 @@ class HUD:
                 self.texto(label, r.x + 6, r.y + 1, 10, GREEN_TEXT if no == a.origem else BLUE, True)
                 box.union_ip(r)
             self.etiquetas_tela[no] = box
+        if self.mostrar_pesos:
+            self._desenhar_pesos(viewport, selecionadas)
         if a.viagem.em_chegada:
             p = a.camera_iso.projetar(tuple(a.carro.getPos(a.render)))
             if p:
                 pygame.draw.circle(self.canvas, GREEN, tuple(map(int, p)), 27, 3)
         self.canvas.set_clip(None)
+
+    def _desenhar_pesos(self, viewport, selecionadas):
+        """Posiciona pesos próximos à sua rua sem encobrir pins ou outros pesos."""
+        a = self.app
+        self.pesos_ativos = set(selecionadas)
+        ocupadas = list(self.etiquetas_tela.values()) + [pygame.Rect(258, 100, 230, 50)]
+        fracoes = (.5, .34, .66, .2, .8, .42, .58, .12, .88, .27, .73, .05, .95)
+        deslocamentos = ((0, 0), (0, -16), (0, 16), (-16, 0), (16, 0),
+                          (0, -32), (0, 32), (-32, 0), (32, 0),
+                          (-22, -22), (22, -22), (-22, 22), (22, 22),
+                          (0, -48), (0, 48), (-48, 0), (48, 0),
+                          (0, -64), (0, 64), (-64, 0), (64, 0),
+                          (-64, -32), (64, -32), (-64, 32), (64, 32),
+                          (0, -88), (0, 88), (-88, 0), (88, 0),
+                          (-88, -44), (88, -44), (-88, 44), (88, 44))
+        fonte = self.fonte(12, True)
+        for e in a.mapa.arestas:
+            texto = f'{e.peso:g}'
+            tamanho = fonte.size(texto)
+            escolhido = None
+            for fracao in fracoes:
+                ponto, _ = interpolar(a.cena.ruas[e.origem, e.destino], fracao)
+                projetado = a.camera_iso.projetar(ponto)
+                if not projetado:
+                    continue
+                for dx, dy in deslocamentos:
+                    box = pygame.Rect(0, 0, tamanho[0] + 14, 22)
+                    box.center = round(projetado[0] + dx), round(projetado[1] + dy)
+                    if viewport.contains(box) and not any(box.colliderect(outro) for outro in ocupadas):
+                        escolhido = box
+                        break
+                if escolhido:
+                    break
+            # A malha oferece 45 etiquetas; em viewport muito estreito o
+            # candidato de menor conflito ainda preserva legibilidade parcial.
+            if escolhido is None:
+                continue
+            ativa = frozenset((e.origem, e.destino)) in selecionadas
+            pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235),
+                             escolhido, border_radius=6)
+            pygame.draw.rect(self.canvas, YELLOW if ativa else LINE, escolhido, 1, border_radius=6)
+            self.texto(texto, escolhido.x + 7, escolhido.y + 2, 12, INK, True)
+            self.pesos_tela[e.origem, e.destino] = escolhido
+            ocupadas.append(escolhido)
 
     def _esquerda(self):
         a = self.app

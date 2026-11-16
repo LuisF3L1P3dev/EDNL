@@ -106,6 +106,7 @@ class Cena3D:
         self.modelos_usados = set()
         self.trechos_rua = 0
         self.pontes = 0
+        self._trecho_destacado = None
         self._segmentos = tuple(
             (a, b) for aresta in grafo.arestas
             for a, b in zip(self.ruas[aresta.origem, aresta.destino],
@@ -349,6 +350,7 @@ class Cena3D:
             raise ValueError("A rota contém uma rua inexistente.") from erro
         # Validar primeiro preserva a rota atual se o novo percurso for inválido.
         self.limpar_rota()
+        self._trecho_destacado = None
         for pontos in ruas:
             for a, b in zip(pontos, pontos[1:]):
                 _faixa(self.rota, "contorno-rota", a, b, .34, (.60, .40, .08, 1), .031)
@@ -357,9 +359,19 @@ class Cena3D:
                 _disco(self.rota, "junta-rota", x, y, z + .036, .12, cor, lados=12)
         self.rota.flattenStrong()
 
+    def mostrar_trecho(self, origem, destino, cor=AMARELO):
+        """Atualiza a faixa ativa só quando a van troca de aresta."""
+        trecho = origem, destino
+        if trecho == self._trecho_destacado:
+            return False
+        self.mostrar_rota(trecho, cor)
+        self._trecho_destacado = trecho
+        return True
+
     def limpar_rota(self):
         for filho in self.rota.getChildren():
             filho.removeNode()
+        self._trecho_destacado = None
 
     def destruir(self):
         self.raiz.removeNode()
