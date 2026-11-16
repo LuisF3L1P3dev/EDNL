@@ -13,7 +13,7 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
                          GeomVertexFormat, GeomVertexWriter,
                          TransparencyAttrib, Vec3)
 
-from geometria3d import posicoes_mundo, ruas_mundo
+from geometria3d import criar_mapa_visual
 
 
 LARGURA_RUA = .95
@@ -91,8 +91,9 @@ class Cena3D:
     def __init__(self, base, grafo, biblioteca):
         self.grafo = grafo
         self.biblioteca = biblioteca
-        self.posicoes = posicoes_mundo(grafo)
-        self.ruas = ruas_mundo(grafo)
+        self.mapa_visual = criar_mapa_visual(grafo)
+        self.posicoes = self.mapa_visual.posicoes
+        self.ruas = self.mapa_visual.ruas
         self.raiz = base.render.attachNewNode(f"cidade-{grafo.id}")
         self.rota = base.render.attachNewNode("rota-calculada")
         self.rota.setLightOff()
@@ -105,8 +106,9 @@ class Cena3D:
                             self.ruas[aresta.origem, aresta.destino][1:])
         )
         self._rng = Random(410 + len(grafo.ids))
-        self.meia_largura = max(26., max(abs(p[0]) for p in self.posicoes.values()) + 4.)
-        self.meia_altura = max(23., max(abs(p[1]) for p in self.posicoes.values()) + 4.)
+        x0, y0, x1, y1 = self.mapa_visual.limites_xy
+        self.meia_largura = max(26., abs(x0) + 2., abs(x1) + 2.)
+        self.meia_altura = max(23., abs(y0) + 2., abs(y1) + 2.)
         try:
             self._terreno()
             self._construir_ruas()
