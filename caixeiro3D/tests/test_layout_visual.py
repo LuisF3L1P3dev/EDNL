@@ -5,6 +5,7 @@ import unittest
 
 from geometria3d import (ArestaVisual, ConstrucaoVisual, MapaVisual,
                         criar_mapa_visual, posicoes_mundo, ruas_mundo)
+from roteamento3d import ALTURA_RUA, MEIO_TABULEIRO, RAMPA, VAO_LIVRE, posicoes_planejadas
 from solvers import executar
 from tsp_core import Aresta, carregar_cenarios, carregar_mapa
 
@@ -84,15 +85,73 @@ class LayoutVisualTest(unittest.TestCase):
         self.assertIs(b.grafo, recarregado)
         self.assertIs(b.arestas[0].aresta, recarregado.arestas[0])
 
-    def test_apresentacao_legada_e_preservada_nesta_etapa(self):
+    def test_malha_planejada_e_ortogonal_na_task04(self):
         for g in self.grafos:
             visual = criar_mapa_visual(g)
-            self.assertEqual(visual.posicoes,
-                             {n.id: ((n.x - .5) * 46, (.5 - n.y) * 38, .12) for n in g.nos})
-            for i, av in enumerate(visual.arestas):
-                self.assertEqual(len(av.caminho), 4)
-                self.assertEqual(av.caminho[1][2], .24 + i * .025)
-                self.assertEqual(av.caminho[2][2], .24 + i * .025)
+            self.assertEqual(visual.posicoes, posicoes_planejadas(g))
+            self.assertEqual(len(visual.arestas), len(g.arestas))
+            for av in visual.arestas:
+                self.assertIs(av.aresta, next(e for e in g.arestas if e is av.aresta))
+                for a, b in zip(av.caminho, av.caminho[1:]):
+                    # Toda rua segue uma direção cardinal no plano: a altura
+                    # pode variar somente na rampa de uma ponte.
+                    self.assertTrue(abs(a[0] - b[0]) < 1e-8 or abs(a[1] - b[1]) < 1e-8)
+                    self.assertGreaterEqual(min(a[2], b[2]), ALTURA_RUA - 1e-8)
+                for no, posicao in visual.posicoes.items():
+                    if no not in (av.origem, av.destino):
+                        self.assertNotIn(posicao, av.caminho)
+            if len(g.ids) == 5:
+                self.assertFalse(visual.pontes)
+                self.assertFalse(any(p[2] > ALTURA_RUA + .01
+                                     for av in visual.arestas for p in av.caminho))
+            else:
+                self.assertTrue(visual.pontes)
+                pares = {tuple(sorted((e.origem, e.destino))) for e in g.arestas}
+                for ponte in visual.pontes:
+                    self.assertIn(tuple(sorted(ponte.aresta)), pares)
+                    self.assertIn(tuple(sorted(ponte.inferior)), pares)
+                    self.assertNotEqual(ponte.aresta, ponte.inferior)
+                    self.assertGreaterEqual(ponte.altura, VAO_LIVRE)
+                    self.assertGreaterEqual(ponte.centro[2] - ALTURA_RUA, VAO_LIVRE)
+                    for extremo in (ponte.inicio, ponte.fim):
+                        distancia = ((extremo[0] - ponte.centro[0]) ** 2 +
+                                     (extremo[1] - ponte.centro[1]) ** 2) ** .5
+                        self.assertGreaterEqual(distancia + 1e-8, RAMPA + MEIO_TABULEIRO)
+                self.assertTrue(any(p[2] > ALTURA_RUA + .8
+                                    for av in visual.arestas for p in av.caminho))
+
+    @staticmethod
+    def _altura_no_cruzamento(pontos, x, y):
+        """Altura da polilinha na projeção XY de uma passagem elevada."""
+        alturas = []
+        for a, b in zip(pontos, pontos[1:]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            if abs(dx) > 1e-8:
+                t = (x - a[0]) / dx
+            elif abs(dy) > 1e-8:
+                t = (y - a[1]) / dy
+            else:
+                continue
+            if ( -1e-8 <= t <= 1 + 1e-8 and
+                    abs(a[0] + t * dx - x) < 1e-7 and
+                    abs(a[1] + t * dy - y) < 1e-7):
+                alturas.append(a[2] + t * (b[2] - a[2]))
+        if not alturas:
+            self.fail("A ponte não está sobre a rua declarada.")
+        return tuple(alturas)
+
+    def test_pontes_deixam_vao_em_cruzamentos_reais(self):
+        grande = next(g for g in self.grafos if len(g.ids) == 18)
+        visual = criar_mapa_visual(grande)
+        # Valor estável da malha canônica: cada item descreve um cruzamento
+        # não incidente, nunca uma junção lógica adicionada pelo desenho.
+        self.assertEqual(len(visual.pontes), 26)
+        for ponte in visual.pontes:
+            x, y, _ = ponte.centro
+            altas = self._altura_no_cruzamento(visual.ruas[ponte.aresta], x, y)
+            baixas = self._altura_no_cruzamento(visual.ruas[ponte.inferior], x, y)
+            self.assertGreaterEqual(max(altas) - min(baixas) + 1e-8, VAO_LIVRE)
+            self.assertNotEqual(ponte.aresta, ponte.inferior)
 
     def test_limites_incluem_lotes_e_desvios_distantes(self):
         g = self.grafos[0]

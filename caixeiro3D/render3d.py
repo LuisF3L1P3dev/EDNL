@@ -100,10 +100,19 @@ class Cena3D:
         self.decoracoes = []
         self.modelos_usados = set()
         self.trechos_rua = 0
+        self.pontes = 0
         self._segmentos = tuple(
             (a, b) for aresta in grafo.arestas
             for a, b in zip(self.ruas[aresta.origem, aresta.destino],
                             self.ruas[aresta.origem, aresta.destino][1:])
+        )
+        self._cantos = tuple(
+            (a, b, c) for aresta in grafo.arestas
+            for a, b, c in zip(self.ruas[aresta.origem, aresta.destino],
+                               self.ruas[aresta.origem, aresta.destino][1:],
+                               self.ruas[aresta.origem, aresta.destino][2:])
+            if abs(a[2] - b[2]) < .02 and abs(b[2] - c[2]) < .02 and
+            abs((b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])) < .02
         )
         self._rng = Random(410 + len(grafo.ids))
         x0, y0, x1, y1 = self.mapa_visual.limites_xy
@@ -112,6 +121,7 @@ class Cena3D:
         try:
             self._terreno()
             self._construir_ruas()
+            self._curvas()
             self._cruzamentos()
             self._decorar()
             self.raiz.flattenStrong()
@@ -148,7 +158,11 @@ class Cena3D:
 
     def _construir_ruas(self):
         modelo = self._modelo("rua", "road-straight")
+        modelo_ponte = self._modelo("rua", "road-bridge")
+        pilar = self._modelo("rua", "bridge-pillar-wide")
         lo, hi = modelo.getTightBounds()
+        lo_ponte, hi_ponte = modelo_ponte.getTightBounds()
+        lo_pilar, hi_pilar = pilar.getTightBounds()
         comprimento_modelo, largura_modelo = hi.x - lo.x, hi.y - lo.y
         for a, b in self._segmentos:
             delta = Vec3(*b) - Vec3(*a)
@@ -162,13 +176,44 @@ class Cena3D:
                 suporte.setPos(Vec3(*a) + delta * ((i + .5) / partes))
                 suporte.setHpr(-degrees(atan2(delta.x, delta.y)),
                                degrees(atan2(delta.z, hypot(delta.x, delta.y))), 0)
-                malha = modelo.copyTo(suporte)
+                # O tabuleiro alto recebe o asset de ponte; as rampas seguem
+                # como ruas, deixando inequívoca a separação dos níveis.
+                elevado = abs(a[2] - b[2]) < .02 and a[2] > .8
+                fonte = modelo_ponte if elevado else modelo
+                fonte_lo, fonte_hi = (lo_ponte, hi_ponte) if elevado else (lo, hi)
+                malha = fonte.copyTo(suporte)
                 malha.setH(90)
                 # Kenney usa X longitudinal: preservar a escala das marcações.
-                malha.setScale(comprimento / partes / comprimento_modelo * 1.004,
-                               LARGURA_RUA / largura_modelo, .55)
-                malha.setZ(-hi.z * .55)
+                malha.setScale(comprimento / partes / (fonte_hi.x - fonte_lo.x) * 1.004,
+                               LARGURA_RUA / (fonte_hi.y - fonte_lo.y), .55)
+                malha.setZ(-fonte_hi.z * .55)
+                # Um apoio por tabuleiro elevado deixa a ponte legível sem
+                # transformar cada subtrecho de 1,6 u numa fileira de pilares.
+                if elevado and i == partes // 2:
+                    apoio = pilar.copyTo(self.raiz)
+                    meio = (Vec3(*a) + Vec3(*b)) * .5
+                    apoio.setPos(meio.x, meio.y, NIVEL_GRAMA + .04)
+                    escala_pilar = LARGURA_RUA * 1.4 / max(hi_pilar.x - lo_pilar.x,
+                                                            hi_pilar.y - lo_pilar.y)
+                    apoio.setScale(escala_pilar, escala_pilar,
+                                   max(.2, (meio.z - NIVEL_GRAMA) / (hi_pilar.z - lo_pilar.z)))
+                    apoio.setZ(apoio.getZ() - lo_pilar.z * apoio.getScale().z)
+                    self.pontes += 1
                 self.trechos_rua += 1
+
+    def _curvas(self):
+        """Fecha os cotovelos cardinais com o asset arredondado de rua."""
+        modelo = self._modelo("rua", "road-bend")
+        lo, hi = modelo.getTightBounds()
+        escala = (LARGURA_RUA * 1.9) / max(hi.x - lo.x, hi.y - lo.y)
+        for a, b, c in self._cantos:
+            suporte = self.raiz.attachNewNode("curva-rua")
+            suporte.setPos(*b)
+            suporte.setH(-degrees(atan2(b[0] - a[0], b[1] - a[1])))
+            malha = modelo.copyTo(suporte)
+            malha.setH(90)
+            malha.setScale(escala, escala, .55)
+            malha.setZ(-hi.z * .55 + .004)
 
     def _cruzamentos(self):
         modelo = self._modelo("rua", "road-crossroad")

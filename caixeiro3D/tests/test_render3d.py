@@ -57,8 +57,15 @@ class TestRender3D(unittest.TestCase):
                     self.assertGreater(textura.getXSize(), 0)
                     self.assertGreater(textura.getYSize(), 0)
                 self.assertIn(("rua", "road-straight"), cena.modelos_usados)
+                self.assertIn(("rua", "road-bend"), cena.modelos_usados)
                 self.assertTrue(any(kit == "cidade" for kit, _ in cena.modelos_usados))
                 self.assertTrue(any(kit == "suburbio" for kit, _ in cena.modelos_usados))
+                if len(grafo.ids) == 5:
+                    self.assertEqual(cena.pontes, 0)
+                else:
+                    self.assertGreater(cena.pontes, 0)
+                    self.assertIn(("rua", "road-bridge"), cena.modelos_usados)
+                    self.assertIn(("rua", "bridge-pillar-wide"), cena.modelos_usados)
 
     def test_decoracoes_nao_invadem_ruas_nem_nos(self):
         for grafo in self.grafos:

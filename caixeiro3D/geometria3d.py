@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Mapping
 
 from tsp_core import Aresta, Grafo, No
+from roteamento3d import ALTURA_RUA, posicoes_planejadas, rotear
 
 
 XYZ = tuple[float, float, float]
@@ -97,12 +98,14 @@ class MapaVisual:
     grafo: Grafo
     nos: tuple[NoVisual, ...]
     arestas: tuple[ArestaVisual, ...]
+    pontes: tuple = ()
     _posicoes: Mapping[int, XYZ] = field(init=False, repr=False, compare=False)
     _ruas: Mapping[tuple[int, int], tuple[XYZ, ...]] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
         object.__setattr__(self, 'nos', tuple(self.nos))
         object.__setattr__(self, 'arestas', tuple(self.arestas))
+        object.__setattr__(self, 'pontes', tuple(self.pontes))
         originais = {n.id: n for n in self.grafo.nos}
         if len(self.nos) != len(originais) or {n.id for n in self.nos} != set(originais):
             raise ValueError("O mapa visual deve representar exatamente os nós do grafo.")
@@ -169,15 +172,25 @@ def _criar_em_cache(identidade, posicoes, construcoes):
     adj = grafo.adjacencia()
     nos = tuple(NoVisual(n, posicoes[n.id], construcoes[n.id], tuple(sorted(adj[n.id])))
                 for n in grafo.nos)
-    arestas = []
-    for i, aresta in enumerate(grafo.arestas):
-        a, b = posicoes[aresta.origem], posicoes[aresta.destino]
-        altura = .24 + i * .025
-        # Preservar a apresentação existente até o roteamento ortogonal da TASK04.
-        pontos = (a, tuple(a[k] + .15 * (b[k] - a[k]) for k in range(2)) + (altura,),
-                  tuple(a[k] + .85 * (b[k] - a[k]) for k in range(2)) + (altura,), b)
-        arestas.append(ArestaVisual(aresta, pontos))
-    return MapaVisual(grafo, nos, tuple(arestas))
+    # A malha urbana canônica é exclusivamente visual. Cada caminho continua
+    # referenciando a mesma Aresta imutável fornecida pelo grafo. Um layout
+    # explicitamente fornecido permanece livre para ferramentas e testes da
+    # task anterior; ele recebe uma polilinha ortogonal simples, sem mudar
+    # topologia nem exigir que seus pontos caibam na grade planejada.
+    if posicoes == posicoes_planejadas(grafo):
+        rotas = rotear(grafo, posicoes, construcoes, w5=len(grafo.ids) == 5)
+        por_aresta = dict(rotas.caminhos)
+        pontes = rotas.pontes
+    else:
+        por_aresta = {}
+        for aresta in grafo.arestas:
+            a, b = posicoes[aresta.origem], posicoes[aresta.destino]
+            curva = (b[0], a[1], ALTURA_RUA)
+            por_aresta[aresta.origem, aresta.destino] = (a, curva, b) if curva not in (a, b) else (a, b)
+        pontes = ()
+    arestas = [ArestaVisual(aresta, por_aresta[aresta.origem, aresta.destino])
+               for aresta in grafo.arestas]
+    return MapaVisual(grafo, nos, tuple(arestas), tuple(pontes))
 
 
 def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
@@ -189,7 +202,7 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
     grafos com os mesmos valores, preservando referências aos objetos originais.
     """
     if posicoes is None:
-        posicoes = {n.id: ((n.x - .5) * 46, (.5 - n.y) * 38, .12) for n in grafo.nos}
+        posicoes = posicoes_planejadas(grafo)
     if set(posicoes) != set(grafo.ids):
         raise ValueError("O layout deve fornecer posições para exatamente os nós do grafo.")
     posicoes = {no: _xyz(posicoes[no]) for no in grafo.ids}
