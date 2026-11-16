@@ -143,7 +143,7 @@ class Aplicacao3D(ShowBase):
             return
         # Preservar ajuste pixel2d/aspecto e eventos nativos da base Panda3D.
         super().windowEvent(janela)
-        if hasattr(self, 'camera_iso'):
+        if hasattr(self, 'camera_iso') and not janela.getProperties().getMinimized():
             self.camera_iso.ajustar()
 
     def _escape(self):
@@ -370,6 +370,12 @@ class Aplicacao3D(ShowBase):
         if hasattr(self.win, 'getProperties') and not self.win.getProperties().getOpen():
             self.fechar()
             return task.done
+        if (self.win.getXSize() < self.camera_iso.MIN_LARGURA or
+                self.win.getYSize() < self.camera_iso.MIN_ALTURA):
+            # Aguardar o redimensionamento mínimo sem desenhar painéis em uma
+            # superfície temporariamente menor que a interface.
+            self.camera_iso.ajustar()
+            return task.cont
         # Carregamento/redimensionamento não deve saltar segundos da viagem.
         dt = min(.1, globalClock.getDt())
         self.atualizar(dt)

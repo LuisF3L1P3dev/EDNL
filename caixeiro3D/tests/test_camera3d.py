@@ -68,11 +68,27 @@ class CameraTest(unittest.TestCase):
             self.camera.mudar_zoom(0)
         self.camera.arrastar(100000, 100000)
         self.assertEqual(self.camera.pan.z, 0)
-        self.assertLessEqual(self.camera.pan.length(), self.camera._limite_pan + .001)
         self.camera.centralizar()
         self.assertEqual(self.camera.zoom, 1)
         self.assertEqual(self.camera.pan, Vec3(0))
         self.assert_enquadrado()
+
+    def test_pan_extremo_mantem_intersecao_do_mapa(self):
+        for zoom in (.65, 1, 3):
+            for dx, dy in ((100000, 100000), (-100000, -100000),
+                           (100000, -100000), (-100000, 100000)):
+                self.camera.centralizar()
+                self.camera.mudar_zoom(zoom)
+                self.camera.arrastar(dx, dy)
+                direita, cima, _ = self.camera._eixos()
+                alvo = self.base.camera.getPos(self.base.render) - self.camera._eixos()[2] * 500
+                film = self.camera.lente.getFilmSize()
+                for eixo, dimensao in ((direita, film.x), (cima, film.y)):
+                    coordenadas = [Vec3(*p).dot(eixo) for p in self.pontos]
+                    centro = alvo.dot(eixo)
+                    intersecao = min(max(coordenadas), centro + dimensao / 2) - max(min(coordenadas), centro - dimensao / 2)
+                    self.assertGreater(intersecao, 2.99, (zoom, dx, dy, intersecao))
+                self.assertEqual(self.camera.pan.z, 0)
 
     def test_arrasto_move_projecao(self):
         antes = self.camera.projetar((0, 0, 0))
@@ -88,6 +104,19 @@ class CameraTest(unittest.TestCase):
             CameraIsometrica(base_falsa(), [])
         with self.assertRaises(ValueError):
             self.camera.ajustar((400, 100))
+
+    def test_resize_nativo_extremo_solicita_minimo_e_preserva_lente(self):
+        pedidos = []
+        self.base.win.requestProperties = pedidos.append
+        viewport = self.camera.viewport.copy()
+        lente = self.camera.lente.getFilmSize()
+        self.camera.ajustar((300, 120))
+        self.assertEqual(len(pedidos), 1)
+        self.assertEqual((pedidos[0].getXSize(), pedidos[0].getYSize()), (1100, 760))
+        self.assertEqual(self.camera.viewport, viewport)
+        self.assertEqual(self.camera.lente.getFilmSize(), lente)
+        self.camera.ajustar((1100, 760))
+        self.assert_enquadrado()
 
 
 if __name__ == '__main__':

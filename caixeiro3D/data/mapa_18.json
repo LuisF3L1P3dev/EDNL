@@ -323,6 +323,6 @@
   "observacoes": [
     "Grafo não direcionado. Cruzamentos visuais não geram conexões.",
     "9–13 = 34 confirmado pelo usuário; 9–14 = 1 conforme tasks.md.",
-    "1?3 = 37 confirmado explicitamente pelo usu?rio; o realce vermelho 1?13 n?o cria aresta sem peso."
+    "1–3 = 37 confirmado explicitamente pelo usuário; o realce vermelho 1–13 não cria aresta sem peso."
   ]
 }

@@ -6,7 +6,7 @@
 - Mapa 18: `ref/Mapa Isométrico da Rota Mais Curta.png`; posições dos centros normalizadas pela imagem 1672 × 941.
 - 9–13 = **34**, confirmado pelo usuário; a etiqueta azul 1 não substitui o peso preto.
 - 9–14 = **1**, regra explícita do enunciado.
-- A linha vermelha 1–13 não tem peso legível. Usuário informou “1–3 = 37”; extremos aguardam esclarecimento. Não adicionada enquanto pendente.
+- **1–3 = 37**, ligação adicional confirmada explicitamente pelo usuário. A linha vermelha 1–13 é um realce sem peso e não foi adicionada como aresta.
 - Etiquetas azuis inequívocas 9–10, 10–14, 12–13, 13–14 têm peso 1.
 - Os grafos são não direcionados. Sobreposições sem nó não são adjacências.
 
@@ -60,7 +60,7 @@
 | 16 | 17 | 26 |
 | 17 | 18 | 15 |
 
-Total atual: 18 nós e 44 arestas confirmadas. O grafo continua conectado. A transcrição completa depende de esclarecer o par de extremos do peso 37.
+Total validado: **18 nós e 45 arestas**. O grafo é conectado. Transcrição conferida visualmente com a referência e corrigida pelas três regras explícitas do usuário (1–3 = 37, 9–13 = 34, 9–14 = 1).
 
 ## Mapa 5
 

@@ -48,12 +48,15 @@ class CameraIsometrica:
     def ajustar(self, tamanho=None):
         """Atualiza viewport e enquadramento; tamanho e (largura, altura) em pixels."""
         w, h = tamanho if tamanho is not None else (self.base.win.getXSize(), self.base.win.getYSize())
-        if w <= self.ESQUERDA + self.DIREITA or h <= self.TOPO + self.BAIXO:
-            raise ValueError('Janela pequena demais para o viewport')
         if (w < self.MIN_LARGURA or h < self.MIN_ALTURA) and hasattr(self.base.win, 'requestProperties'):
             propriedades = WindowProperties()
             propriedades.setSize(max(w, self.MIN_LARGURA), max(h, self.MIN_ALTURA))
             self.base.win.requestProperties(propriedades)
+            # A solicitação nativa é assíncrona: conservar a última lente até
+            # receber o tamanho corrigido, inclusive se o viewport teria área 0.
+            return
+        if w <= self.ESQUERDA + self.DIREITA or h <= self.TOPO + self.BAIXO:
+            raise ValueError('Janela pequena demais para o viewport')
         self.viewport = pygame.Rect(self.ESQUERDA, self.TOPO,
                                     w - self.ESQUERDA - self.DIREITA,
                                     h - self.TOPO - self.BAIXO)
@@ -75,17 +78,30 @@ class CameraIsometrica:
         altura = max(ys) - min(ys) + 2 * self.MARGEM
         film_altura = max(altura, largura / aspecto) / self.zoom
         self.lente.setFilmSize(film_altura * aspecto, film_altura)
-        self._limite_pan = max(largura, altura, 1.0)
-        self._limitar_pan()
+        self._limitar_pan(xs, ys, cx, cy, direita, cima)
         alvo = centro + self.pan
         self.base.camera.setPos(alvo + direcao * 500)
         self.base.camera.lookAt(alvo)
 
-    def _limitar_pan(self):
-        self.pan.z = 0
-        comprimento = self.pan.length()
-        if comprimento > self._limite_pan:
-            self.pan *= self._limite_pan / comprimento
+    def _limitar_pan(self, xs, ys, cx, cy, direita, cima):
+        """Mantenha intersecao do retangulo projetado do mapa com a lente."""
+        film = self.lente.getFilmSize()
+        def limitar(valor, minimo, maximo, centro, tamanho):
+            extensao = maximo - minimo
+            # Quando a extensao e menor, exija metade dela; um unico ponto
+            # permanece dentro da lente mesmo sem area propria.
+            visivel = min(3.0, extensao / 2, tamanho / 2)
+            if extensao == 0:
+                visivel = min(.1, tamanho / 2)
+            inferior = minimo - centro - tamanho / 2 + visivel
+            superior = maximo - centro + tamanho / 2 - visivel
+            return max(inferior, min(superior, valor))
+
+        px = limitar(self.pan.dot(direita), min(xs), max(xs), cx, film.x)
+        py = limitar(self.pan.dot(cima), min(ys), max(ys), cy, film.y)
+        a = math.radians(self.azimute)
+        norte = Vec3(-math.sin(a), math.cos(a), 0)
+        self.pan = direita * px + norte * (py / math.sin(math.radians(self.elevacao)))
 
     def centralizar(self, pontos=None):
         if pontos is not None:
