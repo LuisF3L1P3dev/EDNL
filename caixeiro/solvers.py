@@ -311,6 +311,7 @@ def _forca(p, ctx):
         "Ótimo comprovado" if ctx.melhor else "Ausência de ciclo comprovada")
 
 
+# Implementação preservada para uso futuro; o registro deste método está comentado.
 def _limitada(p, ctx):
     r = tsp_branch_bound(p.grafo, p.origem, limite_segundos=ctx.orcamento.segundos,
                          max_estados=ctx.orcamento.max_estados,
@@ -323,11 +324,14 @@ def _limitada(p, ctx):
 
 
 registrar("dijkstra", None, (CAMINHO,), CAMINHO, atalho="D")
-registrar("forca", _forca, (ORIGINAL, FECHO), ORIGINAL, 9, "F")
-registrar("fecho", _forca, (FECHO,), FECHO, 9, "T")
-registrar("limitada", _limitada, (ORIGINAL,), ORIGINAL, 18, "B")
+registrar("forca", _forca, (ORIGINAL,), ORIGINAL, 9, "F")
+
+# Métodos preservados para uso futuro; descomente o registro para reativá-los.
+# registrar("fecho", _forca, (FECHO,), FECHO, 9, "T")
+# registrar("limitada", _limitada, (ORIGINAL,), ORIGINAL, 18, "B")
 
 
+# Implementações preservadas para uso futuro; seus registros estão comentados.
 def nearest_neighbor(p, ctx):
     """Construção determinística O(n²); não fornece certificado de ótimo."""
     origem = p.origem
@@ -353,9 +357,10 @@ def nearest_neighbor(p, ctx):
     return ctx.melhor, "heuristica", "Heurística · sem prova de ótimo"
 
 
-registrar("nearest_neighbor", nearest_neighbor, (ORIGINAL, FECHO), FECHO, atalho="N")
+# registrar("nearest_neighbor", nearest_neighbor, (ORIGINAL, FECHO), FECHO, atalho="N")
 
 
+# Implementação preservada para uso futuro; o registro está comentado.
 def two_opt(p, ctx, *, ordem_inicial=None):
     """Primeira melhoria estrita, custo completo (também verifica arcos ausentes)."""
     if ordem_inicial is None:
@@ -406,9 +411,10 @@ def two_opt(p, ctx, *, ordem_inicial=None):
     return tuple(rota), "limite_iteracoes", "Limite de iterações · sem prova de ótimo local/global"
 
 
-registrar("two_opt", two_opt, (ORIGINAL, FECHO), FECHO, atalho="I")
+# registrar("two_opt", two_opt, (ORIGINAL, FECHO), FECHO, atalho="I")
 
 
+# Implementação preservada para uso futuro; o registro está comentado.
 def held_karp(p, ctx):
     """DP O(n²2ⁿ), custos por camada e predecessores para reconstrução.
 
@@ -479,7 +485,7 @@ def held_karp(p, ctx):
                                Contador("memória DP contabilizada (pico)", pico, "bytes")))
 
 
-registrar("held_karp", held_karp, (ORIGINAL, FECHO), ORIGINAL, 18, "H")
+# registrar("held_karp", held_karp, (ORIGINAL, FECHO), ORIGINAL, 18, "H")
 
 
 def _matching_exato(impares, custos, ctx):
@@ -505,6 +511,7 @@ def _matching_exato(impares, custos, ctx):
     return resultado
 
 
+# Implementação preservada para uso futuro; o registro está comentado.
 def christofides(p, ctx):
     ids = sorted(p.grafo.ids)
     if p.grafo.direcionado:
@@ -574,7 +581,7 @@ def christofides(p, ctx):
     return ctx.melhor, "aproximacao", "Aproximação ≤ 1,5 × ótimo da mesma instância métrica"
 
 
-registrar("christofides", christofides, (ORIGINAL, FECHO), FECHO, 18, "A")
+# registrar("christofides", christofides, (ORIGINAL, FECHO), FECHO, 18, "A")
 
 
 def dependencia_ortools():
@@ -593,6 +600,7 @@ def _custos_inteiros(custos, n):
     return inteiros, escala
 
 
+# Implementação preservada para uso futuro; o registro está comentado.
 def ortools_solver(p, ctx, *, busca_local="GUIDED_LOCAL_SEARCH", limite_solucoes=None):
     try:
         import ortools
@@ -695,4 +703,4 @@ def ortools_solver(p, ctx, *, busca_local="GUIDED_LOCAL_SEARCH", limite_solucoes
     return (), "sem_solucao", "Nenhuma rota encontrada pelo OR-Tools · sem prova"
 
 
-registrar("ortools_solver", ortools_solver, (ORIGINAL, FECHO), FECHO, 18, "R", dependencia_ortools)
+# registrar("ortools_solver", ortools_solver, (ORIGINAL, FECHO), FECHO, 18, "R", dependencia_ortools)

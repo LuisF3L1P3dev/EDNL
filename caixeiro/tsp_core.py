@@ -325,6 +325,7 @@ def tsp_forca_bruta(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = 
     return ResultadoTSP(melhor, melhor, custo_melhor, testados, validos)
 
 
+# Suporte preservado para TSP no fecho métrico; não está disponível na interface.
 def fecho_metrico(grafo: Grafo, *, eventos: list[Passo] | None = None) -> Mapping[tuple[int, int], ResultadoDijkstra]:
     """Menores caminhos entre todos os pares; não modifica a malha original."""
     grafo.exigir_validado()
@@ -333,6 +334,7 @@ def fecho_metrico(grafo: Grafo, *, eventos: list[Passo] | None = None) -> Mappin
     })
 
 
+# TSP no fecho métrico preservado para uso futuro; não está disponível na interface.
 def tsp_dijkstra(grafo: Grafo, origem: int, *, eventos: list[Passo] | None = None,
                  ao_progresso: Callable[[str], None] | None = None) -> ResultadoTSP:
     """Busca exata (até 9 nós) nas distâncias mínimas, expandindo arestas reais.
