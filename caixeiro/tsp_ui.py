@@ -16,8 +16,9 @@ ROOT = Path(__file__).resolve().parent
 BG = (240, 243, 240)
 WHITE = (255, 255, 255)
 INK = (27, 43, 35)
-MUTED = (103, 122, 111)
+MUTED = (79, 99, 88)
 LINE = (219, 228, 221)
+EDGE = (155, 173, 162)
 GREEN = (26, 107, 75)
 BLUE = (57, 108, 178)
 ORANGE = (200, 117, 76)
@@ -154,14 +155,12 @@ class Aplicacao:
 
     def layout(self):
         w, h = self.tela.get_size()
-        self.lateral = pygame.Rect(24, 100, 280, h - 124)
-        self.mapa_rect = pygame.Rect(322, 100, w - 346, h - 360)
-        self.resultados_rect = pygame.Rect(322, h - 244, w - 346, 220)
-        self.faixa_algoritmo = pygame.Rect(self.mapa_rect.x + 16, 180, self.mapa_rect.w - 32,
-                                          94 if h >= 860 else 78)
-        self.viewport = pygame.Rect(self.mapa_rect.x + 16, self.faixa_algoritmo.bottom + 12,
-                                    self.mapa_rect.w - 32, self.mapa_rect.bottom - self.faixa_algoritmo.bottom - 77)
-        self.plot = self.viewport.inflate(-26, -12)
+        self.lateral = pygame.Rect(20, 88, 270, h - 108)
+        self.resultados_rect = pygame.Rect(306, h - 190, w - 326, 170)
+        self.mapa_rect = pygame.Rect(306, 88, w - 326, self.resultados_rect.y - 104)
+        self.viewport = pygame.Rect(self.mapa_rect.x + 16, self.mapa_rect.y + 64,
+                                    self.mapa_rect.w - 32, self.mapa_rect.h - 96)
+        self.plot = self.viewport.inflate(-40, -36)
 
     def posicoes(self):
         centro = pygame.Vector2(self.plot.center)
@@ -255,21 +254,15 @@ class Aplicacao:
 
     def desenhar_identidade(self):
         identidade = self.identidade_visual()
-        r = self.faixa_algoritmo
-        cor = identidade["cor"]
-        fundo = tuple(round(255 * .93 + c * .07) for c in cor)
-        pygame.draw.rect(self.tela, fundo, r, border_radius=10)
-        pygame.draw.rect(self.tela, cor, (r.x, r.y + 10, 4, r.h - 20), border_radius=2)
-        compacto = r.h < 90
-        self.texto("ALGORITMO EM FOCO", (r.x + 15, r.y + (6 if compacto else 9)), 10, MUTED, True)
-        pill = pygame.Rect(r.right - 142, r.y + 6, 128, 21)
-        pygame.draw.rect(self.tela, cor, pill, border_radius=7)
-        label = self.fonte(10, True).render(identidade["estado"].upper(), True, WHITE)
-        self.tela.blit(label, label.get_rect(center=pill.center))
-        self.texto_ajustado(identidade["titulo"], (r.x + 15, r.y + (23 if compacto else 29)), r.w - 30, 19, cor, True)
-        self.texto_ajustado(identidade["fase"], (r.x + 15, r.y + (46 if compacto else 55)), r.w - 30, 13, INK)
-        self.texto_ajustado(f"{identidade['problema']} · {identidade['garantia']}",
-                            (r.x + 15, r.y + (63 if compacto else 76)), r.w - 30, 11, MUTED)
+        x, y = self.lateral.x + 18, 552
+        largura = self.lateral.w - 36
+        self.texto("EM FOCO", (x, y), 11, MUTED, True)
+        self.texto_ajustado(f"{identidade['titulo']} · {identidade['estado']}",
+                            (x, y + 18), largura, 14, identidade['cor'], True)
+        self.texto_ajustado(identidade['problema'], (x, y + 39), largura, 12, INK)
+        self.texto_ajustado(identidade['garantia'], (x, y + 57), largura, 12, MUTED)
+        self.linhas(identidade['fase'], (x, y + 76), largura, 12, MUTED,
+                    max_linhas=max(1, (self.lateral.bottom - y - 80) // 18))
 
     def painel(self, rect):
         pygame.draw.rect(self.tela, WHITE, rect, border_radius=14)
@@ -279,6 +272,13 @@ class Aplicacao:
         self.botoes[chave] = (pygame.Rect(rect), ativo)
         r = pygame.Rect(rect)
         hover = ativo and r.collidepoint(pygame.mouse.get_pos())
+        utilitario = chave in ("original", "pesos", "limpar", "zoom_menos", "zoom_mais", "reset", "reproduzir", "pausar", "voltar", "proximo", "velocidade", "fim")
+        if utilitario:
+            pygame.draw.rect(self.tela, (235, 241, 237) if hover else WHITE, r, border_radius=8)
+            pygame.draw.rect(self.tela, EDGE, r, 1, border_radius=8)
+            imagem = self.fonte(14, True).render(titulo, True, INK if ativo else MUTED)
+            self.tela.blit(imagem, imagem.get_rect(center=r.center))
+            return
         fundo = cor if ativo else (194, 204, 197)
         if hover:
             fundo = tuple(min(255, c + 15) for c in fundo)
@@ -293,7 +293,8 @@ class Aplicacao:
     def cartao_metodo(self, chave, rect):
         metodo = METODOS[chave]
         rect = pygame.Rect(rect)
-        ativo = self.futuro is None
+        motivo = self.motivo_indisponivel(chave)
+        ativo = self.futuro is None and not motivo
         self.botoes[chave] = (rect, ativo)
         destaque = self.identidade_visual()["metodo"] == chave or (self.futuro is not None and self.metodo_em_execucao == chave)
         fundo = tuple(round(255 * .9 + c * .1) for c in metodo.cor) if destaque else (247, 249, 247)
@@ -304,7 +305,6 @@ class Aplicacao:
         if destaque:
             pygame.draw.rect(self.tela, metodo.cor, (rect.x, rect.y + 9, 4, rect.h - 18), border_radius=2)
         self.texto_ajustado(metodo.curto, (rect.x + 12, rect.y + 2), rect.w - 48, 14, metodo.cor, True)
-        motivo = self.motivo_indisponivel(chave)
         estado = "Em execução" if self.futuro is not None and self.metodo_em_execucao == chave else f"Indisponível: {motivo}" if motivo else "Em destaque" if self.resultado_focado == chave else "Selecionado" if self.metodo_selecionado == chave else metodo.garantia
         if self.player.passo is not None and destaque:
             estado = "Reproduzindo etapa" if self.player.reproduzindo else "Reprodução pausada"
@@ -314,32 +314,30 @@ class Aplicacao:
 
     def desenhar_lateral(self):
         self.painel(self.lateral)
-        self.texto("01  CONFIGURAÇÃO", (42, 119), 12, GREEN, True)
-        self.texto("Escolha o percurso", (42, 145), 21, INK, True)
-        self.botao("mapa1", "1 · 5 nós", (42, 184, 116, 33), selecionado=self.indice_mapa == 0)
-        self.botao("mapa2", "2 · 18 nós", (170, 184, 116, 33), BLUE, selecionado=self.indice_mapa == 1)
-        self.texto(f"Origem: {self.origem}  |  Dijkstra destino: {self.destino}", (42, 239), 13, INK, True)
+        x = self.lateral.x + 18
         livre = self.futuro is None
-        self.botao("variante", "V  " + ("Uma visita" if self.variante == ORIGINAL else "Permitir revisitas"), (42, 265, 244, 28), PURPLE, livre)
-        self.texto("ALGORITMOS", (42, 300), 11, MUTED, True)
+        self.texto("01  CONFIGURAÇÃO", (x, 105), 12, GREEN, True)
+        self.texto("Escolha o percurso", (x, 125), 20, INK, True)
+        self.botao("mapa1", "1 · 5 nós", (x, 155, 111, 32), GREEN, livre, self.indice_mapa == 0)
+        self.botao("mapa2", "2 · 18 nós", (x + 123, 155, 111, 32), BLUE, livre, self.indice_mapa == 1)
+        self.texto("CLIQUE PARA ESCOLHER", (x, 198), 11, MUTED, True)
+        self.botao("selecao_origem", f"Origem  {self.origem}", (x, 215, 111, 32), ORANGE, livre, self.selecao == "origem")
+        self.botao("selecao_destino", f"Destino  {self.destino}", (x + 123, 215, 111, 32), BLUE, livre, self.selecao == "destino")
+        self.texto(f"Próximo nó define {self.selecao}.", (x, 253), 12, MUTED)
+        modo = "Origem = destino: Dijkstra em ciclo." if self.origem == self.destino else "Dijkstra: caminho até o destino."
+        self.texto_ajustado(modo, (x, 270), 234, 12, INK)
+        self.botao("variante", "V  " + ("Uma visita" if self.variante == ORIGINAL else "Permitir revisitas"), (x, 294, 234, 30), PURPLE, livre)
+        explicacao = "Cada cidade uma vez no ciclo." if self.variante == ORIGINAL else "Ciclo pode passar novamente por cidades."
+        self.texto_ajustado(explicacao, (x, 330), 234, 12, MUTED)
+        self.texto("MÉTODOS", (x, 352), 11, MUTED, True)
         for i, chave in enumerate(("dijkstra", "forca")):
-            self.cartao_metodo(chave, (42, 320 + i * 42, 244, 38))
-        self.botao("original", "O  Referência", (42, 455, 116, 28), MUTED)
+            self.cartao_metodo(chave, (x, 370 + i * 43, 234, 39))
+        self.texto("Força bruta sempre retorna à origem.", (x, 459), 12, MUTED)
+        self.botao("original", "O  Referência", (x, 483, 111, 28), MUTED)
         titulo_pesos = ("todos", "do nó", "ocultos")[self.modo_pesos]
-        self.botao("pesos", f"P  {titulo_pesos}", (170, 455, 116, 28), MUTED)
-        self.botao("limpar", "L  Limpar resultados", (42, 490, 244, 28), MUTED, livre)
-        passo = self.player.passo
-        if passo is None:
-            metodo = METODOS[self.identidade_visual()["metodo"]]
-            self.linhas(f"{metodo.descricao}. {metodo.garantia}.",
-                        (42, 530), 244, tamanho=12, max_linhas=max(1, (self.lateral.bottom - 537) // 18))
-        else:
-            self.texto_ajustado(f"Etapa: {passo.algoritmo} · {passo.tipo}", (42, 530), 244, 12, INK)
-            dist = ", ".join(f"{i}:{d:g}" for i, d in passo.distancias)
-            if passo.adicionadas:
-                dist = "Novas arestas: " + str(passo.adicionadas)
-            self.texto_ajustado(f"Distâncias: {dist}" if dist else f"Candidato: {passo.candidato}", (42, 556), 244, 11, MUTED)
-            self.linhas(f"Fila: {passo.fila}" if passo.fila else f"Melhor custo: {passo.melhor_custo}", (42, 582), 244, 12, max_linhas=3)
+        self.botao("pesos", f"P  {titulo_pesos}", (x + 123, 483, 111, 28), MUTED)
+        self.botao("limpar", "L  Limpar resultados", (x, 517, 234, 28), MUTED, livre)
+        self.desenhar_identidade()
 
     def rotas_exibidas(self):
         passo = self.player.passo
@@ -351,11 +349,10 @@ class Aplicacao:
 
     def desenhar_mapa(self):
         self.painel(self.mapa_rect)
-        self.texto("VISUALIZAÇÃO DO GRAFO", (self.mapa_rect.x + 22, 119), 12, MUTED, True)
-        self.texto(f"Mapa {self.indice_mapa + 1} · {len(self.mapa.nos)} cidades", (self.mapa_rect.x + 22, 145), 22, INK, True)
-        for i, (chave, titulo) in enumerate((("zoom_menos", "−"), ("zoom_mais", "+"), ("reset", "Z"))):
-            self.botao(chave, titulo, (self.mapa_rect.right - 198 + i * 59, 142, 53, 30), MUTED)
-        self.desenhar_identidade()
+        self.texto("VISUALIZAÇÃO DO GRAFO", (self.mapa_rect.x + 18, self.mapa_rect.y + 10), 11, MUTED, True)
+        self.texto(f"Mapa {self.indice_mapa + 1} · {len(self.mapa.nos)} cidades", (self.mapa_rect.x + 18, self.mapa_rect.y + 27), 20, INK, True)
+        for chave, titulo, dx, largura in (("zoom_menos", "−", 174, 36), ("zoom_mais", "+", 132, 36), ("reset", "Ajustar Z", 90, 76)):
+            self.botao(chave, titulo, (self.mapa_rect.right - dx, self.mapa_rect.y + 19, largura, 30), MUTED)
         clip_anterior = self.tela.get_clip()
         self.tela.set_clip(self.viewport)
         inspecao = ""
@@ -374,7 +371,7 @@ class Aplicacao:
             labels = []
             for aresta in self.mapa.arestas:
                 a, b = pos[aresta.origem], pos[aresta.destino]
-                cor = LINE if aresta.peso is not None else ORANGE
+                cor = EDGE if aresta.peso is not None else ORANGE
                 pygame.draw.line(self.tela, cor, a, b, 2)
                 for caminho, cor_rota, espessura in self.rotas_exibidas():
                     pares = {frozenset((i, j)) for i, j in zip(caminho, caminho[1:])}
@@ -415,6 +412,8 @@ class Aplicacao:
                 fundo = (220, 233, 248) if self.player.passo and node_id in self.player.passo.visitados else WHITE
                 pygame.draw.circle(self.tela, fundo, centro, 17)
                 pygame.draw.circle(self.tela, cor, centro, 17, width=3)
+                if node_id == self.origem == self.destino:
+                    pygame.draw.circle(self.tela, BLUE, centro, 21, width=2)
                 label = self.fonte(15, True).render(str(node_id), True, INK)
                 self.tela.blit(label, label.get_rect(center=centro))
             if hover:
@@ -422,64 +421,56 @@ class Aplicacao:
             elif inspecionadas:
                 inspecao = "Arestas sob o cursor: " + " | ".join(inspecionadas)
         self.tela.set_clip(clip_anterior)
-        self.texto(f"{len(self.mapa.arestas)} ligações · pesos fixos · não direcionado",
-                   (self.mapa_rect.x + 22, self.mapa_rect.bottom - 28), 12, MUTED)
         if self.resultados or self.player.passo is not None:
             legenda = f"Percurso: {self.identidade_visual()['titulo']}"
         else:
             legenda = "Aguardando o resultado do cálculo." if self.futuro is not None else "Nenhum percurso calculado neste mapa."
-        self.texto_ajustado(inspecao or legenda, (self.mapa_rect.x + 22, self.mapa_rect.bottom - 49), self.mapa_rect.w - 44, 12, MUTED)
+        self.texto_ajustado(inspecao or ("Anéis: laranja origem · azul destino · ambos quando iguais. " + legenda), (self.mapa_rect.x + 18, self.mapa_rect.bottom - 24), self.mapa_rect.w - 36, 12, MUTED)
 
     def desenhar_resultados(self):
         self.painel(self.resultados_rect)
         x, y = self.resultados_rect.topleft
-        self.texto("02  RESULTADOS", (x + 22, y + 17), 12, GREEN, True)
+        self.texto("02  RESULTADOS", (x + 18, y + 17), 12, GREEN, True)
         if self.historico:
             comandos = (("reproduzir", "Play"), ("pausar", "Pausar"), ("voltar", "<"),
                         ("proximo", ">"), ("velocidade", f"{self.player.velocidade:g}x"), ("fim", "Final"))
+            inicio = x + 152
+            espaco = self.resultados_rect.right - 18 - inicio
+            largura = (espaco - 5 * 6) // 6
             for i, (chave, titulo) in enumerate(comandos):
-                self.botao(chave, titulo, (x + 190 + i * 73, y + 10, 66, 29), MUTED)
+                self.botao(chave, titulo, (inicio + i * (largura + 6), y + 10, largura, 29), MUTED)
         if not self.resultados:
-            self.linhas(self.status, (x + 22, y + 55), self.resultados_rect.w - 44, 15, max_linhas=6)
+            self.linhas(self.status, (x + 18, y + 58), self.resultados_rect.w - 36, 14, max_linhas=4)
             return
         visiveis = list(self.resultados.items())
-        largura = (self.resultados_rect.w - 56) // max(1, len(visiveis))
+        largura = (self.resultados_rect.w - 36 - 12 * (len(visiveis) - 1)) // len(visiveis)
         for indice, (nome, resultado) in enumerate(visiveis):
-            cx = x + 22 + indice * (largura + 12)
+            cx = x + 18 + indice * (largura + 12)
             cor = CORES_METODOS[nome]
-            card = pygame.Rect(cx, y + 46, largura, 163)
+            card = pygame.Rect(cx, y + 46, largura, 110)
             focado = self.resultado_focado == nome
             self.botoes[f"rota_{nome}"] = (card, True)
             pygame.draw.rect(self.tela, (247, 249, 247), card, border_radius=8)
             pygame.draw.rect(self.tela, cor if focado else LINE, card, 2 if focado else 1, border_radius=8)
-            self.texto_ajustado(METODOS[nome].curto, (cx + 12, y + 52), largura - 24, 15, cor, True)
-            self.texto_ajustado(MODELOS.get(getattr(resultado, "variante", ""), METODOS[nome].problema), (cx + 12, y + 76), largura - 24, 10, MUTED)
             custo = resultado.custo if resultado.caminho else "—"
-            self.texto(f"Custo: {custo}", (cx + 12, y + 92), 21, INK, True)
-            t = dict(getattr(resultado, "tempos_ms", ()))
-            tempo = f"P {t.get('preparacao', 0):.1f} · O {t.get('otimizacao', 0):.1f} · R {t.get('reconstrucao', 0):.1f} ms | total {self.tempos.get(nome, 0):.1f}"
-            self.texto_ajustado(tempo, (cx + 12, y + 120), largura - 24, 10, MUTED)
-            rota = " → ".join(map(str, resultado.caminho)) or ("Nenhuma rota no orçamento." if not getattr(resultado, "otimo", True) else "Sem percurso viável.")
-            self.linhas(rota, (cx + 12, y + 136), largura - 24, 12, cor, max_linhas=2)
-            if hasattr(resultado, "contadores"):
-                c = resultado.contadores[-1]
-                memoria = next((c.valor for c in resultado.contadores if c.unidade == "bytes"), None)
-                label = f"{c.nome}: {c.valor} {c.unidade}"
-                if memoria is not None:
-                    label += f" · DP {memoria / 1024**2:.1f} MiB" if memoria >= 1024**2 else f" · DP {memoria / 1024:.1f} KiB"
-                self.texto_ajustado(label, (cx + 12, y + 173), largura - 24, 11, MUTED)
-            elif hasattr(resultado, "estados_testados"):
-                self.texto(f"{resultado.estados_testados} ordens examinadas", (cx + 12, y + 167), 11, MUTED)
-            elif hasattr(resultado, "estado"):
-                self.texto(f"{resultado.nos_expandidos} estados expandidos", (cx + 12, y + 167), 11, MUTED)
-            self.texto_ajustado(garantia_resultado(nome, resultado), (cx + 12, y + 188), largura - 24, 11, cor, True)
+            self.texto_ajustado(f"{METODOS[nome].curto}  ·  Custo: {custo}", (cx + 12, y + 53), largura - 24, 17, cor, True)
+            rota = " → ".join(map(str, resultado.caminho)) or "Sem percurso disponível."
+            self.texto_ajustado(rota, (cx + 12, y + 78), largura - 24, 14, INK)
+            self.texto_ajustado(garantia_resultado(nome, resultado), (cx + 12, y + 100), largura - 24, 12, cor, True)
+            detalhe = f"Tempo total: {self.tempos.get(nome, 0):.1f} ms"
+            if hasattr(resultado, "estados_testados"):
+                detalhe += f" · {resultado.estados_testados} ordens examinadas"
+            elif getattr(resultado, "contadores", ()):
+                contador = resultado.contadores[-1]
+                detalhe += f" · {contador.nome}: {contador.valor} {contador.unidade}"
+            self.texto_ajustado(detalhe, (cx + 12, y + 123), largura - 24, 12, MUTED)
 
     def desenhar(self):
         self.botoes.clear()
         self.tela.fill(BG)
-        self.texto("NEXUS / ESTRUTURA DE DADOS NÃO LINEARES", (26, 16), 11, GREEN, True)
-        self.texto("Caixeiro viajante", (24, 35), 32, INK, True)
-        self.texto("Dijkstra e força bruta · etapas e percursos", (320, 54), 15, MUTED)
+        self.texto("NEXUS / ESTRUTURA DE DADOS NÃO LINEARES", (20, 10), 11, GREEN, True)
+        self.texto("Caixeiro viajante", (20, 29), 28, INK, True)
+        self.texto("Dijkstra e força bruta · etapas e percursos", (300, 44), 14, MUTED)
         if self.futuro is not None:
             self.botao("cancelar", "X  Cancelar", (self.tela.get_width() - 154, 38, 130, 34), ORANGE)
         self.desenhar_lateral()
@@ -527,6 +518,8 @@ class Aplicacao:
             return
         if chave in ("mapa1", "mapa2"):
             self.trocar_mapa(0 if chave == "mapa1" else 1)
+        elif chave in ("selecao_origem", "selecao_destino"):
+            self.selecao = chave.removeprefix("selecao_")
         elif chave == "variante":
             self.variante = FECHO if self.variante == ORIGINAL else ORIGINAL
             self.limpar()
@@ -543,8 +536,9 @@ class Aplicacao:
         elif chave == "reset":
             self.zoom = 1
             self.pan.update(0, 0)
-        elif chave in REGISTRO:
-            self.iniciar(chave)
+        elif chave in ("dijkstra", "forca"):
+            if not self.motivo_indisponivel(chave):
+                self.iniciar(chave)
         elif chave == "limpar":
             self.limpar()
             self.status = "Resultados limpos."
