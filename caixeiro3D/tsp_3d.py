@@ -15,7 +15,7 @@ from camera3d import CameraIsometrica
 from geometria3d import interpolar
 from mundo3d import Viagem
 from solvers import Progresso, executar
-from tsp_core import carregar_mapa
+from tsp_core import carregar_cenarios
 
 ROOT = Path(__file__).resolve().parent
 FASES = {'enumeracao': 'Comparando circuitos', 'dijkstra': 'Explorando caminhos',
@@ -37,7 +37,7 @@ class Aplicacao3D(ShowBase):
         self.setBackgroundColor(.83, .89, .81, 1)
         pygame.font.init()
         self.biblioteca = Biblioteca()
-        self.mapas = tuple(carregar_mapa(ROOT / 'data' / nome) for nome in ('mapa_05.json', 'mapa_18.json'))
+        self.mapas = carregar_cenarios(ROOT / 'data')
         self.indice_mapa = 0
         self.origem, self.destino = self.mapa.ids[0], self.mapa.ids[2]
         self.metodo, self.selecao = 'forca', 'origem'

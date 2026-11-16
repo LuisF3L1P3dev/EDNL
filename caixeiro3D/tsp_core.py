@@ -76,3 +76,39 @@ def carregar_mapa(caminho):
         observacoes=tuple(dados.get("observacoes", ())),
         pendencias=tuple(dados.get("pendencias", ())),
     )
+
+
+# Arquivos autoritativos; o registro nao duplica os pesos dos grafos.
+CENARIOS = (("mapa_05.json", "mapa_05", 5, 8),
+            ("mapa_18.json", "mapa_18", 18, 45))
+
+
+def carregar_cenarios(pasta):
+    """Carrega e valida os dois cenarios na ordem do seletor da aplicacao.
+
+    Verifica identidade, nos, conectividade, pendencias e contagem de arestas;
+    a validacao exata das arestas e pesos pertence aos testes de transcricao.
+    """
+    mapas = []
+    for arquivo, identificador, quantidade, total_arestas in CENARIOS:
+        caminho = Path(pasta) / arquivo
+        grafo = carregar_mapa(caminho)
+        if grafo.id != identificador:
+            raise ValueError(f"{arquivo}: identificador esperado {identificador}.")
+        if set(grafo.ids) != set(range(1, quantidade + 1)):
+            raise ValueError(f"{arquivo}: esperados nos de 1 a {quantidade}.")
+        if grafo.pendencias:
+            raise ValueError(f"{arquivo}: existem pendencias de transcricao.")
+        adj = grafo.adjacencia()
+        vistos, fila = {1}, [1]
+        while fila:
+            for vizinho in adj[fila.pop()]:
+                if vizinho not in vistos:
+                    vistos.add(vizinho)
+                    fila.append(vizinho)
+        if len(vistos) != quantidade:
+            raise ValueError(f"{arquivo}: grafo desconectado.")
+        if len(grafo.arestas) != total_arestas:
+            raise ValueError(f"{arquivo}: esperadas {total_arestas} arestas.")
+        mapas.append(grafo)
+    return tuple(mapas)
