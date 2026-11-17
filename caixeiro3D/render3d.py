@@ -135,6 +135,30 @@ class Cena3D:
             self.destruir()
             raise
 
+    def pontos_enquadramento(self):
+        """Envelope completo que a câmera ortográfica precisa preservar.
+
+        Os nós matemáticos sozinhos não representam o tamanho da maquete: as
+        ruas podem desviar, os lotes e a decoração ocupam área adicional, e os
+        pins vivem acima dos telhados.  Os cantos da ilha ainda mantêm a borda
+        visível, sem depender da ordem em que os modelos foram instanciados.
+        """
+        w, h = self.meia_largura, self.meia_altura
+        pontos = [(x, y, z)
+                  for x in (-w, w) for y in (-h, h)
+                  for z in (NIVEL_GRAMA - .8, NIVEL_GRAMA)]
+        for rua in self.ruas.values():
+            pontos.extend(rua)
+        for decoracao in self.decoracoes:
+            # raio já é circunscrito: inclui o lote quadrado e toda a malha.
+            raio = decoracao.raio
+            for x in (decoracao.x - raio, decoracao.x + raio):
+                for y in (decoracao.y - raio, decoracao.y + raio):
+                    pontos.append((x, y, NIVEL_GRAMA))
+                    pontos.append((x, y, NIVEL_GRAMA + decoracao.altura))
+        pontos.extend(self.marcadores_no.values())
+        return tuple(pontos)
+
     def _modelo(self, kit, nome):
         self.modelos_usados.add((kit, nome))
         return self.biblioteca.modelo(kit, nome)

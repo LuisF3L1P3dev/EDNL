@@ -4,9 +4,10 @@ from pathlib import Path
 from types import SimpleNamespace
 import unittest
 
-from panda3d.core import NodePath
+from panda3d.core import Camera, NodePath, Vec3
 
 from assets3d import Biblioteca
+from camera3d import CameraIsometrica
 from geometria3d import posicoes_mundo, ruas_mundo
 from render3d import Cena3D, LARGURA_RUA, NIVEL_GRAMA
 from solvers import executar
@@ -14,6 +15,38 @@ from tsp_core import carregar_mapa
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class _RegiaoCamera:
+    def setDimensions(self, *args):
+        self.dimensoes = args
+
+
+class _CameraPanda:
+    def __init__(self, no):
+        self.no = no
+        self.regiao = _RegiaoCamera()
+
+    def node(self):
+        return self
+
+    def setLens(self, lente):
+        self.no.node().setLens(lente)
+
+    def getDisplayRegion(self, indice):
+        return self.regiao
+
+    def getRelativePoint(self, *args):
+        return self.no.getRelativePoint(*args)
+
+
+def base_camera():
+    render = NodePath('render-camera')
+    camera = render.attachNewNode('camera')
+    cam = _CameraPanda(camera.attachNewNode(Camera('cam')))
+    return SimpleNamespace(render=render, camera=camera, cam=cam,
+                           win=SimpleNamespace(getXSize=lambda: 1440,
+                                               getYSize=lambda: 960))
 
 
 class TestRender3D(unittest.TestCase):
@@ -100,6 +133,31 @@ class TestRender3D(unittest.TestCase):
                     # O círculo que contém o lote não alcança o eixo de uma via.
                     self.assertGreaterEqual(cena.distancia_rua(edificio.x, edificio.y),
                                             (2 * metade ** 2) ** .5 + LARGURA_RUA / 2)
+
+    def test_camera_enquadra_ilha_ruas_predios_e_ancoras_em_ambos_os_mapas(self):
+        for grafo in self.grafos:
+            with self.subTest(grafo=grafo.id):
+                _, cena = self.construir(grafo)
+                pontos = cena.pontos_enquadramento()
+                self.assertGreater(len(pontos), len(cena.posicoes))
+                self.assertTrue(set(cena.marcadores_no.values()).issubset(pontos))
+                camera = CameraIsometrica(base_camera(), pontos)
+
+                def assert_tudo_visivel():
+                    for ponto in pontos:
+                        projetado = camera.projetar(ponto)
+                        self.assertIsNotNone(projetado, ponto)
+                        self.assertTrue(camera.viewport.inflate(-2, -2).collidepoint(projetado),
+                                        (ponto, projetado))
+
+                assert_tudo_visivel()
+                camera.mudar_zoom(2.)
+                camera.arrastar(100000, -100000)
+                self.assertNotEqual(camera.pan, Vec3(0))
+                camera.centralizar(pontos)
+                self.assertEqual(camera.zoom, 1.)
+                self.assertEqual(camera.pan, Vec3(0))
+                assert_tudo_visivel()
 
     def test_rota_independente_da_cena_e_validada(self):
         for grafo in self.grafos:

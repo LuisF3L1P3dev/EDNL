@@ -61,7 +61,7 @@ class Aplicacao3D(ShowBase):
         self._luzes()
         from render3d import Cena3D
         self.cena = Cena3D(self, self.mapa, self.biblioteca)
-        self.camera_iso = CameraIsometrica(self, self.cena.posicoes)
+        self.camera_iso = CameraIsometrica(self, self._pontos_enquadramento())
         self.carro = self.render.attachNewNode('veiculo')
         modelo = instancia_normalizada(self.biblioteca.modelo('carro', 'delivery'), 1.6)
         modelo.reparentTo(self.carro)
@@ -205,6 +205,11 @@ class Aplicacao3D(ShowBase):
         self._posicionar_carro()
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
 
+    def _pontos_enquadramento(self):
+        """Compatibilidade para cenas de teste e envelope da cena real."""
+        pontos = getattr(self.cena, 'pontos_enquadramento', None)
+        return pontos() if callable(pontos) else self.cena.posicoes
+
     def _trocar_mapa(self, indice):
         from render3d import Cena3D
         self._invalidar()
@@ -214,7 +219,7 @@ class Aplicacao3D(ShowBase):
         self.metodo = 'forca' if indice == 0 else 'heuristica'
         self.selecao = 'origem'
         self.cena = Cena3D(self, self.mapa, self.biblioteca)
-        self.camera_iso.centralizar(self.cena.posicoes)
+        self.camera_iso.centralizar(self._pontos_enquadramento())
         self._limpar()
 
     def _iniciar(self):
