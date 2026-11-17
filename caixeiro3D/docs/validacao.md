@@ -7,11 +7,12 @@ implementação; os números históricos do projeto irmão não foram reutilizad
 ## Testes automatizados
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m unittest discover -v
 ```
 
-**54 testes aprovados**, sem falhas ou testes ignorados. A execução final durou
-aproximadamente 9 segundos. As verificações incluem:
+**82 testes aprovados**, sem falhas. A execução completa mais recente durou
+48,325 segundos. A descoberta padrão é habilitada por `tests/__init__.py`.
+As verificações incluem:
 
 - Listas exatas de 8 e 45 arestas, nós de 1 a 5 e de 1 a 18, simetria,
   conectividade e as três correções do usuário.
@@ -28,13 +29,17 @@ aproximadamente 9 segundos. As verificações incluem:
   ruas e nós, realce independente e limpeza ao reconstruir cenários.
 - Enquadramento, zoom, arraste normal e extremo, mantendo interseção visível
   do mapa nos limites de câmera.
+- Enquadramento da ilha inteira nos mapas de 5 e 18 nós, com as ruas, volumes
+  dos prédios e âncoras dos marcadores dentro do viewport.
 - Pausa, reinício, chegadas, velocidades, grande delta de tempo, percurso
-  unitário, geometria reversa e retorno físico do veículo à origem.
+  unitário, orientação corrigida, antecipação de curvas, rampas e retorno físico
+  do veículo à origem.
 - Layout do HUD em 1100×760, 1100×880 e 1440×960, captura de cliques pelo
   diálogo, seleção pelos badges, distâncias dos 18 nós, rota longa e alfa/cor
   da textura após otimização BGRA.
 - Integração assíncrona, pausa da reprodução da busca, cancelamento e troca
   de mapa sem reaproveitar resultados de uma execução anterior.
+- Trecho ativo da van e disponibilidade correta dos algoritmos em cada mapa.
 
 ## Renderização e integração reais
 
@@ -71,13 +76,16 @@ redimensionamento do HUD e encerramento do laço de tarefas passaram. O botão
 de fechar e `Esc` encerram o executor e os recursos gráficos.
 
 As capturas foram inspecionadas visualmente, incluindo os dois mapas durante
-a viagem, resultado final, configurações e distâncias na resolução mínima.
+a viagem, resultado final, configurações, distâncias na resolução mínima e a
+van numa curva.
 O script salva capturas e resultados em `tmp/3d-review/` (diretório ignorado
 pelo Git). Duas capturas da entrega também estão preservadas abaixo:
 
 ![Mapa de cinco pontos](capturas/mapa05.png)
 
 ![Mapa de dezoito pontos](capturas/mapa18.png)
+
+![Van percorrendo uma curva](capturas/van-curva.png)
 
 ## Desempenho e ajustes finais
 
@@ -87,9 +95,9 @@ cores/transparência e reduziu a mediana isolada de HUD + renderização de cerc
 de **130 ms para 15 ms** no ambiente observado (NVIDIA RTX 3050). A cena estática
 é consolidada e modelos/texturas são compartilhados.
 
-O smoke completo, com atualização do HUD em cada amostra e outros processos
-do ambiente ativos, registrou medianas de **32,63 ms em 1440×960** e
-**21,91 ms em 1100×760** em 30 amostras. Esses tempos são medidas desse
+O smoke completo mais recente, com atualização do HUD em cada amostra e outros
+processos do ambiente ativos, registrou medianas de **28,18 ms em 1440×960** e
+**20,71 ms em 1100×760** em 30 amostras. Esses tempos são medidas desse
 procedimento, não uma garantia de FPS em outros computadores. O laço interativo
 é limitado a 60 Hz e o HUD atualiza a 30 Hz.
 
@@ -116,11 +124,13 @@ o próximo tamanho válido, sem lançar erro nem gerar um viewport de área nega
 
 ## Execução por tarefa
 
-Cada um dos dez passos do plano de `tasks.md` corresponde a um commit separado:
-inspeção, assets, grafos, algoritmos, cena, câmera, animação, HUD, integração e
-validação/documentação. Somente arquivos de `caixeiro3D/` foram incluídos.
+As doze tasks de `prompt_refinamento_game_3d_nexus_tsp.md` foram registradas em
+commits separados. Cada commit usou uma lista explícita de caminhos staged; as
+duas remoções preexistentes em `ref/` e os outros projetos do workspace foram
+preservados.
 
-Astra participou do planejamento e da revisão matemática; Sol em esforço alto
-implementou os algoritmos, a cena e o polimento do HUD; Terra implementou e
-verificou componentes intermediários e identificou o gargalo de textura; Luna
-executou os commits com conferência dos caminhos staged.
+O runtime não disponibilizou GPT-6 Astra nem GPT-6.1 Sol nesta sessão; o pedido
+ao Astra foi recusado como modelo não suportado. A implementação delegada usou
+o agente Terra disponível como alternativa. O fluxo de commits foi delegado e
+os caminhos staged foram conferidos; o runtime não expôs o identificador do
+modelo desse agente, então não atribuo um nome de modelo sem confirmação.
