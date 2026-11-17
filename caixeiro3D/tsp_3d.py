@@ -13,7 +13,8 @@ from panda3d.core import AmbientLight, DirectionalLight, Vec3, loadPrcFileData
 from assets3d import Biblioteca, instancia_normalizada
 from camera3d import CameraIsometrica
 from geometria3d import interpolar
-from mundo3d import Viagem
+from mundo3d import (Viagem, direcao_antecipada, heading_da_direcao,
+                     suavizar_heading)
 from solvers import Progresso, executar
 from tsp_core import carregar_cenarios
 
@@ -55,6 +56,7 @@ class Aplicacao3D(ShowBase):
         self._fechada = False
         self._hud_relogio = 0.
         self._trecho_visual = None
+        self._heading_carro = None
         self.arraste = None
         self._luzes()
         from render3d import Cena3D
@@ -63,10 +65,14 @@ class Aplicacao3D(ShowBase):
         self.carro = self.render.attachNewNode('veiculo')
         modelo = instancia_normalizada(self.biblioteca.modelo('carro', 'delivery'), 1.6)
         modelo.reparentTo(self.carro)
+        # delivery.obj tem a frente em +Z; após a conversão OBJ→Panda ela
+        # aponta para -Y. O pai continua usando o heading matemático +Y.
+        modelo.setH(180)
+        self.modelo_carro = modelo
         limites = modelo.getTightBounds()
         if limites and limites[0] is not None:
             modelo.setZ(-limites[0].z + .04)
-        self.carro.setPos(*self.cena.posicoes[self.origem])
+        self._posicionar_carro()
         from hud import HUD
         self.ui = HUD(self)
         self._eventos()
@@ -195,7 +201,8 @@ class Aplicacao3D(ShowBase):
         self.resultado = None
         self.cena.limpar_rota()
         self._trecho_visual = None
-        self.carro.setPos(*self.cena.posicoes[self.origem])
+        self._heading_carro = None
+        self._posicionar_carro()
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
 
     def _trocar_mapa(self, indice):
@@ -278,9 +285,13 @@ class Aplicacao3D(ShowBase):
                 self._limpar()
             else:
                 self.viagem.reiniciar()
+                # Reiniciar e uma mudanca deliberada de posicao: alinha de
+                # imediato a van com o primeiro trecho, sem herdar um giro.
+                self._heading_carro = None
                 self._posicionar_carro()
         elif acao in ('anterior', 'proximo') and not self.ocupado:
             self.viagem.saltar(1 if acao == 'proximo' else -1)
+            self._heading_carro = None
             self._posicionar_carro()
         elif acao == 'velocidade':
             velocidades = (1, 2, 4)
@@ -301,23 +312,35 @@ class Aplicacao3D(ShowBase):
             self.viagem.carregar(self.mapa, r.caminho, ciclo=self.metodo != 'dijkstra')
             self.cena.mostrar_rota(r.caminho)
             self._trecho_visual = None
+            self._heading_carro = None
             self._posicionar_carro()
             self.fase, self.status = 'Percurso calculado', r.garantia
         elif r:
             self.fase, self.status = 'Busca encerrada', r.termino
 
-    def _posicionar_carro(self):
+    def _posicionar_carro(self, dt=0.):
         if not self.viagem.caminho:
             self.carro.setPos(*self.cena.posicoes[self.origem])
+            self.carro.setHpr(0, 0, 0)
+            self._heading_carro = 0.
         elif not self.viagem.pesos:
             self.carro.setPos(*self.cena.posicoes[self.viagem.caminho[0]])
+            self.carro.setHpr(0, 0, 0)
+            self._heading_carro = 0.
         else:
             i, t = self.viagem.trecho
             a, b = self.viagem.caminho[i:i + 2]
-            ponto, direcao = interpolar(self.cena.ruas[a, b], t)
+            rua = self.cena.ruas[a, b]
+            ponto, direcao_local = interpolar(rua, t)
+            direcao = direcao_antecipada(self.cena.ruas, self.viagem.caminho, i, t)
+            alvo = heading_da_direcao(direcao)
+            if self._heading_carro is None:
+                self._heading_carro = alvo
+            elif dt > 0:
+                self._heading_carro = suavizar_heading(self._heading_carro, alvo, dt)
             self.carro.setPos(*ponto)
-            self.carro.setHpr(-degrees(atan2(direcao[0], direcao[1])),
-                              degrees(atan2(direcao[2], hypot(*direcao[:2]))), 0)
+            self.carro.setHpr(self._heading_carro,
+                              degrees(atan2(direcao_local[2], hypot(*direcao_local[:2]))), 0)
 
     def _destacar_trecho_atual(self):
         if not self.viagem.pesos:
@@ -381,7 +404,7 @@ class Aplicacao3D(ShowBase):
                 self.fase = 'Em viagem'
             else:
                 self.fase = 'Pausado'
-        self._posicionar_carro()
+        self._posicionar_carro(dt if self.viagem.reproduzindo else 0.)
         if self.arraste and not self.ui.config_aberta:
             p = self.mouse_pixel()
             if p:

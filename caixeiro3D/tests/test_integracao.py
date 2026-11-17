@@ -137,6 +137,22 @@ class IntegracaoTest(unittest.TestCase):
         app.acao('velocidade')
         self.assertEqual(app.viagem.velocidade, 2)
 
+    def test_modelo_da_van_tem_correcao_fixa_de_frente(self):
+        self.assertEqual(self.app.modelo_carro.getH(), 180)
+
+    def test_pausa_no_meio_do_giro_preserva_heading_da_van(self):
+        """Frame pausado nao pode reposicionar abruptamente o modelo."""
+        app = self.app
+        aresta = app.mapa.arestas[0]
+        a, b = aresta.origem, aresta.destino
+        app.viagem.carregar(app.mapa, (a, b), ciclo=False)
+        app.cena.ruas[a, b] = ((0., 0., 0.), (0., 5., 0.))
+        app.viagem.atualizar(.2)
+        app._heading_carro = 47.  # estado intermediario de uma curva suave
+        app._posicionar_carro(0.)
+        self.assertEqual(app._heading_carro, 47.)
+        self.assertEqual(app.carro.getH(), 47.)
+
 
 if __name__ == '__main__':
     unittest.main()

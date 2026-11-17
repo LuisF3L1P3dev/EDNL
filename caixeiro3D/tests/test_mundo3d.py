@@ -1,5 +1,7 @@
 ﻿import unittest
-from mundo3d import Viagem, interpolar, posicoes_mundo, ruas_mundo
+from mundo3d import (Viagem, diferenca_angular, direcao_antecipada,
+                     heading_da_direcao, interpolar, posicoes_mundo,
+                     ruas_mundo, suavizar_heading)
 from tsp_core import Grafo, No, Aresta
 
 
@@ -78,6 +80,26 @@ class MundoTest(unittest.TestCase):
         self.assertEqual(self.v.custo_atual, 0)
         self.assertFalse(self.v.reproduzindo)
         self.assertEqual(self.v.visitadas, {1})
+
+    def test_heading_cardinal_wrap_e_giro_suave(self):
+        self.assertEqual(heading_da_direcao((0, 1, 0)), 0)
+        self.assertEqual(heading_da_direcao((1, 0, 0)), -90)
+        self.assertEqual(heading_da_direcao((-1, 0, 0)), 90)
+        self.assertEqual(abs(heading_da_direcao((0, -1, 0))), 180)
+        self.assertEqual(diferenca_angular(170, -170), 20)
+        self.assertAlmostEqual(suavizar_heading(170, -170, .05, 180), 179)
+        self.assertAlmostEqual(suavizar_heading(179, -179, .1, 180), -179)
+
+    def test_lookahead_antecipa_curva_e_preserva_rampa(self):
+        ruas = {
+            (1, 2): ((0., 0., 0.), (5., 0., 0.)),
+            (2, 3): ((5., 0., 0.), (5., 5., 2.)),
+        }
+        curva = direcao_antecipada(ruas, (1, 2, 3), 0, .9, 2.)
+        self.assertGreater(curva[1], 0)
+        rampa = direcao_antecipada({(1, 2): ((0., 0., 0.), (4., 0., 2.))},
+                                   (1, 2), 0, .25, 2.)
+        self.assertGreater(rampa[2], 0)
 
 
 if __name__ == '__main__':
