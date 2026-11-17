@@ -9,7 +9,7 @@ import pygame
 from panda3d.core import NodePath
 
 from geometria3d import criar_mapa_visual
-from hud import HUD, RED, BLUE, GREEN, CURRENT
+from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW
 from mundo3d import Viagem
 from solvers import executar
 from tsp_core import carregar_mapa
@@ -46,6 +46,7 @@ class _App:
         self.resultado = self.etapa = None
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
         self.distancia_percorrida = 0
+        self.progresso_visual = 0.
         self.pixel2d, self.render = NodePath('pixel2d'), NodePath('render')
         self.carro = self.render.attachNewNode('veiculo')
         visual = criar_mapa_visual(self.mapa)
@@ -206,6 +207,18 @@ class TestHUD(unittest.TestCase):
         app.ui.desenhar()
         self.assertEqual(app.ui.pesos_ativos,
                          {frozenset((1, 2)), frozenset((2, 3))})
+
+    def test_barra_pinta_a_fracao_geometrica(self):
+        tamanho = (1100, 760)
+        app = self.construir(tamanho, 5)
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+        app.viagem.atualizar(15.)
+        self.assertGreater(app.viagem.custo_atual / app.viagem.total, .4)
+        app.progresso_visual = .25
+        app.ui.desenhar()
+        y = tamanho[1] - 116 + 77
+        self.assertEqual(tuple(app.ui.canvas.get_at((200, y)))[:3], YELLOW[:3])
+        self.assertEqual(tuple(app.ui.canvas.get_at((400, y)))[:3], LINE[:3])
 
     def test_barra_inferior_indica_trecho_em_todos_os_estados(self):
         for tamanho in [(1100, 760), (1440, 960)]:

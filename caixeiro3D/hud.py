@@ -7,7 +7,7 @@ from math import hypot, isfinite
 import pygame
 from panda3d.core import CardMaker, Texture, TransparencyAttrib
 
-from geometria3d import interpolar
+from geometria3d import medir_rua
 
 INK = (32, 47, 64)
 MUTED = (72, 91, 105)
@@ -237,9 +237,9 @@ class HUD:
             texto = f'{e.peso:g}'
             tamanho = fonte.size(texto)
             escolhido = None
+            rua = medir_rua(a.cena.ruas[e.origem, e.destino])
             for fracao in fracoes:
-                ponto, _ = interpolar(a.cena.ruas[e.origem, e.destino], fracao)
-                projetado = a.camera_iso.projetar(ponto)
+                projetado = a.camera_iso.projetar(rua.amostrar(fracao).ponto)
                 if not projetado:
                     continue
                 for dx, dy in deslocamentos:
@@ -376,7 +376,7 @@ class HUD:
         self.botao('reset', 'Centrar', (w - 125, y + 17, 91, 35))
         barra = pygame.Rect(34, y + 74, w - 68, 7)
         pygame.draw.rect(self.canvas, LINE, barra, border_radius=4)
-        fracao = a.viagem.custo_atual / a.viagem.total if a.viagem.total else 1 if a.viagem.concluida else 0
+        fracao = a.progresso_visual
         if fracao:
             preenchido = barra.copy()
             preenchido.w = max(1, int(barra.w * fracao))

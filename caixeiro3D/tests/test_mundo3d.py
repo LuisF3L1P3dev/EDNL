@@ -2,6 +2,8 @@
 from mundo3d import (Viagem, diferenca_angular, direcao_antecipada,
                      heading_da_direcao, interpolar, posicoes_mundo,
                      ruas_mundo, suavizar_heading)
+from geometria3d import medir_rua
+from mundo3d import pitch_da_direcao
 from tsp_core import Grafo, No, Aresta
 
 
@@ -24,6 +26,21 @@ class MundoTest(unittest.TestCase):
         b, _ = interpolar(ruas[2, 1], .7)
         for x, y in zip(a, b):
             self.assertAlmostEqual(x, y)
+
+    def test_amostra_extremos_waypoint_e_comprimento_da_rampa(self):
+        pontos = ((-.1, 0., .12), (0., 0., .12), (0., 4., 3.12), (2., 4., 3.12))
+        rua = medir_rua(pontos)
+        self.assertIs(rua, medir_rua(pontos))
+        self.assertEqual(rua.acumulados, (0., .1, 5.1, 7.1))
+        self.assertIs(rua.amostrar(-1.).ponto, pontos[0])
+        self.assertIs(rua.amostrar(2.).ponto, pontos[-1])
+        curva = rua.amostrar(rua.acumulados[1] / rua.comprimento)
+        self.assertIs(curva.ponto, pontos[1])
+        self.assertEqual(curva.tangente, (0., 4., 3.))
+        rampa = rua.amostrar(2.6 / rua.comprimento)
+        self.assertAlmostEqual(rampa.ponto[1], 2.)
+        self.assertAlmostEqual(rampa.ponto[2], 1.62)
+        self.assertAlmostEqual(pitch_da_direcao(rampa.tangente), 36.8698976)
 
     def test_chegada_pausa_e_retornar(self):
         self.v.atualizar(2 / (9 / 30))
@@ -91,15 +108,18 @@ class MundoTest(unittest.TestCase):
         self.assertAlmostEqual(suavizar_heading(179, -179, .1, 180), -179)
 
     def test_lookahead_antecipa_curva_e_preserva_rampa(self):
+        pontos = ((0., 0., 0.), (0., 4., 3.), (1., 4., 3.), (1., 0., 3.))
         ruas = {
-            (1, 2): ((0., 0., 0.), (5., 0., 0.)),
-            (2, 3): ((5., 0., 0.), (5., 5., 2.)),
+            (1, 2): pontos,
+            (2, 1): pontos[::-1],
         }
-        curva = direcao_antecipada(ruas, (1, 2, 3), 0, .9, 2.)
+        curva = direcao_antecipada(ruas, (1, 2), 0, .48, 2.)
+        self.assertGreater(curva[0], 0)
         self.assertGreater(curva[1], 0)
-        rampa = direcao_antecipada({(1, 2): ((0., 0., 0.), (4., 0., 2.))},
-                                   (1, 2), 0, .25, 2.)
-        self.assertGreater(rampa[2], 0)
+        self.assertAlmostEqual(pitch_da_direcao(curva), pitch_da_direcao((0., 4., 3.)))
+        self.assertLessEqual(abs(heading_da_direcao(curva)), 45.)
+        chegada = direcao_antecipada(ruas, (1, 2, 1), 0, .99, 2.)
+        self.assertEqual(chegada, (0., -4., 0.))
 
 
 if __name__ == '__main__':

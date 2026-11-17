@@ -2,9 +2,11 @@
 import time
 import types
 import unittest
+from math import dist
 from unittest.mock import patch
 
-from geometria3d import posicoes_mundo, ruas_mundo
+from geometria3d import medir_rua, posicoes_mundo, ruas_mundo
+from mundo3d import diferenca_angular, heading_da_direcao
 from tsp_3d import Aplicacao3D
 
 
@@ -168,6 +170,58 @@ class IntegracaoTest(unittest.TestCase):
         app._posicionar_carro(0.)
         self.assertEqual(app._heading_carro, 47.)
         self.assertEqual(app.carro.getH(), 47.)
+
+    def test_progresso_visual_usa_comprimento_em_vez_do_peso(self):
+        app = self.app
+        app.viagem.velocidade = 1
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+        trecho_longo = ((0., 0., 0.), (10., 0., 0.))
+        trecho_curto = ((10., 0., 0.), (11., 0., 0.))
+        peso_leve, peso_alto = app.viagem.pesos
+        self.assertLess(peso_leve, peso_alto)
+        with patch.dict(app.cena.ruas, {(1, 2): trecho_longo, (2, 3): trecho_curto}):
+            app.atualizar(30 * peso_leve / app.viagem.total + 1e-8)
+            self.assertEqual(app.viagem.custo_atual, peso_leve)
+            self.assertEqual(app.distancia_percorrida, 10.)
+            self.assertAlmostEqual(app.progresso_visual, 10 / 11)
+            app.atualizar(40.)
+            self.assertEqual(app.distancia_percorrida, 11.)
+            self.assertEqual(app.progresso_visual, 1.)
+
+    def test_retorno_gira_parado_e_sai_alinhado_em_1x_e_4x(self):
+        app = self.app
+        for velocidade in (1, 4):
+            with self.subTest(velocidade=velocidade):
+                app.acao('mapa1')
+                app.viagem.velocidade = velocidade
+                app.viagem.carregar(app.mapa, (13, 12, 13), ciclo=False)
+                entrada = medir_rua(app.cena.ruas[13, 12]).amostrar(1.)
+                saida = medir_rua(app.cena.ruas[12, 13]).amostrar(0.)
+                rumo_entrada = heading_da_direcao(entrada.tangente)
+                rumo_saida = heading_da_direcao(saida.tangente)
+                tempo_ate_parada = 30 * app.viagem.pesos[0] / app.viagem.total / velocidade
+                app.atualizar(tempo_ate_parada - .01 / velocidade)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_entrada), 0.)
+                app.atualizar(.01 / velocidade + 1e-8)
+                self.assertLess(dist(tuple(app.carro.getPos()), entrada.ponto), 1e-5)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_entrada), 0., places=3)
+
+                app.atualizar(app.viagem.PAUSA_CHEGADA / (2 * velocidade))
+                meio_giro = app.carro.getH()
+                self.assertAlmostEqual(abs(diferenca_angular(rumo_entrada, meio_giro)), 90., places=3)
+                app.acao('pausa')
+                app.atualizar(10.)
+                self.assertEqual(meio_giro, app.carro.getH())
+                self.assertLess(dist(tuple(app.carro.getPos()), entrada.ponto), 1e-5)
+
+                app.acao('pausa')
+                app.atualizar(.17 / velocidade)
+                self.assertFalse(app.viagem.em_chegada)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_saida), 0.)
+                app.atualizar(40.)
+                fim = medir_rua(app.cena.ruas[12, 13]).amostrar(1.)
+                self.assertLess(dist(tuple(app.carro.getPos()), fim.ponto), 1e-5)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), heading_da_direcao(fim.tangente)), 0.)
 
 
 if __name__ == '__main__':

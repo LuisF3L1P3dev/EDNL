@@ -1,8 +1,8 @@
 """Relogio do veiculo, sem dependencia do renderizador."""
 from dataclasses import dataclass, field
-from math import atan2, copysign, degrees, dist, hypot, isfinite
+from math import atan2, copysign, cos, degrees, hypot, isfinite, radians, sin
 
-from geometria3d import posicoes_mundo, ruas_mundo, interpolar
+from geometria3d import interpolar, medir_rua, posicoes_mundo, ruas_mundo
 
 
 def normalizar_angulo(angulo):
@@ -31,34 +31,46 @@ def heading_da_direcao(direcao):
     return normalizar_angulo(-degrees(atan2(direcao[0], direcao[1])))
 
 
+def pitch_da_direcao(direcao):
+    return degrees(atan2(direcao[2], hypot(*direcao[:2])))
+
+
+def limitar_heading(tangente, heading):
+    desvio = diferenca_angular(tangente, heading)
+    return normalizar_angulo(tangente + max(-45., min(45., desvio)))
+
+
+def heading_antecipado(amostra, distancia=2.25):
+    """Prepara a próxima curva da rua, mantendo a direção de chegada ao nó."""
+    if distancia <= 0:
+        raise ValueError("A antecipação precisa de distância positiva.")
+    atual = heading_da_direcao(amostra.tangente)
+    if amostra.proxima_tangente is None or amostra.restante_segmento >= distancia:
+        return atual
+    proximo = heading_da_direcao(amostra.proxima_tangente)
+    if abs(diferenca_angular(atual, proximo)) == 180.:
+        return atual
+    alvo = limitar_heading(atual, proximo)
+    aproximacao = 1. - amostra.restante_segmento / distancia
+    return normalizar_angulo(atual + diferenca_angular(atual, alvo) * aproximacao)
+
+
 def direcao_antecipada(ruas, caminho, indice, fracao, distancia=2.25):
-    """Vetor até um waypoint futuro, atravessando a próxima rua se preciso."""
+    """Direção horizontal antecipada com a inclinação do segmento atual."""
     if distancia <= 0:
         raise ValueError("A antecipação precisa de distância positiva.")
     caminho = tuple(caminho)
     if not 0 <= indice < len(caminho) - 1:
         return 0., 1., 0.
-    atual, ultima = interpolar(ruas[caminho[indice], caminho[indice + 1]], fracao)
-    restante = distancia
-    for i in range(indice, len(caminho) - 1):
-        pontos = ruas[caminho[i], caminho[i + 1]]
-        comprimentos = [dist(a, b) for a, b in zip(pontos, pontos[1:])]
-        total = sum(comprimentos)
-        inicio = max(0., min(1., fracao)) * total if i == indice else 0.
-        disponivel = max(0., total - inicio)
-        if restante > disponivel + 1e-9:
-            restante -= disponivel
-            continue
-        alvo = min(total, inicio + restante)
-        acumulado = 0.
-        for a, b, comprimento in zip(pontos, pontos[1:], comprimentos):
-            if alvo <= acumulado + comprimento + 1e-9:
-                t = (alvo - acumulado) / comprimento if comprimento else 0.
-                ponto = tuple(a[k] + (b[k] - a[k]) * t for k in range(3))
-                vetor = tuple(ponto[k] - atual[k] for k in range(3))
-                return vetor if hypot(vetor[0], vetor[1]) > 1e-8 else ultima
-            acumulado += comprimento
-    return ultima
+    rua = medir_rua(ruas[caminho[indice], caminho[indice + 1]])
+    amostra = rua.amostrar(fracao)
+    heading = heading_antecipado(amostra, distancia)
+    if heading == heading_da_direcao(amostra.tangente):
+        return amostra.tangente
+    x, y, z = amostra.tangente
+    horizontal = hypot(x, y)
+    angulo = radians(heading)
+    return -sin(angulo) * horizontal, cos(angulo) * horizontal, z
 
 
 @dataclass
@@ -90,6 +102,10 @@ class Viagem:
     @property
     def em_chegada(self):
         return self._espera > 0
+
+    @property
+    def progresso_chegada(self):
+        return 1. - self._espera / self.PAUSA_CHEGADA if self.em_chegada else 0.
 
     @property
     def trecho(self):

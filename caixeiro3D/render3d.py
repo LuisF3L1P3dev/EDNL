@@ -14,7 +14,7 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
                          GeomVertexFormat, GeomVertexWriter,
                          TransparencyAttrib, Vec3)
 
-from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual
+from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, medir_rua
 
 
 LARGURA_RUA = .95
@@ -200,9 +200,8 @@ class Cena3D:
         self._apoios_pontes = ()
         self._trecho_destacado = None
         self._segmentos = tuple(
-            (a, b) for aresta in grafo.arestas
-            for a, b in zip(self.ruas[aresta.origem, aresta.destino],
-                            self.ruas[aresta.origem, aresta.destino][1:])
+            trecho for aresta in grafo.arestas
+            for trecho in medir_rua(self.ruas[aresta.origem, aresta.destino]).segmentos
         )
         self._rng = Random(410 + len(grafo.ids))
         x0, y0, x1, y1 = self.mapa_visual.limites_xy
@@ -345,8 +344,7 @@ class Cena3D:
         base = NIVEL_GRAMA + .02
         apoios = []
         for ponte in self.mapa_visual.pontes:
-            caminho = self.ruas[ponte.aresta]
-            trechos = tuple(zip(caminho, caminho[1:]))
+            trechos = medir_rua(self.ruas[ponte.aresta]).segmentos
             obstaculos = [t for t in self._segmentos if t not in trechos]
             x0, y0, _ = ponte.centro
             dx, dy = (ponte.fim[i] - ponte.inicio[i] for i in (0, 1))
@@ -492,17 +490,17 @@ class Cena3D:
         if not set(caminho) <= set(self.posicoes):
             raise ValueError("A rota contém um nó inexistente.")
         try:
-            ruas = [self.ruas[a, b] for a, b in zip(caminho, caminho[1:])]
+            ruas = [medir_rua(self.ruas[a, b]) for a, b in zip(caminho, caminho[1:])]
         except KeyError as erro:
             raise ValueError("A rota contém uma rua inexistente.") from erro
         # Validar primeiro preserva a rota atual se o novo percurso for inválido.
         self.limpar_rota()
         self._trecho_destacado = None
-        for pontos in ruas:
-            for a, b in zip(pontos, pontos[1:]):
+        for rua in ruas:
+            for a, b in rua.segmentos:
                 _faixa(self.rota, "contorno-rota", a, b, .34, (.60, .40, .08, 1), .031)
                 _faixa(self.rota, "rota-amarela", a, b, .24, cor, .035)
-            for x, y, z in pontos:
+            for x, y, z in rua.pontos:
                 _disco(self.rota, "junta-rota", x, y, z + .036, .12, cor, lados=12)
         self.rota.flattenStrong()
 

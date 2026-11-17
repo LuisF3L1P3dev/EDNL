@@ -1,7 +1,7 @@
 """Integracao da cena Panda3D, HUD Pygame, busca e animacao."""
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from math import atan2, degrees, dist, hypot
+from math import hypot
 from pathlib import Path
 from queue import Empty, Queue, Full
 from threading import Event
@@ -12,9 +12,9 @@ from panda3d.core import AmbientLight, DirectionalLight, Vec3, loadPrcFileData
 
 from assets3d import Biblioteca, instancia_normalizada
 from camera3d import CameraIsometrica
-from geometria3d import interpolar
-from mundo3d import (Viagem, direcao_antecipada, heading_da_direcao,
-                     suavizar_heading)
+from geometria3d import medir_rua
+from mundo3d import (Viagem, diferenca_angular, heading_antecipado, heading_da_direcao,
+                     limitar_heading, normalizar_angulo, pitch_da_direcao, suavizar_heading)
 from solvers import Progresso, executar
 from tsp_core import carregar_cenarios
 
@@ -89,19 +89,24 @@ class Aplicacao3D(ShowBase):
 
     @property
     def distancia_percorrida(self):
+        return self._distancias_da_viagem()[0]
+
+    @property
+    def progresso_visual(self):
+        percorrida, total = self._distancias_da_viagem()
+        return percorrida / total if total else float(self.viagem.concluida)
+
+    def _distancias_da_viagem(self):
         if not self.viagem.pesos:
-            return 0.
+            return 0., 0.
         indice, fracao = self.viagem.trecho
-        total = 0.
-        for i, (a, b) in enumerate(zip(self.viagem.caminho, self.viagem.caminho[1:])):
-            pontos = self.cena.ruas[a, b]
-            comprimento = sum(dist(p, q) for p, q in zip(pontos, pontos[1:]))
-            if i < indice:
-                total += comprimento
-            elif i == indice:
-                total += comprimento * fracao
-                break
-        return total
+        caminho = self.viagem.caminho
+        ruas = tuple(medir_rua(self.cena.ruas[a, b]) for a, b in zip(caminho, caminho[1:]))
+        total = sum(rua.comprimento for rua in ruas)
+        if self.viagem.concluida:
+            return total, total
+        percorrida = sum(rua.comprimento for rua in ruas[:indice]) + ruas[indice].distancia(fracao)
+        return percorrida, total
 
     def _luzes(self):
         ambiente = AmbientLight('ambiente')
@@ -324,28 +329,34 @@ class Aplicacao3D(ShowBase):
             self.fase, self.status = 'Busca encerrada', r.termino
 
     def _posicionar_carro(self, dt=0.):
-        if not self.viagem.caminho:
-            self.carro.setPos(*self.cena.posicoes[self.origem])
+        caminho = self.viagem.caminho
+        if not self.viagem.pesos:
+            no = caminho[0] if caminho else self.origem
+            self.carro.setPos(*self.cena.posicoes[no])
             self.carro.setHpr(0, 0, 0)
             self._heading_carro = 0.
-        elif not self.viagem.pesos:
-            self.carro.setPos(*self.cena.posicoes[self.viagem.caminho[0]])
-            self.carro.setHpr(0, 0, 0)
-            self._heading_carro = 0.
-        else:
-            i, t = self.viagem.trecho
-            a, b = self.viagem.caminho[i:i + 2]
-            rua = self.cena.ruas[a, b]
-            ponto, direcao_local = interpolar(rua, t)
-            direcao = direcao_antecipada(self.cena.ruas, self.viagem.caminho, i, t)
-            alvo = heading_da_direcao(direcao)
-            if self._heading_carro is None:
-                self._heading_carro = alvo
-            elif dt > 0:
-                self._heading_carro = suavizar_heading(self._heading_carro, alvo, dt)
-            self.carro.setPos(*ponto)
-            self.carro.setHpr(self._heading_carro,
-                              degrees(atan2(direcao_local[2], hypot(*direcao_local[:2]))), 0)
+            return
+
+        indice, fracao = self.viagem.trecho
+        amostra = medir_rua(self.cena.ruas[caminho[indice:indice + 2]]).amostrar(fracao)
+        local = heading_da_direcao(amostra.tangente)
+        pitch = pitch_da_direcao(amostra.tangente)
+        if self.viagem.em_chegada:
+            chegada = medir_rua(self.cena.ruas[caminho[indice - 1:indice + 1]]).amostrar(1.)
+            entrada = heading_da_direcao(chegada.tangente)
+            progresso = self.viagem.progresso_chegada
+            curva = progresso * progresso * (3. - 2. * progresso)
+            self._heading_carro = normalizar_angulo(entrada + curva * diferenca_angular(entrada, local))
+            pitch_entrada = pitch_da_direcao(chegada.tangente)
+            pitch = pitch_entrada + curva * (pitch - pitch_entrada)
+        elif self._heading_carro is None or self.viagem.concluida:
+            self._heading_carro = local
+        elif dt > 0:
+            alvo = heading_antecipado(amostra)
+            heading = suavizar_heading(self._heading_carro, alvo, dt * self.viagem.velocidade)
+            self._heading_carro = limitar_heading(local, heading)
+        self.carro.setPos(*amostra.ponto)
+        self.carro.setHpr(self._heading_carro, pitch, 0)
 
     def _destacar_trecho_atual(self):
         if not self.viagem.pesos:
@@ -398,7 +409,13 @@ class Aplicacao3D(ShowBase):
                     self.cena.mostrar_rota(self.etapa.caminho)
             if not self._etapas:
                 self._finalizar_busca()
+        indice_anterior, _ = self.viagem.trecho
+        estava_em_chegada = self.viagem.em_chegada
         self.viagem.atualizar(dt)
+        if not self.viagem.em_chegada and (estava_em_chegada or self.viagem.trecho[0] != indice_anterior):
+            # Um frame pode consumir toda a pausa. A van sai alinhada mesmo
+            # se a última orientação desenhada ainda estava no meio do giro.
+            self._heading_carro = None
         self._destacar_trecho_atual()
         if self.ocupado and self._replay_pausado:
             self.fase = 'Busca pausada'

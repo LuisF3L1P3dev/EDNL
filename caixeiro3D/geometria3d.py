@@ -3,9 +3,11 @@
 O cadastro matemático continua em ``tsp_core``. Este módulo associa posições,
 endereços e polilinhas aos mesmos objetos No/Aresta, sem copiar seus pesos.
 """
+from bisect import bisect_right
 from dataclasses import dataclass, field
 from functools import lru_cache
-from math import cos, dist, isfinite, radians, sin
+from itertools import accumulate
+from math import cos, dist, isfinite, radians, sin, ulp
 from types import MappingProxyType
 from typing import Mapping
 
@@ -323,15 +325,73 @@ def ruas_mundo(grafo):
     return dict(criar_mapa_visual(grafo).ruas)
 
 
+@dataclass(frozen=True)
+class AmostraRua:
+    ponto: XYZ
+    tangente: XYZ
+    restante_segmento: float
+    proxima_tangente: XYZ | None
+
+
+@dataclass(frozen=True)
+class RuaMedida:
+    pontos: tuple[XYZ, ...]
+    segmentos: tuple[tuple[XYZ, XYZ], ...]
+    acumulados: tuple[float, ...]
+
+    @property
+    def comprimento(self):
+        return self.acumulados[-1]
+
+    def distancia(self, fracao):
+        return max(0., min(1., fracao)) * self.comprimento
+
+    def amostrar(self, fracao):
+        distancia = self.distancia(fracao)
+        ultimo = len(self.segmentos) - 1
+        indice = min(ultimo, bisect_right(self.acumulados, distancia) - 1)
+        # O produto fração × comprimento pode cair um ULP antes da curva.
+        fim = self.acumulados[indice + 1]
+        if indice < ultimo and fim - distancia <= ulp(fim):
+            indice += 1
+            distancia = fim
+        inicio, fim = self.acumulados[indice:indice + 2]
+        a, b = self.segmentos[indice]
+        vetor = tuple(v - u for u, v in zip(a, b))
+        if distancia - inicio <= ulp(inicio):
+            ponto = a
+        elif distancia == fim:
+            ponto = b
+        else:
+            t = (distancia - inicio) / (fim - inicio)
+            ponto = tuple(u + t * d for u, d in zip(a, vetor))
+        proxima = None
+        if indice < ultimo:
+            c, d = self.segmentos[indice + 1]
+            proxima = tuple(v - u for u, v in zip(c, d))
+        return AmostraRua(ponto, vetor, fim - distancia, proxima)
+
+
+def medir_rua(pontos):
+    """Meça a tupla imutável de waypoints usada pela cena e pelo veículo."""
+    if not isinstance(pontos, tuple) or not all(isinstance(p, tuple) for p in pontos):
+        pontos = tuple(map(tuple, pontos))
+    return _medir_rua(pontos)
+
+
+@lru_cache(maxsize=256)
+def _medir_rua(pontos):
+    if len(pontos) < 2:
+        raise ValueError("Uma rua precisa de pelo menos dois pontos.")
+    segmentos = tuple((a, b) for a, b in zip(pontos, pontos[1:]) if a != b)
+    if not segmentos:
+        segmentos = ((pontos[0], pontos[-1]),)
+    acumulados = tuple(accumulate((dist(a, b) for a, b in segmentos), initial=0.))
+    return RuaMedida(pontos, segmentos, acumulados)
+
+
 def interpolar(pontos, fracao):
-    comprimentos = [dist(a, b) for a, b in zip(pontos, pontos[1:])]
-    restante = max(0., min(1., fracao)) * sum(comprimentos)
-    for i, comprimento in enumerate(comprimentos):
-        if restante <= comprimento or i == len(comprimentos) - 1:
-            a, b = pontos[i:i + 2]
-            t = restante / comprimento if comprimento else 0.
-            return tuple(a[k] + (b[k] - a[k]) * t for k in range(3)), tuple(b[k] - a[k] for k in range(3))
-        restante -= comprimento
-    raise ValueError("Uma rua precisa de pelo menos dois pontos.")
+    amostra = medir_rua(pontos).amostrar(fracao)
+    return amostra.ponto, amostra.tangente
 
 
