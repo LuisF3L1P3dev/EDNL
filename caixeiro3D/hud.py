@@ -323,6 +323,23 @@ class HUD:
         if a.metodo == 'dijkstra':
             self.botao('distancias', 'Ver todas as distâncias', (x + 16, h - 172, 186, 28))
 
+    def _texto_trecho(self):
+        """Resumo curto e estável da posição da van na rota exibida."""
+        viagem = self.app.viagem
+        if not viagem.caminho:
+            return f'No ponto {self.app.origem} · aguardando rota'
+        if not viagem.pesos:
+            return f'Concluído no ponto {viagem.caminho[0]}'
+        indice, _ = viagem.trecho
+        origem, destino = viagem.caminho[indice:indice + 2]
+        if viagem.concluida:
+            return f'Concluído no ponto {destino} · último: {origem} → {destino}'
+        if viagem.em_chegada:
+            return f'Aguardando no ponto {origem} · próximo: {origem} → {destino}'
+        if viagem.reproduzindo:
+            return f'Em rota: {origem} → {destino}'
+        return f'Pausada: {origem} → {destino}'
+
     def _inferior(self, w, h):
         a = self.app
         y = h - 116
@@ -330,6 +347,8 @@ class HUD:
         erro = a.fase.casefold().startswith('erro') or 'indispon' in a.fase.casefold()
         self.texto(a.fase, 34, y + 12, 16, RED if erro else INK, True, largura=w - 600)
         self.texto(a.status, 34, y + 38, 13, RED if erro else MUTED, largura=w - 600)
+        self.texto(self._texto_trecho(), 34, y + 57, 12, GREEN_TEXT if a.viagem.caminho else MUTED,
+                   largura=w - 600)
         self.botao('iniciar', 'Iniciar entrega', (w - 526, y + 17, 131, 35), ativo=not a.ocupado, destaque=True)
         pausado = getattr(a, '_replay_pausado', False) if a.ocupado else not a.viagem.reproduzindo
         self.botao('pausa', 'Continuar' if pausado else 'Pausar', (w - 386, y + 17, 91, 35), ativo=a.ocupado or bool(a.viagem.pesos))

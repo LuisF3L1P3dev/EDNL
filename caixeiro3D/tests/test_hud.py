@@ -185,6 +185,45 @@ class TestHUD(unittest.TestCase):
         self.assertEqual(app.ui.pesos_ativos,
                          {frozenset((1, 2)), frozenset((2, 3))})
 
+    def test_barra_inferior_indica_trecho_em_todos_os_estados(self):
+        for tamanho in [(1100, 760), (1440, 960)]:
+            with self.subTest(tamanho=tamanho):
+                app = self.construir(tamanho, 5)
+
+                def trecho_pintado():
+                    return [(texto, rect) for texto, rect, _ in app.ui.textos
+                            if texto.startswith(('No ponto ', 'Em rota:', 'Pausada:',
+                                                'Aguardando no ponto', 'Concluído no ponto'))]
+
+                self.assertIn(('No ponto 1 · aguardando rota',),
+                              [(texto,) for texto, _ in trecho_pintado()])
+                app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+                app.ui.textos.clear()
+                app.ui.desenhar()
+                self.assertIn(('Em rota: 1 → 2',), [(texto,) for texto, _ in trecho_pintado()])
+                app.viagem.reproduzindo = False
+                app.ui.textos.clear()
+                app.ui.desenhar()
+                self.assertIn(('Pausada: 1 → 2',), [(texto,) for texto, _ in trecho_pintado()])
+                app.viagem._indice, app.viagem._espera = 1, app.viagem.PAUSA_CHEGADA
+                app.ui.textos.clear()
+                app.ui.desenhar()
+                self.assertIn(('Aguardando no ponto 2 · próximo: 2 → 3',),
+                              [(texto,) for texto, _ in trecho_pintado()])
+                app.viagem._indice = len(app.viagem.pesos)
+                app.viagem._espera = 0.
+                app.ui.textos.clear()
+                app.ui.desenhar()
+                atual = trecho_pintado()
+                self.assertIn(('Concluído no ponto 3 · último: 2 → 3',),
+                              [(texto,) for texto, _ in atual])
+                inicio_botoes = app.ui.botoes['iniciar'][0].left
+                topo_barra = tamanho[1] - 116 + 74
+                for _, rect in atual:
+                    self.assertLessEqual(rect.right, inicio_botoes)
+                    self.assertLessEqual(rect.bottom, topo_barra)
+                self.assertTrue(any(texto == 'NEXUS' for texto, _, _ in app.ui.textos))
+
     def test_modal_config_captura_cliques_e_volta_ao_mapa(self):
         for tamanho in [(1100, 760), (1440, 960)]:
             app = self.construir(tamanho)
@@ -230,7 +269,10 @@ class TestHUD(unittest.TestCase):
         app.viagem.carregar(app.mapa, rota, ciclo=False)
         app.ui.textos.clear()
         app.ui.desenhar()
-        linhas = [(t, r) for t, r, _ in app.ui.textos if '→' in t or t.startswith('… ')]
+        # A barra inferior também informa o trecho atual; esta checagem é
+        # exclusivamente da sequência longa no painel de resultados.
+        linhas = [(t, r) for t, r, _ in app.ui.textos
+                  if ('→' in t or t.startswith('… ')) and r.left >= 1100 - 234]
         self.assertGreater(len(linhas), 0)
         self.assertLessEqual(len(linhas), 6)
         self.assertTrue(linhas[-1][0].startswith('… '))
