@@ -1,5 +1,7 @@
 """Verificação sem janela da cena real, texturas e separação da topologia."""
 
+from itertools import combinations
+from math import dist
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -161,6 +163,12 @@ class TestRender3D(unittest.TestCase):
                         self.assertTrue(camera.viewport.inflate(-2, -2).collidepoint(projetado),
                                         (ponto, projetado))
 
+                camera.ajustar((1100, 760))
+                assert_tudo_visivel()
+                marcadores = [camera.projetar(p) for p in cena.marcadores_no.values()]
+                separacao = min(dist(a, b) for a, b in combinations(marcadores, 2))
+                self.assertGreaterEqual(separacao, 100 if len(grafo.ids) == 5 else 65)
+                camera.ajustar()
                 assert_tudo_visivel()
                 camera.mudar_zoom(2.)
                 camera.arrastar(100000, -100000)

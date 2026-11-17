@@ -16,6 +16,9 @@ from roteamento3d import ALTURA_RUA, posicoes_planejadas, rotear
 XYZ = tuple[float, float, float]
 NIVEL_GRAMA = -.35
 COTA_LOTE = -.025
+DESLOCAMENTO_PADRAO_ETIQUETA = (0., -46.)
+_LOTES_MAPA_05 = {1: (-4.5, -4.5), 4: (4.5, -4.5), 5: (4.5, 4.5)}
+_ETIQUETAS_MAPA_18 = {9: (12., -34.), 10: (12., -34.), 13: (12., -34.), 14: (0., 34.)}
 
 
 def _xyz(valor):
@@ -66,7 +69,7 @@ class NoVisual:
     posicao_3d: XYZ
     construcao: ConstrucaoVisual
     conexoes: tuple[int, ...]
-    deslocamento_etiqueta: tuple[float, float] = (0., -46.)
+    deslocamento_etiqueta: tuple[float, float] = DESLOCAMENTO_PADRAO_ETIQUETA
 
     def __post_init__(self):
         object.__setattr__(self, 'posicao_3d', _xyz(self.posicao_3d))
@@ -215,8 +218,9 @@ def _criar_em_cache(identidade, posicoes, construcoes):
     grafo = identidade.grafo
     posicoes, construcoes = dict(posicoes), dict(construcoes)
     adj = grafo.adjacencia()
-    nos = tuple(NoVisual(n, posicoes[n.id], construcoes[n.id], tuple(sorted(adj[n.id])))
-                for n in grafo.nos)
+    etiquetas = _ETIQUETAS_MAPA_18 if grafo.id == 'mapa_18' else {}
+    nos = tuple(NoVisual(n, posicoes[n.id], construcoes[n.id], tuple(sorted(adj[n.id])),
+                         etiquetas.get(n.id, DESLOCAMENTO_PADRAO_ETIQUETA)) for n in grafo.nos)
     ancoras = {n.id: n.ancora_rua for n in nos}
     # A malha urbana canônica é exclusivamente visual. Cada caminho continua
     # referenciando a mesma Aresta imutável fornecida pelo grafo. Um layout
@@ -253,6 +257,7 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
         raise ValueError("O layout deve fornecer posições para exatamente os nós do grafo.")
     posicoes = {no: _xyz(posicoes[no]) for no in grafo.ids}
     enderecos = {}
+    lotes = _LOTES_MAPA_05 if grafo.id == 'mapa_05' else {}
     centro_x = sum(p[0] for p in posicoes.values()) / len(posicoes)
     centro_y = sum(p[1] for p in posicoes.values()) / len(posicoes)
     for i, no in enumerate(grafo.ids):
@@ -263,6 +268,7 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
         # e das oito portas do nó.
         dx = 4.5 if x < centro_x else -4.5
         dy = 4.5 if y < centro_y else -4.5
+        dx, dy = lotes.get(no, (dx, dy))
         base = NIVEL_GRAMA + .055 + (z - ALTURA_RUA)
         enderecos[no] = ConstrucaoVisual(
             (x + dx, y + dy, base), kit, nome, rotacao=90. * (i % 4))

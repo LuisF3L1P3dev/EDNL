@@ -63,12 +63,12 @@ class RotasVisuais:
 
 def posicoes_planejadas(grafo):
     if len(grafo.ids) == 5 and set(grafo.ids) == set(range(1, 6)):
-        return {1: (-12., 0., ALTURA_RUA), 2: (0., 12., ALTURA_RUA),
-                3: (12., 0., ALTURA_RUA), 4: (0., 0., ALTURA_RUA),
-                5: (0., -12., ALTURA_RUA)}
+        return {1: (-18., 0., ALTURA_RUA), 2: (0., 16.5, ALTURA_RUA),
+                3: (18., 0., ALTURA_RUA), 4: (0., 0., ALTURA_RUA),
+                5: (0., -16.5, ALTURA_RUA)}
     if len(grafo.ids) == 18 and set(grafo.ids) == set(range(1, 19)):
-        grade = {1: (0, 2), 2: (1, 3), 3: (2, 3), 4: (3, 3), 5: (4, 2),
-                 6: (4, 3), 7: (5, 3), 8: (1, 2), 9: (2, 2), 10: (3, 2),
+        grade = {1: (0, 2), 2: (1, 3), 3: (2, 3), 4: (3, 3), 5: (4, 3),
+                 6: (4, 2), 7: (5, 3), 8: (1, 2), 9: (2, 2), 10: (3, 2),
                  11: (5, 2), 12: (0, 1), 13: (2, 1), 14: (3, 1),
                  15: (4, 1), 16: (1, 0), 17: (3, 0), 18: (5, 0)}
         # A malha ampla reserva quarteirões entre prédios e deixa uma reta
