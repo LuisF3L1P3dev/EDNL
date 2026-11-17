@@ -15,6 +15,7 @@ BLUE = (47, 126, 221)
 GREEN = (35, 161, 115)
 GREEN_TEXT = (22, 113, 80)
 YELLOW = (247, 188, 56)
+CURRENT = (137, 79, 190)
 RED = (184, 45, 57)
 WHITE = (253, 254, 251)
 LINE = (224, 232, 229)
@@ -140,6 +141,13 @@ class HUD:
         self.pesos_tela = {}
         self.pesos_ativos = set()
         explorados = set(a.etapa.explorados if a.etapa else ())
+        if not a.viagem.caminho:
+            atual = a.origem
+        elif a.viagem.concluida:
+            atual = a.viagem.caminho[-1]
+        else:
+            indice_atual, fracao = a.viagem.trecho
+            atual = a.viagem.caminho[indice_atual] if fracao <= 1e-9 else None
         for no_visual in a.cena.mapa_visual.nos:
             no = no_visual.id
             p = a.camera_iso.projetar(no_visual.posicao_marcador)
@@ -187,7 +195,7 @@ class HUD:
             pygame.draw.line(self.canvas, (26, 50, 54, 80), ancora, ponta, 5)
             pygame.draw.line(self.canvas, WHITE, ancora, ponta, 2)
             pygame.draw.circle(self.canvas, WHITE, ancora, 3)
-            cor = GREEN if no in a.viagem.visitadas else YELLOW if no in explorados and a.ocupado else BLUE
+            cor = CURRENT if no == atual else GREEN if no in a.viagem.visitadas else YELLOW if no in explorados and a.ocupado else BLUE
             pygame.draw.circle(self.canvas, (35, 63, 66, 65), (centro[0], centro[1] + 3), 18)
             pygame.draw.circle(self.canvas, WHITE, centro, 18)
             pygame.draw.circle(self.canvas, cor, centro, 15)
@@ -279,15 +287,19 @@ class HUD:
         y = 652
         if self.canvas.get_height() >= 880:
             self.texto('Scroll: zoom · Direito: mover', 32, 607, 12, MUTED)
-            self.card((16, y, 212, 108))
+            self.card((16, y, 212, 128))
             self.texto('LEGENDA DO MAPA', 32, y + 14, 10, MUTED, True)
-            for i, (cor, label) in enumerate(((BLUE, 'Ponto de entrega'), (YELLOW, 'Rota / exploração'), (GREEN, 'Ponto visitado'))):
+            for i, (cor, label) in enumerate(((BLUE, 'Ponto de entrega'), (YELLOW, 'Rota / exploração'), (GREEN, 'Ponto visitado'), (CURRENT, 'Ponto atual'))):
                 pygame.draw.circle(self.canvas, cor, (39, y + 43 + i * 20), 5)
                 self.texto(label, 52, y + 34 + i * 20, 13, MUTED)
         else:
-            for x, cor, label in ((37, BLUE, 'Ponto'), (94, YELLOW, 'Rota'), (145, GREEN, 'Visitado')):
-                pygame.draw.circle(self.canvas, cor, (x, 613), 4)
-                self.texto(label, x + 8, 604, 12, MUTED)
+            for x, y_item, cor, label in ((37, 603, BLUE, 'Ponto'),
+                                           (125, 603, YELLOW, 'Rota'),
+                                           (37, 625, GREEN, 'Visitado'),
+                                           (125, 625, CURRENT, 'Atual')):
+                pygame.draw.circle(self.canvas, cor, (x, y_item), 4)
+                self.texto(label, x + 8, y_item - 9, 12, MUTED)
+
 
     def _direita(self, w, h):
         a = self.app

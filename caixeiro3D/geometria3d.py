@@ -18,6 +18,11 @@ NIVEL_GRAMA = -.35
 COTA_LOTE = -.025
 DESLOCAMENTO_PADRAO_ETIQUETA = (0., -46.)
 _LOTES_MAPA_05 = {1: (-4.5, -4.5), 4: (4.5, -4.5), 5: (4.5, 4.5)}
+# Coordenadas da porta na malha Panda (+Y aponta para a fachada), antes da normalizacao.
+# O ultimo valor e a maior dimensao horizontal original usada pela escala do renderizador.
+FACHADAS = {('suburbio', 'building-type-a'): (0., .40, 1.30),
+            ('suburbio', 'building-type-b'): (.40, .45, 1.828),
+            ('cidade', 'building-a'): (.21, .40, .94)}
 _ETIQUETAS_MAPA_18 = {9: (12., -34.), 10: (12., -34.), 13: (12., -34.), 14: (0., 34.)}
 
 
@@ -104,14 +109,33 @@ class NoVisual:
         x, y, z = lote.posicao
         angulo = radians(lote.rotacao)
         c, s = cos(angulo), sin(angulo)
-        dx, dy = self.ancora_rua[0] - x, self.ancora_rua[1] - y
-        local_x, local_y = dx * c + dy * s, -dx * s + dy * c
-        metade = lote.metade_lote
-        if abs(local_x) >= abs(local_y):
-            ex, ey = (metade if local_x >= 0 else -metade), 0.
+        fachada = FACHADAS.get((lote.kit, lote.nome))
+        if fachada is None:
+            # Enderecos externos continuam permitindo qualquer modelo.
+            dx, dy = self.ancora_rua[0] - x, self.ancora_rua[1] - y
+            local_x, local_y = dx * c + dy * s, -dx * s + dy * c
+            metade = lote.metade_lote
+            if abs(local_x) >= abs(local_y):
+                ex, ey = (metade if local_x >= 0 else -metade), 0.
+            else:
+                ex, ey = 0., (metade if local_y >= 0 else -metade)
         else:
-            ex, ey = 0., (metade if local_y >= 0 else -metade)
+            ex = fachada[0] * lote.tamanho / fachada[2]
+            ey = lote.metade_lote
         return x + ex * c - ey * s, y + ex * s + ey * c, z + COTA_LOTE
+
+    @property
+    def porta(self):
+        """Ponto da fachada no plano do lote, na escala da instancia."""
+        lote = self.construcao
+        fachada = FACHADAS.get((lote.kit, lote.nome))
+        if fachada is None:
+            return self.entrada
+        ex, ey, dimensao = fachada
+        ex, ey = ex * lote.tamanho / dimensao, ey * lote.tamanho / dimensao
+        c, s = cos(radians(lote.rotacao)), sin(radians(lote.rotacao))
+        x, y, z = lote.posicao
+        return x + ex*c - ey*s, y + ex*s + ey*c, z + COTA_LOTE + .004
 
     @property
     def acesso(self):
@@ -262,16 +286,18 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
     centro_y = sum(p[1] for p in posicoes.values()) / len(posicoes)
     for i, no in enumerate(grafo.ids):
         x, y, z = posicoes[no]
-        kit = 'cidade' if i % 3 == 1 else 'suburbio'
-        nome = f'building-{chr(97 + i % 8)}' if kit == 'cidade' else f'building-type-{chr(97 + i % 12)}'
+        kit, nome = (('suburbio', 'building-type-a'), ('cidade', 'building-a'),
+                     ('suburbio', 'building-type-b'))[i % 3]
         # Lote persistente no lado voltado ao centro da cidade, fora da praça
         # e das oito portas do nó.
         dx = 4.5 if x < centro_x else -4.5
         dy = 4.5 if y < centro_y else -4.5
         dx, dy = lotes.get(no, (dx, dy))
         base = NIVEL_GRAMA + .055 + (z - ALTURA_RUA)
+        # Panda gira +Y para -X com heading positivo.
+        rotacao = (90. if dx > 0 else -90.) if abs(dx) >= abs(dy) else (180. if dy > 0 else 0.)
         enderecos[no] = ConstrucaoVisual(
-            (x + dx, y + dy, base), kit, nome, rotacao=90. * (i % 4))
+            (x + dx, y + dy, base), kit, nome, rotacao=rotacao)
     if construcoes is not None:
         if not set(construcoes) <= set(grafo.ids):
             raise ValueError("Endereço associado a um nó inexistente.")

@@ -454,6 +454,8 @@ class Cena3D:
         ancora, entrada = no_visual.acesso
         _faixa(self.raiz, f"acesso-no-{no_visual.id}", ancora, entrada,
                LARGURA_ACESSO, (.79, .81, .71, 1))
+        _faixa(self.raiz, f"porta-no-{no_visual.id}", entrada, no_visual.porta,
+               LARGURA_ACESSO, (.71, .75, .67, 1))
         self._sombra(x, y, raio)
         construcao = Decoracao("edificio", endereco.kit, endereco.nome, x, y,
                                raio, altura, no_visual.id)

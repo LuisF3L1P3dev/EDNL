@@ -1,6 +1,6 @@
 """O layout pode mudar; o cadastro matemático e seus resultados permanecem."""
 from dataclasses import FrozenInstanceError, replace
-from math import dist
+from math import cos, dist, radians, sin
 from pathlib import Path
 import unittest
 
@@ -34,8 +34,9 @@ class LayoutVisualTest(unittest.TestCase):
                     self.assertEqual(nv.posicao_3d, nv.ancora_rua)
                     self.assertEqual(nv.posicao_marcador, nv.ancora_rua)
                     self.assertEqual(nv.acesso, (nv.ancora_rua, nv.entrada))
-                    self.assertAlmostEqual(dist(nv.entrada[:2], nv.construcao.posicao[:2]),
-                                           nv.construcao.metade_lote)
+                    self.assertGreaterEqual(dist(nv.entrada[:2], nv.construcao.posicao[:2]),
+                                            nv.construcao.metade_lote - 1e-7)
+                    self.assertLess(dist(nv.entrada[:2], nv.porta[:2]), nv.construcao.metade_lote)
                     self.assertTrue(nv.construcao.kit)
                     self.assertTrue(nv.construcao.nome)
                 for av, original in zip(visual.arestas, g.arestas):
@@ -45,6 +46,19 @@ class LayoutVisualTest(unittest.TestCase):
                     self.assertEqual(av.caminho[0], visual.posicoes[av.origem])
                     self.assertEqual(av.caminho[-1], visual.posicoes[av.destino])
                     self.assertEqual(visual.ruas[av.destino, av.origem], tuple(reversed(av.caminho)))
+
+    def test_fachadas_e_portas_apontam_para_as_ancoras(self):
+        for grafo in self.grafos:
+            for no in criar_mapa_visual(grafo).nos:
+                lote = no.construcao
+                a = radians(lote.rotacao)
+                frente = (-sin(a), cos(a))
+                para_ancora = (no.ancora_rua[0] - lote.posicao[0],
+                                no.ancora_rua[1] - lote.posicao[1])
+                self.assertGreater(sum(x*y for x, y in zip(frente, para_ancora)), 0)
+                entrada_porta = (no.entrada[0] - no.porta[0], no.entrada[1] - no.porta[1])
+                self.assertAlmostEqual(entrada_porta[0]*frente[1] - entrada_porta[1]*frente[0], 0., places=6)
+                self.assertGreater(sum(x*y for x, y in zip(frente, entrada_porta)), 0)
 
     def test_reorganizar_visualmente_preserva_algoritmos_e_adjacencia(self):
         for g in self.grafos:

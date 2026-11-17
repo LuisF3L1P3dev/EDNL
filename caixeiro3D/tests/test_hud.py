@@ -9,7 +9,7 @@ import pygame
 from panda3d.core import NodePath
 
 from geometria3d import criar_mapa_visual
-from hud import HUD, RED
+from hud import HUD, RED, BLUE, GREEN, CURRENT
 from mundo3d import Viagem
 from solvers import executar
 from tsp_core import carregar_mapa
@@ -128,6 +128,26 @@ class TestHUD(unittest.TestCase):
             for no in (1, 2, 3):
                 self.assertTrue(viewport.contains(app.ui.etiquetas_tela[no]), no)
                 self.assertFalse(app.ui.etiquetas_tela[no].collidepoint(app.ui.ancoras_tela[no]), no)
+
+    def test_cor_do_ponto_atual_em_viagem_pausa_e_final(self):
+        app = self.construir(numero_mapa=5)
+        def cor(no):
+            x, y = app.ui.posicoes_tela[no]
+            return tuple(app.ui.canvas.get_at((x + 10, y)))[:3]
+        self.assertEqual(cor(1), CURRENT)
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+        app.viagem.atualizar(1)
+        app.viagem.reproduzindo = False
+        app.ui.desenhar()
+        self.assertEqual(cor(1), GREEN)
+        self.assertEqual(cor(2), BLUE)
+        app.viagem.saltar(1)
+        app.ui.desenhar()
+        self.assertEqual(cor(2), CURRENT)
+        app.viagem.saltar(1)
+        app.ui.desenhar()
+        self.assertEqual(cor(3), CURRENT)
+        self.assertEqual(cor(2), GREEN)
 
     def test_badge_deslocado_continua_selecionavel(self):
         app = self.construir(numero_mapa=5)
