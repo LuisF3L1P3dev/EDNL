@@ -5,6 +5,7 @@ da adjacência e tem seu espaço reservado fora de todas as polilinhas de ruas.
 O veículo, as luzes e as etiquetas projetadas pertencem à aplicação.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass
 from math import atan2, cos, degrees, dist, hypot, pi, sin
 from random import Random
@@ -19,9 +20,10 @@ from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual
 LARGURA_RUA = .95
 LARGURA_ACESSO = .52
 AMARELO = (1., .76, .13, 1.)
+ESCALA_VERTICAL_RUA = .55
 
 
-def superficie(parent, nome, pontos, cor):
+def superficie(parent, nome, pontos, cor, *, material=None):
     """Triangule uma superfície convexa, inclusive as laterais da ilha."""
     pontos = tuple(pontos)
     if len(pontos) < 3:
@@ -29,11 +31,15 @@ def superficie(parent, nome, pontos, cor):
     normal = (Vec3(*pontos[1]) - Vec3(*pontos[0])).cross(
         Vec3(*pontos[2]) - Vec3(*pontos[0]))
     normal.normalize()
-    dados = GeomVertexData(nome, GeomVertexFormat.getV3n3(), Geom.UH_static)
+    formato = GeomVertexFormat.getV3n3t2() if material else GeomVertexFormat.getV3n3()
+    dados = GeomVertexData(nome, formato, Geom.UH_static)
     v, n = GeomVertexWriter(dados, "vertex"), GeomVertexWriter(dados, "normal")
+    uv = GeomVertexWriter(dados, "texcoord") if material else None
     for ponto in pontos:
         v.addData3(*ponto)
         n.addData3(normal)
+        if uv:
+            uv.addData2(*material[1])
     triangulos = GeomTriangles(Geom.UH_static)
     for i in range(1, len(pontos) - 1):
         triangulos.addVertices(0, i, i + 1)
@@ -44,6 +50,8 @@ def superficie(parent, nome, pontos, cor):
     malha = parent.attachNewNode(no)
     malha.setColor(*cor)
     malha.setTwoSided(True)
+    if material:
+        malha.setTexture(material[0], 1)
     return malha
 
 
@@ -69,11 +77,96 @@ def _faixa(parent, nome, a, b, largura, cor, elevacao=0.):
     ], cor)
 
 
-def _distancia_segmento(x, y, a, b):
+def _projetar_no_segmento(x, y, a, b):
     dx, dy = b[0] - a[0], b[1] - a[1]
     comprimento2 = dx * dx + dy * dy
     t = max(0., min(1., ((x - a[0]) * dx + (y - a[1]) * dy) / comprimento2)) if comprimento2 else 0.
-    return hypot(x - a[0] - t * dx, y - a[1] - t * dy)
+    return a[0] + t * dx, a[1] + t * dy, a[2] + t * (b[2] - a[2])
+
+
+def _distancia_segmento(x, y, a, b):
+    px, py, _ = _projetar_no_segmento(x, y, a, b)
+    return hypot(x - px, y - py)
+
+
+def _unir_intervalos(intervalos):
+    unidos = []
+    for inicio, fim in sorted(intervalos):
+        if unidos and inicio <= unidos[-1][1]:
+            anterior, limite = unidos[-1]
+            unidos[-1] = (anterior, max(limite, fim))
+        else:
+            unidos.append((inicio, fim))
+    return unidos
+
+
+def _ponto_eixo(eixo, posicao, lateral, altura):
+    return (posicao, lateral, altura) if eixo == 0 else (lateral, posicao, altura)
+
+
+def _pavimento(segmentos, ancoras):
+    """Trechos sem sobreposição e peças que completam suas junções em XY."""
+    linhas = defaultdict(list)
+    rampas = []
+    for a, b in segmentos:
+        a, b = (tuple(round(v, 9) for v in p) for p in (a, b))
+        eixo = int(a[0] == b[0])
+        if a[2] == b[2]:
+            linhas[eixo, a[1 - eixo], a[2]].append(tuple(sorted((a[eixo], b[eixo]))))
+        else:
+            rampas.append((a, b))
+    linhas = {chave: _unir_intervalos(intervalos) for chave, intervalos in linhas.items()}
+
+    direcoes = {p: set() for p in ancoras}
+    horizontais = [(y, z, intervalos) for (e, y, z), intervalos in linhas.items() if e == 0]
+    verticais = [(x, z, intervalos) for (e, x, z), intervalos in linhas.items() if e == 1]
+    for y, z, horizontais_y in horizontais:
+        for x, altura, verticais_x in verticais:
+            if (z == altura and any(a <= x <= b for a, b in horizontais_y)
+                    and any(a <= y <= b for a, b in verticais_x)):
+                direcoes.setdefault((x, y, z), set())
+
+    metade = LARGURA_RUA / 2
+    limites = {}
+    for p in direcoes:
+        x, y, _ = p
+        caixa = [x - metade, y - metade, x + metade, y + metade]
+        # Uma rampa pode começar dentro da peça de um cotovelo. A borda
+        # deve parar na costura da rampa, sem uma segunda superfície abaixo.
+        for a, b in rampas:
+            eixo = int(a[0] == b[0])
+            for entrada, saida in ((a, b), (b, a)):
+                if entrada[2] != p[2] or entrada[1 - eixo] != p[1 - eixo]:
+                    continue
+                inicio = entrada[eixo]
+                if saida[eixo] > inicio >= p[eixo]:
+                    caixa[eixo + 2] = min(caixa[eixo + 2], inicio)
+                elif saida[eixo] < inicio <= p[eixo]:
+                    caixa[eixo] = max(caixa[eixo], inicio)
+        limites[p] = tuple(caixa)
+
+    retas = list(rampas)
+    for (eixo, lateral, altura), intervalos in linhas.items():
+        centros = sorted(p[eixo] for p in direcoes if p[1 - eixo] == lateral and p[2] == altura)
+        for inicio, fim in intervalos:
+            cursor = inicio
+            for centro in centros:
+                if not inicio <= centro <= fim:
+                    continue
+                p = _ponto_eixo(eixo, centro, lateral, altura)
+                if inicio < centro:
+                    direcoes[p].add((-1, 0) if eixo == 0 else (0, -1))
+                if centro < fim:
+                    direcoes[p].add((1, 0) if eixo == 0 else (0, 1))
+                esquerda, direita = limites[p][eixo], limites[p][eixo + 2]
+                if esquerda > cursor:
+                    retas.append((_ponto_eixo(eixo, cursor, lateral, altura),
+                                  _ponto_eixo(eixo, esquerda, lateral, altura)))
+                cursor = max(cursor, direita)
+            if fim > cursor:
+                retas.append((_ponto_eixo(eixo, cursor, lateral, altura),
+                              _ponto_eixo(eixo, fim, lateral, altura)))
+    return tuple(retas), tuple((p, direcoes[p], limites[p]) for p in sorted(direcoes))
 
 
 @dataclass(frozen=True)
@@ -103,20 +196,13 @@ class Cena3D:
         self._acessos = tuple(no.acesso for no in self.mapa_visual.nos)
         self.modelos_usados = set()
         self.trechos_rua = 0
-        self.pontes = 0
+        self.pontes = len(self.mapa_visual.pontes)
+        self._apoios_pontes = ()
         self._trecho_destacado = None
         self._segmentos = tuple(
             (a, b) for aresta in grafo.arestas
             for a, b in zip(self.ruas[aresta.origem, aresta.destino],
                             self.ruas[aresta.origem, aresta.destino][1:])
-        )
-        self._cantos = tuple(
-            (a, b, c) for aresta in grafo.arestas
-            for a, b, c in zip(self.ruas[aresta.origem, aresta.destino],
-                               self.ruas[aresta.origem, aresta.destino][1:],
-                               self.ruas[aresta.origem, aresta.destino][2:])
-            if abs(a[2] - b[2]) < .02 and abs(b[2] - c[2]) < .02 and
-            abs((b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])) < .02
         )
         self._rng = Random(410 + len(grafo.ids))
         x0, y0, x1, y1 = self.mapa_visual.limites_xy
@@ -125,8 +211,6 @@ class Cena3D:
         try:
             self._terreno()
             self._construir_ruas()
-            self._curvas()
-            self._cruzamentos()
             self._decorar()
             self.raiz.flattenStrong()
         except Exception:
@@ -162,9 +246,9 @@ class Cena3D:
             pontos.extend((no.posicao_marcador, no.entrada))
         return tuple(pontos)
 
-    def _modelo(self, kit, nome):
+    def _modelo(self, kit, nome, **opcoes):
         self.modelos_usados.add((kit, nome))
-        return self.biblioteca.modelo(kit, nome)
+        return self.biblioteca.modelo(kit, nome, **opcoes)
 
     def _terreno(self):
         w, h = self.meia_largura, self.meia_altura
@@ -190,77 +274,109 @@ class Cena3D:
                    proporcao=self._rng.uniform(.6, 1.2), lados=9)
 
     def _construir_ruas(self):
-        modelo = self._modelo("rua", "road-straight")
-        modelo_ponte = self._modelo("rua", "road-bridge")
-        pilar = self._modelo("rua", "bridge-pillar-wide")
-        lo, hi = modelo.getTightBounds()
-        lo_ponte, hi_ponte = modelo_ponte.getTightBounds()
-        lo_pilar, hi_pilar = pilar.getTightBounds()
-        comprimento_modelo, largura_modelo = hi.x - lo.x, hi.y - lo.y
-        for a, b in self._segmentos:
-            delta = Vec3(*b) - Vec3(*a)
-            comprimento = delta.length()
-            # A calçada estrutural acompanha exatamente a mesma aresta.
-            _faixa(self.raiz, "base-da-rua", a, b, LARGURA_RUA + .15,
-                   (.65, .69, .65, 1), -.025)
-            partes = max(1, round(comprimento / 1.6))
-            for i in range(partes):
-                suporte = self.raiz.attachNewNode("trecho-rua")
-                suporte.setPos(Vec3(*a) + delta * ((i + .5) / partes))
-                suporte.setHpr(-degrees(atan2(delta.x, delta.y)),
-                               degrees(atan2(delta.z, hypot(delta.x, delta.y))), 0)
-                # O tabuleiro alto recebe o asset de ponte; as rampas seguem
-                # como ruas, deixando inequívoca a separação dos níveis.
-                elevado = abs(a[2] - b[2]) < .02 and a[2] > .8
-                fonte = modelo_ponte if elevado else modelo
-                fonte_lo, fonte_hi = (lo_ponte, hi_ponte) if elevado else (lo, hi)
-                malha = fonte.copyTo(suporte)
-                malha.setH(90)
-                # Kenney usa X longitudinal: preservar a escala das marcações.
-                malha.setScale(comprimento / partes / (fonte_hi.x - fonte_lo.x) * 1.004,
-                               LARGURA_RUA / (fonte_hi.y - fonte_lo.y), .55)
-                malha.setZ(-fonte_hi.z * .55)
-                # Um apoio por tabuleiro elevado deixa a ponte legível sem
-                # transformar cada subtrecho de 1,6 u numa fileira de pilares.
-                if elevado and i == partes // 2:
-                    apoio = pilar.copyTo(self.raiz)
-                    meio = (Vec3(*a) + Vec3(*b)) * .5
-                    apoio.setPos(meio.x, meio.y, NIVEL_GRAMA + .04)
-                    escala_pilar = LARGURA_RUA * 1.4 / max(hi_pilar.x - lo_pilar.x,
-                                                            hi_pilar.y - lo_pilar.y)
-                    apoio.setScale(escala_pilar, escala_pilar,
-                                   max(.2, (meio.z - NIVEL_GRAMA) / (hi_pilar.z - lo_pilar.z)))
-                    apoio.setZ(apoio.getZ() - lo_pilar.z * apoio.getScale().z)
-                    self.pontes += 1
-                self.trechos_rua += 1
+        trechos, juncoes = _pavimento(self._segmentos, self.posicoes.values())
+        reta = self._modelo("rua", "road-straight")
+        textura = reta.find("**/+GeomNode").getTexture()
+        limites_reta = reta.getTightBounds()
+        ponte = limites_ponte = None
+        if self.pontes:
+            ponte = self._modelo("rua", "road-bridge", cota_minima=.45)
+            limites_ponte = ponte.getTightBounds()
+        for a, b in trechos:
+            elevado = ponte is not None and a[2] == b[2] and a[2] > .8
+            modelo, limites, cota = (ponte, limites_ponte, .51) if elevado else (reta, limites_reta, .01)
+            self._encaixar_rua(a, b, modelo, limites, cota)
+        for ponto, bracos, caixa in juncoes:
+            self._piso_juncao(ponto, bracos, caixa, textura)
+        for no, (x, y, z) in self.posicoes.items():
+            _disco(self.raiz, f"ponto-{no}", x, y, z + .012, .27, (.18, .58, .87, 1))
+        if self.pontes:
+            self._construir_apoios()
 
-    def _curvas(self):
-        """Fecha os cotovelos cardinais com o asset arredondado de rua."""
-        modelo = self._modelo("rua", "road-bend")
-        lo, hi = modelo.getTightBounds()
-        escala = (LARGURA_RUA * 1.9) / max(hi.x - lo.x, hi.y - lo.y)
-        for a, b, c in self._cantos:
-            suporte = self.raiz.attachNewNode("curva-rua")
-            suporte.setPos(*b)
-            suporte.setH(-degrees(atan2(b[0] - a[0], b[1] - a[1])))
+    def _encaixar_rua(self, a, b, modelo, limites, cota):
+        delta = Vec3(*b) - Vec3(*a)
+        comprimento = delta.length()
+        partes = max(1, round(comprimento / 1.6))
+        lo, hi = limites
+        sx = comprimento / partes / (hi.x - lo.x)
+        sy = LARGURA_RUA / (hi.y - lo.y)
+        for i in range(partes):
+            suporte = self.raiz.attachNewNode("trecho-rua")
+            suporte.setPos(Vec3(*a) + delta * ((i + .5) / partes))
+            suporte.setHpr(-degrees(atan2(delta.x, delta.y)),
+                           degrees(atan2(delta.z, hypot(delta.x, delta.y))), 0)
             malha = modelo.copyTo(suporte)
             malha.setH(90)
-            malha.setScale(escala, escala, .55)
-            malha.setZ(-hi.z * .55 + .004)
+            malha.setScale(sx, sy, ESCALA_VERTICAL_RUA)
+            malha.setPos((lo.y + hi.y) * sy / 2, -(lo.x + hi.x) * sx / 2,
+                         -cota * ESCALA_VERTICAL_RUA)
+        self.trechos_rua += partes
 
-    def _cruzamentos(self):
-        modelo = self._modelo("rua", "road-crossroad")
+    def _piso_juncao(self, ponto, bracos, caixa, textura):
+        x, y, z = ponto
+        metade = LARGURA_RUA / 2
+        x0, y0, x1, y1 = caixa
+        if len(bracos) == 4 and caixa == (x - metade, y - metade, x + metade, y + metade):
+            cruzamento = self._modelo("rua", "road-crossroad").copyTo(self.raiz)
+            cruzamento.setScale(LARGURA_RUA, LARGURA_RUA, ESCALA_VERTICAL_RUA)
+            cruzamento.setPos(x, y, z - .01 * ESCALA_VERTICAL_RUA)
+            return
+        secoes = (-metade, -.8 * metade, .8 * metade, metade)
+        for i, (a, b) in enumerate(zip(secoes, secoes[1:]), -1):
+            esquerda, direita = max(x0, x + a), min(x1, x + b)
+            for j, (c, d) in enumerate(zip(secoes, secoes[1:]), -1):
+                baixo, cima = max(y0, y + c), min(y1, y + d)
+                if direita <= esquerda or cima <= baixo:
+                    continue
+                asfalto = (i, j) == (0, 0) or (i, j) in bracos
+                altura = z if asfalto else z + .01 * ESCALA_VERTICAL_RUA
+                uv = (.03125, .125) if asfalto else (.46875, .475)
+                superficie(self.raiz, "piso-juncao",
+                           [(esquerda, baixo, altura), (direita, baixo, altura),
+                            (direita, cima, altura), (esquerda, cima, altura)],
+                           (1., 1., 1., 1.), material=(textura, uv))
+
+    def _construir_apoios(self):
+        modelo = self._modelo("rua", "bridge-pillar-wide")
         lo, hi = modelo.getTightBounds()
-        escala = 1.18 / max(hi.x - lo.x, hi.y - lo.y)
-        for no, (x, y, z) in self.posicoes.items():
-            _disco(self.raiz, f"base-cruzamento-{no}", x, y, z - .018, .78,
-                   (.70, .74, .69, 1), lados=16)
-            malha = modelo.copyTo(self.raiz)
-            malha.setScale(escala, escala, .5)
-            malha.setPos(x, y, z - hi.z * .5)
-            # Um ponto azul identifica o único local em que ruas se conectam.
-            _disco(self.raiz, f"ponto-{no}", x, y, z + .017, .33, (.13, .50, .78, 1))
-            _disco(self.raiz, f"miolo-{no}", x, y, z + .019, .20, (.36, .73, .93, 1))
+        largura = .65 * LARGURA_RUA
+        escala = largura / max(hi.x - lo.x, hi.y - lo.y)
+        raio = hypot(hi.x - lo.x, hi.y - lo.y) * escala / 2
+        base = NIVEL_GRAMA + .02
+        apoios = []
+        for ponte in self.mapa_visual.pontes:
+            caminho = self.ruas[ponte.aresta]
+            trechos = tuple(zip(caminho, caminho[1:]))
+            obstaculos = [t for t in self._segmentos if t not in trechos]
+            x0, y0, _ = ponte.centro
+            dx, dy = (ponte.fim[i] - ponte.inicio[i] for i in (0, 1))
+            comprimento = hypot(dx, dy)
+            for lado in (-1, 1):
+                for recuo in (1.55, 2.25):
+                    x = x0 + lado * recuo * dx / comprimento
+                    y = y0 + lado * recuo * dy / comprimento
+                    if any(_distancia_segmento(x, y, a, b) < LARGURA_RUA / 2 + raio
+                           for a, b in obstaculos):
+                        continue
+                    if any(hypot(x - px, y - py) < 2 * raio for _, px, py, _ in apoios):
+                        break
+                    for a, b in trechos:
+                        px, py, z = _projetar_no_segmento(x, y, a, b)
+                        if hypot(x - px, y - py) > 1e-8:
+                            continue
+                        declive = abs(b[2] - a[2]) / hypot(b[0] - a[0], b[1] - a[1])
+                        espessura = (.06 if declive == 0 else .01) * ESCALA_VERTICAL_RUA
+                        topo = z - espessura - declive * largura / 2
+                        altura = (topo - base) / (hi.z - lo.z)
+                        apoio = modelo.copyTo(self.raiz)
+                        apoio.setScale(escala, escala, altura)
+                        apoio.setPos(x, y, base - lo.z * altura)
+                        apoios.append((ponte.aresta, x, y, raio))
+                        break
+                    else:
+                        continue
+                    break
+        self._apoios_pontes = tuple(apoios)
 
     def distancia_rua(self, x, y):
         """Distância XY à rua mais próxima, útil para verificar lotes."""

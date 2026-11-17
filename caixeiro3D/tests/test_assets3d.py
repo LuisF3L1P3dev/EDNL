@@ -41,6 +41,15 @@ class AssetsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             instancia_normalizada(modelo, 0)
 
+    def test_tabuleiro_da_ponte_preserva_textura_e_exclui_a_pista_inferior(self):
+        ponte = self.biblioteca.modelo('rua', 'road-bridge')
+        tabuleiro = self.biblioteca.modelo('rua', 'road-bridge', cota_minima=.45)
+        self.assertIs(tabuleiro, self.biblioteca.modelo('rua', 'road-bridge', cota_minima=.45))
+        self.assertAlmostEqual(tabuleiro.getTightBounds()[0].z, .45)
+        self.assertAlmostEqual(tabuleiro.getTightBounds()[1].z, ponte.getTightBounds()[1].z)
+        self.assertAlmostEqual(ponte.getTightBounds()[0].z, 0.)
+        self.assertEqual(tabuleiro.findAllTextures()[0], ponte.findAllTextures()[0])
+
     def test_erros_claros(self):
         with self.assertRaisesRegex(ValueError, 'Kit desconhecido'):
             self.biblioteca.modelo('inexistente', 'x')

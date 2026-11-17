@@ -11,8 +11,9 @@ from panda3d.core import Camera, NodePath, Vec3
 
 from assets3d import Biblioteca
 from camera3d import CameraIsometrica
-from geometria3d import posicoes_mundo, ruas_mundo
-from render3d import Cena3D, LARGURA_RUA, _faixa
+from geometria3d import criar_mapa_visual, posicoes_mundo, ruas_mundo
+from render3d import (Cena3D, LARGURA_RUA, _distancia_segmento, _faixa,
+                      _pavimento, _projetar_no_segmento)
 from solvers import executar
 from tsp_core import carregar_mapa
 
@@ -93,7 +94,7 @@ class TestRender3D(unittest.TestCase):
                     self.assertGreater(textura.getXSize(), 0)
                     self.assertGreater(textura.getYSize(), 0)
                 self.assertIn(("rua", "road-straight"), cena.modelos_usados)
-                self.assertIn(("rua", "road-bend"), cena.modelos_usados)
+                self.assertIn(("rua", "road-crossroad"), cena.modelos_usados)
                 self.assertTrue(any(kit == "cidade" for kit, _ in cena.modelos_usados))
                 self.assertTrue(any(kit == "suburbio" for kit, _ in cena.modelos_usados))
                 if len(grafo.ids) == 5:
@@ -102,6 +103,44 @@ class TestRender3D(unittest.TestCase):
                     self.assertGreater(cena.pontes, 0)
                     self.assertIn(("rua", "road-bridge"), cena.modelos_usados)
                     self.assertIn(("rua", "bridge-pillar-wide"), cena.modelos_usados)
+
+    def test_pavimento_cobre_as_polilinhas_sem_pisos_coplanares_sobrepostos(self):
+        meia = LARGURA_RUA / 2
+        for grafo in self.grafos:
+            with self.subTest(grafo=grafo.id):
+                mapa = criar_mapa_visual(grafo)
+                segmentos = tuple((a, b) for e in mapa.arestas for a, b in zip(e.caminho, e.caminho[1:]))
+                trechos, juncoes = _pavimento(segmentos, mapa.posicoes.values())
+                self.assertTrue(set(mapa.posicoes.values()) <= {p for p, _, _ in juncoes})
+                pisos = [(p[2], caixa) for p, _, caixa in juncoes]
+                for a, b in trechos:
+                    if a[2] != b[2]:
+                        continue
+                    x, y = meia if a[0] == b[0] else 0., meia if a[1] == b[1] else 0.
+                    pisos.append((a[2], (min(a[0], b[0]) - x, min(a[1], b[1]) - y,
+                                         max(a[0], b[0]) + x, max(a[1], b[1]) + y)))
+                for (z1, (a, b, c, d)), (z2, (e, f, g, h)) in combinations(pisos, 2):
+                    if z1 == z2:
+                        self.assertFalse(min(c, g) - max(a, e) > 1e-7 and min(d, h) - max(b, f) > 1e-7)
+                for a, b in segmentos:
+                    for t in (0., .025, .5, .975, 1.):
+                        p = tuple(x + t * (y - x) for x, y in zip(a, b))
+                        coberto = any(dist(p, _projetar_no_segmento(*p[:2], *trecho)) < 1e-7
+                                      for trecho in trechos)
+                        coberto |= any(abs(p[2] - z) < 1e-7 and
+                                       x0 - 1e-7 <= p[0] <= x1 + 1e-7 and y0 - 1e-7 <= p[1] <= y1 + 1e-7
+                                       for z, (x0, y0, x1, y1) in pisos)
+                        self.assertTrue(coberto, p)
+
+    def test_apoios_ficam_fora_das_faixas_das_outras_ruas(self):
+        _, cena = self.construir(self.grafos[1])
+        self.assertEqual(cena.pontes, len(cena.mapa_visual.pontes))
+        self.assertTrue(cena._apoios_pontes)
+        for aresta, x, y, raio in cena._apoios_pontes:
+            for outra in cena.mapa_visual.arestas:
+                if (outra.origem, outra.destino) != aresta:
+                    for a, b in zip(outra.caminho, outra.caminho[1:]):
+                        self.assertGreaterEqual(_distancia_segmento(x, y, a, b) + 1e-7, LARGURA_RUA / 2 + raio)
 
     def test_decoracoes_nao_invadem_ruas_nem_nos(self):
         for grafo in self.grafos:
