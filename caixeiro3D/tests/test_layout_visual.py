@@ -1,5 +1,6 @@
 """O layout pode mudar; o cadastro matemático e seus resultados permanecem."""
 from dataclasses import FrozenInstanceError, replace
+from math import dist
 from pathlib import Path
 import unittest
 
@@ -30,6 +31,11 @@ class LayoutVisualTest(unittest.TestCase):
                     self.assertEqual(nv.id, original.id)
                     self.assertEqual(nv.posicao_logica, (original.x, original.y))
                     self.assertEqual(set(nv.conexoes), set(g.adjacencia()[nv.id]))
+                    self.assertEqual(nv.posicao_3d, nv.ancora_rua)
+                    self.assertEqual(nv.posicao_marcador, nv.ancora_rua)
+                    self.assertEqual(nv.acesso, (nv.ancora_rua, nv.entrada))
+                    self.assertAlmostEqual(dist(nv.entrada[:2], nv.construcao.posicao[:2]),
+                                           nv.construcao.metade_lote)
                     self.assertTrue(nv.construcao.kit)
                     self.assertTrue(nv.construcao.nome)
                 for av, original in zip(visual.arestas, g.arestas):
@@ -56,6 +62,25 @@ class LayoutVisualTest(unittest.TestCase):
             self.assertEqual(executar('dijkstra', g, 1, g.ids[-1]).custo,
                              executar('dijkstra', outro.grafo, 1, g.ids[-1]).custo)
             self.assertIs(outro.grafo, g)
+
+    def test_mover_no_atualiza_acesso_marcador_e_extremos_das_ruas(self):
+        for g in self.grafos:
+            with self.subTest(mapa=g.id):
+                original = criar_mapa_visual(g)
+                antes = original.nos[0]
+                posicoes = dict(original.posicoes)
+                x, y, z = posicoes[antes.id]
+                posicoes[antes.id] = (x - 2., y, z + 1.)
+                outro = criar_mapa_visual(g, posicoes=posicoes)
+                no = outro.nos[0]
+                self.assertEqual(no.posicao_marcador, posicoes[no.id])
+                self.assertEqual(no.acesso, (no.posicao_marcador, no.entrada))
+                for atual, anterior in ((no.entrada, antes.entrada),
+                                        (no.construcao.posicao, antes.construcao.posicao)):
+                    self.assertAlmostEqual(dist(atual, (anterior[0] - 2., anterior[1], anterior[2] + 1.)), 0.)
+                for vizinho in no.conexoes:
+                    self.assertEqual(outro.ruas[no.id, vizinho][0], no.ancora_rua)
+                    self.assertEqual(outro.ruas[vizinho, no.id][-1], no.ancora_rua)
 
     def test_cache_e_totalmente_imutavel_e_helpers_sao_copias(self):
         for g in self.grafos:

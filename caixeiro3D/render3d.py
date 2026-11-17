@@ -13,11 +13,11 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
                          GeomVertexFormat, GeomVertexWriter,
                          TransparencyAttrib, Vec3)
 
-from geometria3d import criar_mapa_visual
+from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual
 
 
 LARGURA_RUA = .95
-NIVEL_GRAMA = -.35
+LARGURA_ACESSO = .52
 AMARELO = (1., .76, .13, 1.)
 
 
@@ -99,10 +99,8 @@ class Cena3D:
         self.rota = base.render.attachNewNode("rota-calculada")
         self.rota.setLightOff()
         self.decoracoes = []
-        # Endereços persistentes, um para cada nó matemático. As chaves são
-        # ids do grafo; as âncoras só servem para projetar o marcador no HUD.
         self.construcoes_no = {}
-        self.marcadores_no = {}
+        self._acessos = tuple(no.acesso for no in self.mapa_visual.nos)
         self.modelos_usados = set()
         self.trechos_rua = 0
         self.pontes = 0
@@ -135,12 +133,16 @@ class Cena3D:
             self.destruir()
             raise
 
+    @property
+    def marcadores_no(self):
+        return self.mapa_visual.posicoes
+
     def pontos_enquadramento(self):
         """Envelope completo que a câmera ortográfica precisa preservar.
 
         Os nós matemáticos sozinhos não representam o tamanho da maquete: as
-        ruas podem desviar, os lotes e a decoração ocupam área adicional, e os
-        pins vivem acima dos telhados.  Os cantos da ilha ainda mantêm a borda
+        ruas podem desviar e os lotes e a decoração ocupam área adicional.
+        Os cantos da ilha ainda mantêm a borda
         visível, sem depender da ordem em que os modelos foram instanciados.
         """
         w, h = self.meia_largura, self.meia_altura
@@ -156,7 +158,8 @@ class Cena3D:
                 for y in (decoracao.y - raio, decoracao.y + raio):
                     pontos.append((x, y, NIVEL_GRAMA))
                     pontos.append((x, y, NIVEL_GRAMA + decoracao.altura))
-        pontos.extend(self.marcadores_no.values())
+        for no in self.mapa_visual.nos:
+            pontos.extend((no.posicao_marcador, no.entrada))
         return tuple(pontos)
 
     def _modelo(self, kit, nome):
@@ -270,6 +273,9 @@ class Cena3D:
             return False
         if any(hypot(x - p[0], y - p[1]) < raio + afastamento_no for p in self.posicoes.values()):
             return False
+        if any(_distancia_segmento(x, y, a, b) < raio + LARGURA_ACESSO / 2
+               for a, b in self._acessos):
+            return False
         return not any(hypot(x - d.x, y - d.y) < raio + d.raio + .3 for d in self.decoracoes)
 
     def _sombra(self, x, y, raio):
@@ -308,7 +314,7 @@ class Cena3D:
         self.decoracoes.append(Decoracao(tipo, kit, nome, x, y, raio, (hi.z - lo.z) * escala))
         return True
 
-    def _adicionar_construcao_no(self, no_visual, indice):
+    def _adicionar_construcao_no(self, no_visual):
         """Instancia o endereço imutável associado a um nó do grafo."""
         endereco = no_visual.construcao
         modelo, lo, hi, escala, _ = self._dimensoes(endereco.kit, endereco.nome,
@@ -317,32 +323,31 @@ class Cena3D:
         altura = (hi.z - lo.z) * escala
         # O raio circunscreve o lote quadrado, impedindo decoração aleatória
         # de encostar em qualquer canto da construção persistente.
-        metade_lote = endereco.tamanho / 2 + endereco.margem_lote
-        raio = hypot(metade_lote, metade_lote)
+        metade = endereco.metade_lote
+        raio = hypot(metade, metade)
         suporte = self.raiz.attachNewNode(f"construcao-no-{no_visual.id}")
-        suporte.setPos(x, y, NIVEL_GRAMA + .055)
-        suporte.setH(90 * (indice % 4))
+        suporte.setPos(*endereco.posicao)
+        suporte.setH(endereco.rotacao)
         malha = modelo.copyTo(suporte)
         malha.setScale(escala)
         malha.setPos(-(lo.x + hi.x) * escala / 2,
                      -(lo.y + hi.y) * escala / 2, -lo.z * escala)
-        metade = metade_lote
-        superficie(suporte, "lote-do-no", [(-metade, -metade, -.025),
-                   (metade, -metade, -.025), (metade, metade, -.025),
-                   (-metade, metade, -.025)], (.79, .81, .71, 1))
+        superficie(suporte, "lote-do-no", [(-metade, -metade, COTA_LOTE),
+                   (metade, -metade, COTA_LOTE), (metade, metade, COTA_LOTE),
+                   (-metade, metade, COTA_LOTE)], (.79, .81, .71, 1))
+        ancora, entrada = no_visual.acesso
+        _faixa(self.raiz, f"acesso-no-{no_visual.id}", ancora, entrada,
+               LARGURA_ACESSO, (.79, .81, .71, 1))
         self._sombra(x, y, raio)
         construcao = Decoracao("edificio", endereco.kit, endereco.nome, x, y,
                                raio, altura, no_visual.id)
         self.decoracoes.append(construcao)
         self.construcoes_no[no_visual.id] = construcao
-        # A âncora está acima do telhado e evita que o marcador numérico cubra
-        # o prédio ou a rua de chegada.
-        self.marcadores_no[no_visual.id] = (x, y, NIVEL_GRAMA + .055 + altura + .65)
 
     def _decorar(self):
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
-        for indice, no_visual in enumerate(self.mapa_visual.nos):
-            self._adicionar_construcao_no(no_visual, indice)
+        for no_visual in self.mapa_visual.nos:
+            self._adicionar_construcao_no(no_visual)
         alvo_edificios = 28 + len(self.posicoes)
         for tentativa in range(1600):
             if sum(d.tipo == "edificio" for d in self.decoracoes) >= alvo_edificios:

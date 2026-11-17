@@ -1,5 +1,6 @@
 """Layout e captura de cliques do HUD com superfícies reais, sem janela."""
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -7,7 +8,7 @@ import unittest
 import pygame
 from panda3d.core import NodePath
 
-from geometria3d import posicoes_mundo, ruas_mundo
+from geometria3d import criar_mapa_visual
 from hud import HUD, RED
 from mundo3d import Viagem
 from solvers import executar
@@ -47,7 +48,8 @@ class _App:
         self.distancia_percorrida = 0
         self.pixel2d, self.render = NodePath('pixel2d'), NodePath('render')
         self.carro = self.render.attachNewNode('veiculo')
-        self.cena = SimpleNamespace(posicoes=posicoes_mundo(self.mapa), ruas=ruas_mundo(self.mapa))
+        visual = criar_mapa_visual(self.mapa)
+        self.cena = SimpleNamespace(mapa_visual=visual, posicoes=visual.posicoes, ruas=visual.ruas)
         self.camera_iso = _Camera(tamanho)
         self.mouse = None
         self.acoes = []
@@ -134,19 +136,19 @@ class TestHUD(unittest.TestCase):
         self.assertEqual(app.origem, 3)
         self.assertEqual(app.limpezas, 1)
 
-    def test_marcadores_usam_ancoras_das_construcoes_e_identificam_origem(self):
+    def test_marcadores_usam_ancoras_da_rua_e_identificam_origem(self):
         app = self.construir(numero_mapa=5)
-        app.cena.marcadores_no = {
-            no: (ponto[0] - 4.5, ponto[1] - 4.5, ponto[2] + 3.)
-            for no, ponto in app.cena.posicoes.items()
-        }
+        visual = app.cena.mapa_visual
+        primeiro = replace(visual.nos[0], deslocamento_etiqueta=(16., -58.))
+        app.cena.mapa_visual = replace(visual, nos=(primeiro,) + visual.nos[1:])
         app.ui.textos.clear()
         app.ui.desenhar()
-        for no, ancora in app.cena.marcadores_no.items():
+        for no, ancora in visual.posicoes.items():
             esperado = app.camera_iso.projetar(ancora)
-            self.assertAlmostEqual(app.ui.ancoras_tela[no][0], esperado[0])
-            self.assertAlmostEqual(app.ui.ancoras_tela[no][1], esperado[1])
+            self.assertEqual(app.ui.ancoras_tela[no], esperado)
             self.assertTrue(app.camera_iso.viewport.contains(app.ui.etiquetas_tela[no]))
+        x, y = app.ui.ancoras_tela[primeiro.id]
+        self.assertEqual(app.ui.posicoes_tela[primeiro.id], (round(x + 16), round(y - 58)))
         self.assertTrue(any(texto == 'ORIGEM' for texto, _, _ in app.ui.textos))
 
     def test_pesos_das_ruas_nao_colidem_com_pins_ou_entre_si(self):

@@ -5,7 +5,7 @@ endereços e polilinhas aos mesmos objetos No/Aresta, sem copiar seus pesos.
 """
 from dataclasses import dataclass, field
 from functools import lru_cache
-from math import dist, isfinite
+from math import cos, dist, isfinite, radians, sin
 from types import MappingProxyType
 from typing import Mapping
 
@@ -14,6 +14,8 @@ from roteamento3d import ALTURA_RUA, posicoes_planejadas, rotear
 
 
 XYZ = tuple[float, float, float]
+NIVEL_GRAMA = -.35
+COTA_LOTE = -.025
 
 
 def _xyz(valor):
@@ -31,6 +33,7 @@ class ConstrucaoVisual:
     nome: str
     tamanho: float = 2.3
     margem_lote: float = .3
+    rotacao: float = 0.
 
     def __post_init__(self):
         object.__setattr__(self, 'posicao', _xyz(self.posicao))
@@ -40,24 +43,38 @@ class ConstrucaoVisual:
             raise ValueError("O tamanho da construção deve ser positivo e finito.")
         if not isfinite(self.margem_lote) or self.margem_lote < 0:
             raise ValueError("A margem do lote deve ser finita e não negativa.")
+        if not isfinite(self.rotacao):
+            raise ValueError("A rotação da construção deve ser finita.")
+
+    @property
+    def metade_lote(self):
+        return self.tamanho / 2 + self.margem_lote
 
     @property
     def limites_xy(self):
         x, y, _ = self.posicao
-        metade = self.tamanho / 2 + self.margem_lote
+        angulo = radians(self.rotacao)
+        metade = self.metade_lote * (abs(cos(angulo)) + abs(sin(angulo)))
         return x - metade, y - metade, x + metade, y + metade
 
 
 @dataclass(frozen=True)
 class NoVisual:
+    """Endereço e ponto de chegada de um nó no mundo 3D."""
+
     no: No
     posicao_3d: XYZ
     construcao: ConstrucaoVisual
     conexoes: tuple[int, ...]
+    deslocamento_etiqueta: tuple[float, float] = (0., -46.)
 
     def __post_init__(self):
         object.__setattr__(self, 'posicao_3d', _xyz(self.posicao_3d))
         object.__setattr__(self, 'conexoes', tuple(self.conexoes))
+        offset = tuple(float(v) for v in self.deslocamento_etiqueta)
+        if len(offset) != 2 or not all(isfinite(v) for v in offset):
+            raise ValueError("O deslocamento da etiqueta deve ter duas coordenadas finitas.")
+        object.__setattr__(self, 'deslocamento_etiqueta', offset)
         if not isinstance(self.construcao, ConstrucaoVisual):
             raise ValueError("O endereço deve ser uma ConstrucaoVisual imutável.")
 
@@ -68,6 +85,34 @@ class NoVisual:
     @property
     def posicao_logica(self):
         return self.no.x, self.no.y
+
+    @property
+    def ancora_rua(self):
+        return self.posicao_3d
+
+    @property
+    def posicao_marcador(self):
+        return self.ancora_rua
+
+    @property
+    def entrada(self):
+        """Meio da borda do lote que dá acesso à rua."""
+        lote = self.construcao
+        x, y, z = lote.posicao
+        angulo = radians(lote.rotacao)
+        c, s = cos(angulo), sin(angulo)
+        dx, dy = self.ancora_rua[0] - x, self.ancora_rua[1] - y
+        local_x, local_y = dx * c + dy * s, -dx * s + dy * c
+        metade = lote.metade_lote
+        if abs(local_x) >= abs(local_y):
+            ex, ey = (metade if local_x >= 0 else -metade), 0.
+        else:
+            ex, ey = 0., (metade if local_y >= 0 else -metade)
+        return x + ex * c - ey * s, y + ex * s + ey * c, z + COTA_LOTE
+
+    @property
+    def acesso(self):
+        return self.ancora_rua, self.entrada
 
 
 @dataclass(frozen=True)
@@ -115,7 +160,7 @@ class MapaVisual:
                 raise ValueError("O nó visual deve referenciar o nó original do grafo.")
             if len(n.conexoes) != len(adj[n.id]) or set(n.conexoes) != set(adj[n.id]):
                 raise ValueError("As conexões visuais devem corresponder à adjacência original.")
-        posicoes = {n.id: n.posicao_3d for n in self.nos}
+        posicoes = {n.id: n.ancora_rua for n in self.nos}
         esperadas = {id(e) for e in self.grafo.arestas}
         if len(self.arestas) != len(esperadas) or {id(e.aresta) for e in self.arestas} != esperadas:
             raise ValueError("As ruas devem referenciar exatamente as arestas originais.")
@@ -172,19 +217,20 @@ def _criar_em_cache(identidade, posicoes, construcoes):
     adj = grafo.adjacencia()
     nos = tuple(NoVisual(n, posicoes[n.id], construcoes[n.id], tuple(sorted(adj[n.id])))
                 for n in grafo.nos)
+    ancoras = {n.id: n.ancora_rua for n in nos}
     # A malha urbana canônica é exclusivamente visual. Cada caminho continua
     # referenciando a mesma Aresta imutável fornecida pelo grafo. Um layout
     # explicitamente fornecido permanece livre para ferramentas e testes da
     # task anterior; ele recebe uma polilinha ortogonal simples, sem mudar
     # topologia nem exigir que seus pontos caibam na grade planejada.
-    if posicoes == posicoes_planejadas(grafo):
-        rotas = rotear(grafo, posicoes, construcoes, w5=len(grafo.ids) == 5)
+    if ancoras == posicoes_planejadas(grafo):
+        rotas = rotear(grafo, ancoras, construcoes, w5=len(grafo.ids) == 5)
         por_aresta = dict(rotas.caminhos)
         pontes = rotas.pontes
     else:
         por_aresta = {}
         for aresta in grafo.arestas:
-            a, b = posicoes[aresta.origem], posicoes[aresta.destino]
+            a, b = ancoras[aresta.origem], ancoras[aresta.destino]
             curva = (b[0], a[1], ALTURA_RUA)
             por_aresta[aresta.origem, aresta.destino] = (a, curva, b) if curva not in (a, b) else (a, b)
         pontes = ()
@@ -210,15 +256,16 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
     centro_x = sum(p[0] for p in posicoes.values()) / len(posicoes)
     centro_y = sum(p[1] for p in posicoes.values()) / len(posicoes)
     for i, no in enumerate(grafo.ids):
-        x, y, _ = posicoes[no]
+        x, y, z = posicoes[no]
         kit = 'cidade' if i % 3 == 1 else 'suburbio'
         nome = f'building-{chr(97 + i % 8)}' if kit == 'cidade' else f'building-type-{chr(97 + i % 12)}'
         # Lote persistente no lado voltado ao centro da cidade, fora da praça
-        # e das oito portas do nó. Assim os telhados e seus pins se distribuem
-        # pelo mapa em vez de acumular todos no mesmo canto da câmera.
+        # e das oito portas do nó.
         dx = 4.5 if x < centro_x else -4.5
         dy = 4.5 if y < centro_y else -4.5
-        enderecos[no] = ConstrucaoVisual((x + dx, y + dy, -.295), kit, nome)
+        base = NIVEL_GRAMA + .055 + (z - ALTURA_RUA)
+        enderecos[no] = ConstrucaoVisual(
+            (x + dx, y + dy, base), kit, nome, rotacao=90. * (i % 4))
     if construcoes is not None:
         if not set(construcoes) <= set(grafo.ids):
             raise ValueError("Endereço associado a um nó inexistente.")

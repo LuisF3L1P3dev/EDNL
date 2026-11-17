@@ -140,9 +140,9 @@ class HUD:
         self.pesos_tela = {}
         self.pesos_ativos = set()
         explorados = set(a.etapa.explorados if a.etapa else ())
-        marcadores = getattr(a.cena, 'marcadores_no', a.cena.posicoes)
-        for no, ponto in marcadores.items():
-            p = a.camera_iso.projetar(ponto)
+        for no_visual in a.cena.mapa_visual.nos:
+            no = no_visual.id
+            p = a.camera_iso.projetar(no_visual.posicao_marcador)
             if not p or not viewport.collidepoint(p):
                 continue
             label = ''
@@ -153,20 +153,27 @@ class HUD:
                     label = 'DESTINO'
             largura_label = self.fonte(10, True).size(label)[0] + 12 if label else 0
             margem_x = max(23, largura_label // 2 + 1)
-            abaixo = p[1] - 46 - (44 if label else 23) < viewport.top + 2
+            dx, dy = no_visual.deslocamento_etiqueta
+            centro_x = round(max(viewport.left + margem_x + 2,
+                                 min(viewport.right - margem_x - 2, p[0] + dx)))
+            deslocamento_y = abs(dy)
+            margem_y = 44 if label else 23
+            abaixo = dy > 0 or p[1] - deslocamento_y - margem_y < viewport.top + 2
+            if abaixo and p[1] + deslocamento_y + margem_y > viewport.bottom - 2:
+                abaixo = False
             # O título da cena também fica dentro do viewport. Quando a
             # origem está no canto superior esquerdo, a etiqueta acima do pin
             # invadiria “Cidade das rotas”; neste caso a haste a leva abaixo.
             titulo_cena = pygame.Rect(258, 100, 230, 50)
-            etiqueta_acima = pygame.Rect(round(p[0] - largura_label / 2),
-                                         round(p[1] - 89), largura_label, 18)
+            etiqueta_acima = pygame.Rect(round(centro_x - largura_label / 2),
+                                         round(p[1] - deslocamento_y - 43), largura_label, 18)
             if label and etiqueta_acima.colliderect(titulo_cena):
                 abaixo = True
             cima, baixo = (23, 44) if abaixo and label else (44, 23) if label else (23, 23)
             centro = (
-                round(max(viewport.left + margem_x + 2, min(viewport.right - margem_x - 2, p[0]))),
+                centro_x,
                 round(max(viewport.top + cima + 2, min(viewport.bottom - baixo - 2,
-                      p[1] + 46 if abaixo else p[1] - 46))),
+                      p[1] + deslocamento_y if abaixo else p[1] - deslocamento_y))),
             )
             self.posicoes_tela[no] = centro
             self.ancoras_tela[no] = p

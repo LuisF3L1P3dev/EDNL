@@ -3,13 +3,14 @@
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from panda3d.core import Camera, NodePath, Vec3
 
 from assets3d import Biblioteca
 from camera3d import CameraIsometrica
 from geometria3d import posicoes_mundo, ruas_mundo
-from render3d import Cena3D, LARGURA_RUA, NIVEL_GRAMA
+from render3d import Cena3D, LARGURA_RUA, _faixa
 from solvers import executar
 from tsp_core import carregar_mapa
 
@@ -114,10 +115,20 @@ class TestRender3D(unittest.TestCase):
                     for x, y, _ in cena.posicoes.values():
                         self.assertGreater((d.x - x) ** 2 + (d.y - y) ** 2, (d.raio + 1.2) ** 2)
 
-    def test_cada_no_tem_construcao_fixa_e_ancora_no_telhado(self):
+    def test_cada_no_tem_construcao_fixa_e_acesso_da_ancora_da_rua(self):
         for grafo in self.grafos:
             with self.subTest(grafo=grafo.id):
-                _, cena = self.construir(grafo)
+                acessos = {}
+
+                def desenhar_faixa(parent, nome, a, b, *args, **kwargs):
+                    malha = _faixa(parent, nome, a, b, *args, **kwargs)
+                    if nome.startswith("acesso-no-"):
+                        self.assertFalse(malha.isEmpty())
+                        acessos[nome] = (a, b)
+                    return malha
+
+                with patch("render3d._faixa", side_effect=desenhar_faixa):
+                    _, cena = self.construir(grafo)
                 self.assertEqual(set(cena.construcoes_no), set(grafo.ids))
                 self.assertEqual(set(cena.marcadores_no), set(grafo.ids))
                 for no_visual in cena.mapa_visual.nos:
@@ -127,8 +138,8 @@ class TestRender3D(unittest.TestCase):
                     self.assertEqual((edificio.kit, edificio.modelo),
                                      (endereco.kit, endereco.nome))
                     self.assertEqual((edificio.x, edificio.y), endereco.posicao[:2])
-                    self.assertGreater(cena.marcadores_no[no_visual.id][2],
-                                       NIVEL_GRAMA + edificio.altura)
+                    self.assertEqual(cena.marcadores_no[no_visual.id], no_visual.ancora_rua)
+                    self.assertEqual(acessos[f"acesso-no-{no_visual.id}"], no_visual.acesso)
                     metade = endereco.tamanho / 2 + endereco.margem_lote
                     # O círculo que contém o lote não alcança o eixo de uma via.
                     self.assertGreaterEqual(cena.distancia_rua(edificio.x, edificio.y),
