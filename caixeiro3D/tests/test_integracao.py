@@ -137,6 +137,22 @@ class IntegracaoTest(unittest.TestCase):
         app.acao('velocidade')
         self.assertEqual(app.viagem.velocidade, 2)
 
+    def test_disponibilidade_de_algoritmos_respeita_tamanho_do_mapa(self):
+        app = self.app
+        self.assertEqual(app.metodo, 'forca')
+        app.acao('selecionar_heuristica')
+        self.assertEqual(app.metodo, 'forca')
+        self.assertIn('indisponivel', app.status.casefold())
+        app.acao('selecionar_dijkstra')
+        self.assertEqual(app.metodo, 'dijkstra')
+        app.acao('mapa1')
+        self.assertEqual(app.metodo, 'heuristica')
+        app.acao('selecionar_forca')
+        self.assertEqual(app.metodo, 'heuristica')
+        self.assertIn('indisponivel', app.status.casefold())
+        app.acao('selecionar_dijkstra')
+        self.assertEqual(app.metodo, 'dijkstra')
+
     def test_modelo_da_van_tem_correcao_fixa_de_frente(self):
         self.assertEqual(self.app.modelo_carro.getH(), 180)
 
