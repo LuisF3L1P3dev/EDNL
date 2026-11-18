@@ -58,6 +58,8 @@ class Aplicacao3D(ShowBase):
         self._trecho_visual = None
         self._heading_carro = None
         self.arraste = None
+        self.acompanhando = False
+        self._acompanhar_reinicio = False
         self._luzes()
         from render3d import Cena3D
         self.cena = Cena3D(self, self.mapa, self.biblioteca)
@@ -220,6 +222,8 @@ class Aplicacao3D(ShowBase):
 
     def _trocar_mapa(self, indice):
         from render3d import Cena3D
+        self.acompanhando = False
+        self._acompanhar_reinicio = False
         self._invalidar()
         self.cena.destruir()
         self.indice_mapa = indice
@@ -291,6 +295,7 @@ class Aplicacao3D(ShowBase):
                 self._replay_pausado = not self._replay_pausado
             elif self.viagem.reproduzindo:
                 self.viagem.reproduzindo = False
+                self._acompanhar_reinicio = False
             else:
                 self.viagem.reproduzir()
         elif acao == 'reiniciar':
@@ -298,6 +303,7 @@ class Aplicacao3D(ShowBase):
                 self._limpar()
             else:
                 self.viagem.reiniciar()
+                self._acompanhar_reinicio = self.acompanhando
                 # Reiniciar e uma mudanca deliberada de posicao: alinha de
                 # imediato a van com o primeiro trecho, sem herdar um giro.
                 self._heading_carro = None
@@ -310,7 +316,12 @@ class Aplicacao3D(ShowBase):
             velocidades = (1, 2, 4)
             self.viagem.velocidade = velocidades[(velocidades.index(self.viagem.velocidade) + 1) % 3]
         elif acao == 'reset':
+            self.acompanhando = False
+            self._acompanhar_reinicio = False
             self.camera_iso.centralizar()
+        elif acao == 'acompanhar':
+            self.acompanhando = not self.acompanhando
+            self._acompanhar_reinicio = False
         elif acao in ('zoom+', 'zoom-'):
             self.camera_iso.mudar_zoom(1.12 if acao == 'zoom+' else 1 / 1.12)
 
@@ -433,8 +444,26 @@ class Aplicacao3D(ShowBase):
         if self.arraste and not self.ui.config_aberta:
             p = self.mouse_pixel()
             if p:
-                self.camera_iso.arrastar(p[0] - self.arraste[0], p[1] - self.arraste[1])
+                dx, dy = p[0] - self.arraste[0], p[1] - self.arraste[1]
+                if dx or dy:
+                    self.acompanhando = False
+                    self._acompanhar_reinicio = False
+                    self.camera_iso.arrastar(dx, dy)
                 self.arraste = p
+        if self.acompanhando and not self.arraste and (self.viagem.reproduzindo or self._acompanhar_reinicio):
+            posicao_carro = tuple(self.carro.getPos(self.render))
+            alvo = list(posicao_carro)
+            if self.viagem.reproduzindo and self.viagem.pesos and not self.viagem.em_chegada:
+                indice, fracao = self.viagem.trecho
+                rua = self.cena.ruas[self.viagem.caminho[indice:indice + 2]]
+                tangente = medir_rua(rua).amostrar(fracao).tangente
+                comprimento = sum(v * v for v in tangente) ** .5
+                if comprimento:
+                    for eixo in range(3):
+                        alvo[eixo] += tangente[eixo] * 1.5 / comprimento
+            visivel = posicao_carro if self.viagem.reproduzindo else None
+            if self.camera_iso.acompanhar(alvo, dt, veiculo=visivel):
+                self._acompanhar_reinicio = False
 
     def _frame(self, task):
         from direct.showbase.ShowBaseGlobal import globalClock

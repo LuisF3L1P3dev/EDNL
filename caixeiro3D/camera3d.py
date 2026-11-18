@@ -78,10 +78,39 @@ class CameraIsometrica:
         altura = max(ys) - min(ys) + 2 * self.MARGEM
         film_altura = max(altura, largura / aspecto) / self.zoom
         self.lente.setFilmSize(film_altura * aspecto, film_altura)
+        self._enquadramento = ((min(xs), max(xs)), (min(ys), max(ys)), cx, cy,
+                               direita, cima, direcao, centro)
+        self._aplicar_pan()
+
+    def _aplicar_pan(self):
+        xs, ys, cx, cy, direita, cima, direcao, centro = self._enquadramento
         self._limitar_pan(xs, ys, cx, cy, direita, cima)
         alvo = centro + self.pan
         self.base.camera.setPos(alvo + direcao * 500)
         self.base.camera.lookAt(alvo)
+
+    def acompanhar(self, ponto, dt, *, veiculo=None):
+        """Move apenas o pan para o ponto, sem recalcular o enquadramento."""
+        if not math.isfinite(dt) or dt < 0:
+            raise ValueError('Delta de tempo invalido')
+        _, _, _, _, direita, cima, _, centro = self._enquadramento
+        delta = Vec3(*ponto) - centro
+        a = math.radians(self.azimute)
+        norte = Vec3(-math.sin(a), math.cos(a), 0)
+        alvo = direita * delta.dot(direita) + norte * (delta.dot(cima) / math.sin(math.radians(self.elevacao)))
+        self.pan += (alvo - self.pan) * (1 - math.exp(-4. * dt))
+        if veiculo is not None and dt:
+            # Trechos de baixo peso podem mover a van muito rapidamente.
+            # Corrige apenas o excesso que sairia da area segura da lente.
+            deslocamento = Vec3(*veiculo) - centro - self.pan
+            film = self.lente.getFilmSize()
+            for eixo, limite, escala in ((direita, film.x * .35, 1.),
+                                         (cima, film.y * .35, math.sin(math.radians(self.elevacao)))):
+                erro = deslocamento.dot(eixo)
+                excesso = max(-limite, min(limite, erro))
+                self.pan += (direita if eixo == direita else norte) * ((erro - excesso) / escala)
+        self._aplicar_pan()
+        return (alvo - self.pan).length() < .05
 
     def _limitar_pan(self, xs, ys, cx, cy, direita, cima):
         """Mantenha intersecao do retangulo projetado do mapa com a lente."""
@@ -97,8 +126,8 @@ class CameraIsometrica:
             superior = maximo - centro + tamanho / 2 - visivel
             return max(inferior, min(superior, valor))
 
-        px = limitar(self.pan.dot(direita), min(xs), max(xs), cx, film.x)
-        py = limitar(self.pan.dot(cima), min(ys), max(ys), cy, film.y)
+        px = limitar(self.pan.dot(direita), xs[0], xs[1], cx, film.x)
+        py = limitar(self.pan.dot(cima), ys[0], ys[1], cy, film.y)
         a = math.radians(self.azimute)
         norte = Vec3(-math.sin(a), math.cos(a), 0)
         self.pan = direita * px + norte * (py / math.sin(math.radians(self.elevacao)))

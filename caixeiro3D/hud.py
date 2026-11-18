@@ -390,7 +390,7 @@ class HUD:
 
     def _area_controles(self):
         viewport = self.app.camera_iso.viewport
-        return pygame.Rect(viewport.right - 216, viewport.top + 10, 206, 44)
+        return pygame.Rect(viewport.right - 216, viewport.top + 10, 206, 84)
 
     def _controles_mapa(self):
         r = self._area_controles()
@@ -398,9 +398,11 @@ class HUD:
         self.card(r)
         self.botao('zoom-', '−', (r.x + 5, r.y + 5, 32, 34), ativo=camera.zoom > camera.ZOOM_MIN)
         percentual = self.fonte(12, True).render(f'{round(camera.zoom * 100)}%', True, INK)
-        self.canvas.blit(percentual, percentual.get_rect(center=(r.x + 64, r.centery)))
+        self.canvas.blit(percentual, percentual.get_rect(center=(r.x + 64, r.y + 22)))
         self.botao('zoom+', '+', (r.x + 91, r.y + 5, 32, 34), ativo=camera.zoom < camera.ZOOM_MAX)
         self.botao('reset', 'Centrar', (r.x + 128, r.y + 5, 73, 34))
+        self.botao('acompanhar', 'Acompanhar veículo', (r.x + 5, r.y + 44, 196, 34),
+                   selecionado=getattr(self.app, 'acompanhando', False))
 
     def _config(self, w, h):
         pygame.draw.rect(self.canvas, (22, 39, 46, 145), (0, 0, w, h))

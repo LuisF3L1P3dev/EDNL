@@ -70,6 +70,40 @@ class IntegracaoTest(unittest.TestCase):
         self.app.acao('mapa0')
         self.app.ui.animar_busca = True
 
+    def test_acompanhamento_pausa_reinicio_arrasto_e_reset(self):
+        from panda3d.core import Vec3
+        app = self.app
+        app.camera_iso.mudar_zoom(3)
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False)
+        app.acao('acompanhar')
+        app.atualizar(.1)
+        self.assertTrue(app.acompanhando)
+        app.acao('pausa')
+        pan = Vec3(app.camera_iso.pan)
+        app.atualizar(.5)
+        self.assertEqual(app.camera_iso.pan, pan)
+        app.acao('reiniciar')
+        app.atualizar(.1)
+        self.assertTrue(app.acompanhando)
+        self.assertEqual(app.camera_iso.zoom, 3.)
+        antigo = app.mouse_pixel
+        try:
+            ponto = app.camera_iso.viewport.center
+            app.mouse_pixel = lambda: ponto
+            app._iniciar_arraste()
+            app.atualizar(.01)
+            self.assertTrue(app.acompanhando)
+            app.mouse_pixel = lambda: (ponto[0] + 10, ponto[1])
+            app.atualizar(.01)
+            self.assertFalse(app.acompanhando)
+            app._terminar_arraste()
+        finally:
+            app.mouse_pixel = antigo
+        app.acao('acompanhar')
+        app.acao('reset')
+        self.assertFalse(app.acompanhando)
+        self.assertEqual(app.camera_iso.zoom, 1.)
+
     def aguardar_calculo(self):
         fim = time.monotonic() + 5
         while self.app.futuro and time.monotonic() < fim:

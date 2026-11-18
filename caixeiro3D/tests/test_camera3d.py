@@ -97,6 +97,19 @@ class CameraTest(unittest.TestCase):
         self.assertAlmostEqual(depois[0] - antes[0], 25, places=2)
         self.assertAlmostEqual(depois[1] - antes[1], 10, places=2)
 
+    def test_acompanhar_preserva_lente_e_mantem_veiculo_visivel(self):
+        self.camera.mudar_zoom(3)
+        filme = self.camera.lente.getFilmSize()
+        orientacao = (self.camera.azimute, self.camera.elevacao)
+        alvo = (25, 15, 0)
+        self.camera.acompanhar(alvo, 1 / 60, veiculo=alvo)
+        self.assertTrue(self.camera.viewport.collidepoint(self.camera.projetar(alvo)))
+        self.assertEqual(self.camera.lente.getFilmSize(), filme)
+        self.assertEqual((self.camera.azimute, self.camera.elevacao), orientacao)
+        anterior = Vec3(self.camera.pan)
+        self.camera.acompanhar(alvo, 0, veiculo=alvo)
+        self.assertEqual(self.camera.pan, anterior)
+
     def test_pontos_e_janela_invalidos(self):
         with self.assertRaises(ValueError):
             self.camera.centralizar([])
