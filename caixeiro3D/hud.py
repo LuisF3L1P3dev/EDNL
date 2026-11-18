@@ -3,6 +3,8 @@
 Painéis e eventos da interface não alteram o grafo nem o relógio da viagem.
 """
 from math import hypot, isfinite
+from functools import lru_cache
+from itertools import chain
 
 import pygame
 from panda3d.core import CardMaker, Texture, TransparencyAttrib
@@ -21,6 +23,19 @@ WHITE = (253, 254, 251)
 LINE = (224, 232, 229)
 METHODS = {'forca': 'Força bruta · TSP exato', 'dijkstra': 'Dijkstra · caminho mínimo',
            'heuristica': 'Dijkstra + heurística'}
+
+
+@lru_cache(maxsize=8)
+def _offsets_pins(largura, altura):
+    limite = ((max(largura, altura) + 31) // 32) * 32
+    offsets = [(x, y) for x in range(-limite, limite + 1, 32)
+               for y in range(-limite, limite + 1, 32)]
+    return tuple(sorted(offsets, key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
+
+
+_OFFSETS_PESOS = tuple(sorted(((x, y) for x in range(-144, 145, 16)
+                               for y in range(-144, 145, 16)),
+                              key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
 
 
 class HUD:
@@ -149,7 +164,12 @@ class HUD:
         else:
             indice_atual, fracao = a.viagem.trecho
             atual = a.viagem.caminho[indice_atual] if fracao <= 1e-9 else None
-        for no_visual in a.cena.mapa_visual.nos:
+        ocupadas_pins = [pygame.Rect(258, 100, 230, 50), controles]
+        self._edificios_tela = self._construcoes_tela(viewport)
+        nos = sorted(a.cena.mapa_visual.nos, key=lambda n: (n.id != a.origem, n.id))
+        offsets = _offsets_pins(viewport.w, viewport.h)
+        proximos = tuple(d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
+        for no_visual in nos:
             no = no_visual.id
             p = a.camera_iso.projetar(no_visual.posicao_marcador)
             if not p or not viewport.collidepoint(p):
@@ -184,11 +204,27 @@ class HUD:
                 round(max(viewport.top + cima + 2, min(viewport.bottom - baixo - 2,
                       p[1] + deslocamento_y if abaixo else p[1] - deslocamento_y))),
             )
-            # Preservar espaco para os controles quando o mapa for movido.
-            candidato = pygame.Rect(centro[0] - 23, centro[1] - cima, 46, cima + baixo)
-            if candidato.colliderect(controles):
-                centro = (centro[0], min(viewport.bottom - baixo - 2,
-                                         controles.bottom + cima + 2))
+            # Primeiro tenta a posicao preferida, depois aneis progressivos.
+            preferido = centro
+            escolhido = None
+            candidatos = chain(((x, y, True) for x, y in proximos),
+                               ((x, y, False) for x, y in offsets))
+            for ox, oy, evitar_edificios in candidatos:
+                cx = round(max(viewport.left + margem_x + 2,
+                               min(viewport.right - margem_x - 2, preferido[0] + ox)))
+                cy = round(max(viewport.top + cima + 2,
+                               min(viewport.bottom - baixo - 2, preferido[1] + oy)))
+                caixa = pygame.Rect(cx - 23, cy - 23, 46, 46)
+                if label:
+                    legenda = pygame.Rect(cx - largura_label // 2,
+                                          cy + 25 if abaixo else cy - 43, largura_label, 18)
+                    caixa.union_ip(legenda)
+                if (not caixa.collidepoint(p) and caixa.collidelist(ocupadas_pins) < 0
+                        and (not evitar_edificios or caixa.collidelist(self._edificios_tela) < 0)):
+                    escolhido = (cx, cy)
+                    break
+            if escolhido is not None:
+                centro = escolhido
             self.posicoes_tela[no] = centro
             self.ancoras_tela[no] = p
             box = pygame.Rect(centro[0] - 23, centro[1] - 23, 46, 46)
@@ -216,6 +252,7 @@ class HUD:
                 self.texto(label, r.x + 6, r.y + 1, 10, GREEN_TEXT if no == a.origem else BLUE, True)
                 box.union_ip(r)
             self.etiquetas_tela[no] = box
+            ocupadas_pins.append(box)
         if self.mostrar_pesos:
             self._desenhar_pesos(viewport, selecionadas)
         if a.viagem.em_chegada:
@@ -224,43 +261,77 @@ class HUD:
                 pygame.draw.circle(self.canvas, GREEN, tuple(map(int, p)), 27, 3)
         self.canvas.set_clip(None)
 
+    def _construcoes_tela(self, viewport):
+        """Retangulos conservadores das construcoes reais projetadas."""
+        caixas = []
+        for d in getattr(self.app.cena, 'decoracoes', ()):
+            if d.tipo != 'edificio':
+                continue
+            pontos = [self.app.camera_iso.projetar((d.x + x, d.y + y, z))
+                      for x in (-d.raio, d.raio) for y in (-d.raio, d.raio)
+                      for z in (-.35, -.35 + d.altura)]
+            pontos = [p for p in pontos if p is not None]
+            if pontos:
+                x0, x1 = min(p[0] for p in pontos), max(p[0] for p in pontos)
+                y0, y1 = min(p[1] for p in pontos), max(p[1] for p in pontos)
+                caixa = pygame.Rect(int(x0), int(y0), max(1, int(x1-x0)+2), max(1, int(y1-y0)+2))
+                if caixa.colliderect(viewport):
+                    caixas.append(caixa)
+        return caixas
+
     def _desenhar_pesos(self, viewport, selecionadas):
         """Posiciona pesos próximos à sua rua sem encobrir pins ou outros pesos."""
         a = self.app
         self.pesos_ativos = set(selecionadas)
         ocupadas = list(self.etiquetas_tela.values()) + [pygame.Rect(258, 100, 230, 50),
                                                         self._area_controles()]
+        ocupadas.extend(self._edificios_tela)
         fracoes = (.5, .34, .66, .2, .8, .42, .58, .12, .88, .27, .73, .05, .95)
-        deslocamentos = ((0, 0), (0, -16), (0, 16), (-16, 0), (16, 0),
-                          (0, -32), (0, 32), (-32, 0), (32, 0),
-                          (-22, -22), (22, -22), (-22, 22), (22, 22),
-                          (0, -48), (0, 48), (-48, 0), (48, 0),
-                          (0, -64), (0, 64), (-64, 0), (64, 0),
-                          (-64, -32), (64, -32), (-64, 32), (64, 32),
-                          (0, -88), (0, 88), (-88, 0), (88, 0),
-                          (-88, -44), (88, -44), (-88, 44), (88, 44))
+        deslocamentos = _OFFSETS_PESOS
         fonte = self.fonte(12, True)
-        for e in a.mapa.arestas:
+        arestas = sorted(a.mapa.arestas, key=lambda e: frozenset((e.origem, e.destino)) not in selecionadas)
+        for e in arestas:
             texto = f'{e.peso:g}'
             tamanho = fonte.size(texto)
             escolhido = None
             rua = medir_rua(a.cena.ruas[e.origem, e.destino])
-            for fracao in fracoes:
-                projetado = a.camera_iso.projetar(rua.amostrar(fracao).ponto)
-                if not projetado:
-                    continue
-                for dx, dy in deslocamentos:
-                    box = pygame.Rect(0, 0, tamanho[0] + 14, 22)
+            projetados = [a.camera_iso.projetar(rua.amostrar(fracao).ponto) for fracao in fracoes]
+            box = pygame.Rect(0, 0, tamanho[0] + 14, 22)
+            for dx, dy in deslocamentos:
+                for projetado in projetados:
+                    if not projetado:
+                        continue
                     box.center = round(projetado[0] + dx), round(projetado[1] + dy)
-                    if viewport.contains(box) and not any(box.colliderect(outro) for outro in ocupadas):
-                        escolhido = box
+                    if viewport.contains(box) and box.collidelist(ocupadas) < 0:
+                        escolhido = box.copy()
+                        ancora_peso = projetado
                         break
                 if escolhido:
                     break
-            # A malha oferece 45 etiquetas; em viewport muito estreito o
-            # candidato de menor conflito ainda preserva legibilidade parcial.
+            if escolhido is None:
+                # Ultimo recurso: procurar espaco livre em toda a area visivel.
+                pontos_visiveis = [p for p in projetados if p and viewport.collidepoint(p)]
+                melhor = float('inf')
+                if pontos_visiveis:
+                    for y in range(viewport.top, viewport.bottom - box.h + 1, 8):
+                        for x in range(viewport.left, viewport.right - box.w + 1, 8):
+                            box.topleft = x, y
+                            if box.collidelist(ocupadas) >= 0:
+                                continue
+                            referencia = min(pontos_visiveis, key=lambda p: (p[0]-box.centerx)**2 + (p[1]-box.centery)**2)
+                            distancia = (referencia[0]-box.centerx)**2 + (referencia[1]-box.centery)**2
+                            if distancia < melhor:
+                                melhor, escolhido, ancora_peso = distancia, box.copy(), referencia
+                    if escolhido:
+                        dx, dy = escolhido.centerx - ancora_peso[0], escolhido.centery - ancora_peso[1]
             if escolhido is None:
                 continue
+            if hypot(dx, dy) > 22:
+                ponta = (max(escolhido.left, min(escolhido.right, round(ancora_peso[0]))),
+                         max(escolhido.top, min(escolhido.bottom, round(ancora_peso[1]))))
+                inicio = tuple(map(round, ancora_peso))
+                if viewport.collidepoint(inicio) and not any(r.clipline(inicio, ponta) for r in ocupadas):
+                    pygame.draw.line(self.canvas, (80, 96, 100, 150), inicio, ponta, 1)
             ativa = frozenset((e.origem, e.destino)) in selecionadas
             pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235),
                              escolhido, border_radius=6)

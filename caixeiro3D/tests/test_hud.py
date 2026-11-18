@@ -118,6 +118,35 @@ class TestHUD(unittest.TestCase):
             app.ui.desenhar()
             self.assertFalse(app.ui.botoes['zoom-'][1])
 
+    def test_pins_proximos_ficam_separados_e_sao_estaveis(self):
+        for tamanho in ((1100, 760), (1440, 960)):
+            app = self.construir(tamanho, 5)
+            for no, ponto in app.cena.posicoes.items():
+                app.camera_iso.pontos_forcados[ponto[:2]] = (500 + no, 300 + no)
+            app.ui.desenhar()
+            caixas = list(app.ui.etiquetas_tela.values())
+            for i, caixa in enumerate(caixas):
+                self.assertFalse(any(caixa.colliderect(outra) for outra in caixas[i + 1:]))
+            posicoes = dict(app.ui.posicoes_tela)
+            ancoras = dict(app.ui.ancoras_tela)
+            app.ui.desenhar()
+            self.assertEqual(app.ui.posicoes_tela, posicoes)
+            self.assertEqual(app.ui.ancoras_tela, ancoras)
+            for no, centro in posicoes.items():
+                app.mouse = centro
+                Aplicacao3D.clicar(app)
+                self.assertEqual(app.origem, no)
+
+    def test_pesos_evitam_projecao_de_construcoes(self):
+        app = self.construir(numero_mapa=5)
+        app.cena.decoracoes = [SimpleNamespace(tipo='edificio', x=0, y=0, raio=3, altura=5)]
+        app.ui.desenhar()
+        edificios = app.ui._construcoes_tela(app.camera_iso.viewport)
+        self.assertTrue(edificios)
+        self.assertTrue(app.ui.pesos_tela)
+        for peso in app.ui.pesos_tela.values():
+            self.assertLess(peso.collidelist(edificios), 0)
+
     def test_acoes_visiveis_e_sem_sobreposicao_nas_resolucoes(self):
         for tamanho in [(1100, 760), (1100, 880), (1440, 960)]:
             for mapa in [5, 18]:
