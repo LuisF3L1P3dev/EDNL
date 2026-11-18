@@ -101,8 +101,41 @@ class TestRender3D(unittest.TestCase):
                     self.assertEqual(cena.pontes, 0)
                 else:
                     self.assertGreater(cena.pontes, 0)
-                    self.assertIn(("rua", "road-bridge"), cena.modelos_usados)
                     self.assertIn(("rua", "bridge-pillar-wide"), cena.modelos_usados)
+                    self.assertTrue(cena._pistas_pontes)
+
+    def test_pistas_e_agua_preservam_eixos_e_ruas_inferiores(self):
+        _, cena = self.construir(self.grafos[1])
+        trechos, _ = _pavimento(cena._segmentos, cena.posicoes.values())
+        esperados = {(a, b) for a, b in trechos if a[2] != b[2] or a[2] > .8}
+        self.assertEqual(set(cena._pistas_pontes), esperados)
+        self.assertEqual(len(cena._agua), 1)
+        x0, y0, x1, y1 = cena._agua[0]
+        for i in range(7):
+            for j in range(13):
+                x, y = x0 + (x1-x0)*i/6, y0 + (y1-y0)*j/12
+                for a, b in cena._segmentos:
+                    if max(a[2], b[2]) < .5:
+                        self.assertGreaterEqual(_distancia_segmento(x, y, a, b), LARGURA_RUA/2 + .1)
+        self.assertFalse(cena._livre((x0+x1)/2, (y0+y1)/2, .01))
+
+    def test_pista_de_rampa_respeita_extremos_largura_e_normal(self):
+        cena = SimpleNamespace(raiz=NodePath('teste'), _pistas_pontes=[], trechos_rua=0)
+        superficies = []
+        def registrar(parent, nome, pontos, cor, **kw):
+            superficies.append((nome, pontos))
+        a, b = (0., 0., .12), (3.6, 0., 1.77)
+        with patch('render3d.superficie', side_effect=registrar):
+            Cena3D._pista_ponte(cena, a, b, None)
+        faixas = [p for nome, p in superficies if nome == 'pista-ponte']
+        self.assertEqual(len(faixas), 5)
+        vertices = [p for faixa in faixas for p in faixa]
+        self.assertAlmostEqual(max(p[1] for p in vertices) - min(p[1] for p in vertices), LARGURA_RUA)
+        self.assertEqual({(p[0], p[2]) for p in vertices}, {(a[0], a[2]), (b[0], b[2])})
+        for pontos in faixas:
+            normal = (Vec3(*pontos[1]) - Vec3(*pontos[0])).cross(Vec3(*pontos[2]) - Vec3(*pontos[0]))
+            self.assertGreater(normal.z, 0)
+        self.assertEqual(cena._pistas_pontes, [(a, b)])
 
     def test_pavimento_cobre_as_polilinhas_sem_pisos_coplanares_sobrepostos(self):
         meia = LARGURA_RUA / 2

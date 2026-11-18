@@ -198,6 +198,7 @@ class Cena3D:
         self.trechos_rua = 0
         self.pontes = len(self.mapa_visual.pontes)
         self._apoios_pontes = ()
+        self._agua = ()
         self._trecho_destacado = None
         self._segmentos = tuple(
             trecho for aresta in grafo.arestas
@@ -209,6 +210,7 @@ class Cena3D:
         self.meia_altura = max(23., abs(y0) + 2., abs(y1) + 2.)
         try:
             self._terreno()
+            self._criar_agua_local()
             self._construir_ruas()
             self._decorar()
             self.raiz.flattenStrong()
@@ -272,25 +274,93 @@ class Cena3D:
                    self._rng.uniform(1.4, 3.1), (.50, .71, .40, 1),
                    proporcao=self._rng.uniform(.6, 1.2), lados=9)
 
+    def _criar_agua_local(self):
+        """Canal curto sob uma ponte, fora das ruas no nivel do solo."""
+        baixas = [(a, b) for a, b in self._segmentos if max(a[2], b[2]) < .5]
+        for ponte in self.mapa_visual.pontes:
+            dx, dy = ponte.fim[0] - ponte.inicio[0], ponte.fim[1] - ponte.inicio[1]
+            comprimento = hypot(dx, dy)
+            ux, uy = dx / comprimento, dy / comprimento
+            for lado in (-1, 1):
+                cx, cy = ponte.centro[0] + lado * 1.5 * ux, ponte.centro[1] + lado * 1.5 * uy
+                # O canal corre perpendicular ao tabuleiro; a rua inferior
+                # permanece seca ao lado, sem inventar conexoes no grafo.
+                hx, hy = (.30, 1.4) if abs(ux) > .5 else (1.4, .30)
+                x0, x1, y0, y1 = cx - hx, cx + hx, cy - hy, cy + hy
+                amostras = [(x0 + (x1-x0)*i/6, y0 + (y1-y0)*j/12)
+                            for i in range(7) for j in range(13)]
+                if any(_distancia_segmento(x, y, a, b) < LARGURA_RUA/2 + .10
+                       for x, y in amostras for a, b in baixas):
+                    continue
+                if any(not (x1 < n.construcao.limites_xy[0] or x0 > n.construcao.limites_xy[2]
+                            or y1 < n.construcao.limites_xy[1] or y0 > n.construcao.limites_xy[3])
+                       for n in self.mapa_visual.nos):
+                    continue
+                superficie(self.raiz, 'agua-local', [(x0, y0, NIVEL_GRAMA + .006),
+                           (x1, y0, NIVEL_GRAMA + .006), (x1, y1, NIVEL_GRAMA + .006),
+                           (x0, y1, NIVEL_GRAMA + .006)], (.31, .63, .74, 1))
+                self._agua = ((x0, y0, x1, y1),)
+                return
+
     def _construir_ruas(self):
         trechos, juncoes = _pavimento(self._segmentos, self.posicoes.values())
         reta = self._modelo("rua", "road-straight")
         textura = reta.find("**/+GeomNode").getTexture()
         limites_reta = reta.getTightBounds()
-        ponte = limites_ponte = None
-        if self.pontes:
-            ponte = self._modelo("rua", "road-bridge", cota_minima=.45)
-            limites_ponte = ponte.getTightBounds()
+        self._pistas_pontes = []
         for a, b in trechos:
-            elevado = ponte is not None and a[2] == b[2] and a[2] > .8
-            modelo, limites, cota = (ponte, limites_ponte, .51) if elevado else (reta, limites_reta, .01)
-            self._encaixar_rua(a, b, modelo, limites, cota)
+            elevado = a[2] != b[2] or a[2] > .8
+            if elevado:
+                self._pista_ponte(a, b, textura)
+            else:
+                self._encaixar_rua(a, b, reta, limites_reta, .01)
         for ponto, bracos, caixa in juncoes:
             self._piso_juncao(ponto, bracos, caixa, textura)
         for no, (x, y, z) in self.posicoes.items():
             _disco(self.raiz, f"ponto-{no}", x, y, z + .012, .27, (.18, .58, .87, 1))
         if self.pontes:
             self._construir_apoios()
+
+    def _pista_ponte(self, a, b, textura):
+        """Pista e laterais em faixas contiguas, seguindo a polilinha real."""
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        comprimento = hypot(dx, dy)
+        if not comprimento:
+            return
+        nx, ny = -dy / comprimento, dx / comprimento
+        metade = LARGURA_RUA / 2
+        secoes = (-metade, -.40, -.38, .38, .40, metade)
+        cores = ((.70, .72, .69, 1), (.90, .91, .84, 1),
+                 (1, 1, 1, 1), (.90, .91, .84, 1), (.70, .72, .69, 1))
+        for i, (esquerda, direita) in enumerate(zip(secoes, secoes[1:])):
+            pontos = [(a[0] + nx * direita, a[1] + ny * direita, a[2]),
+                      (a[0] + nx * esquerda, a[1] + ny * esquerda, a[2]),
+                      (b[0] + nx * esquerda, b[1] + ny * esquerda, b[2]),
+                      (b[0] + nx * direita, b[1] + ny * direita, b[2])]
+            superficie(self.raiz, 'pista-ponte', pontos, cores[i],
+                       material=(textura, (.03125, .125)) if i == 2 else None)
+        espessura = (.06 if a[2] == b[2] else .01) * ESCALA_VERTICAL_RUA
+        for lado in (-1, 1):
+            x1, y1 = a[0] + nx * lado * metade, a[1] + ny * lado * metade
+            x2, y2 = b[0] + nx * lado * metade, b[1] + ny * lado * metade
+            superficie(self.raiz, 'borda-tabuleiro', [(x1, y1, a[2] - espessura),
+                       (x2, y2, b[2] - espessura), (x2, y2, b[2]),
+                       (x1, y1, a[2])], (.39, .42, .40, 1))
+        superficie(self.raiz, 'fundo-tabuleiro',
+                   [(a[0] - nx*metade, a[1] - ny*metade, a[2] - espessura),
+                    (b[0] - nx*metade, b[1] - ny*metade, b[2] - espessura),
+                    (b[0] + nx*metade, b[1] + ny*metade, b[2] - espessura),
+                    (a[0] + nx*metade, a[1] + ny*metade, a[2] - espessura)], (.39, .42, .40, 1))
+        # Guarda-corpos fora da faixa de rodagem, sem ergue-los no solo.
+        if max(a[2], b[2]) > .8:
+            for lado in (-1, 1):
+                offset = lado * metade
+                x1, y1 = a[0] + nx * offset, a[1] + ny * offset
+                x2, y2 = b[0] + nx * offset, b[1] + ny * offset
+                superficie(self.raiz, 'guarda-corpo', [(x1, y1, a[2]), (x2, y2, b[2]),
+                           (x2, y2, b[2] + .19), (x1, y1, a[2] + .19)], (.76, .79, .77, 1))
+        self._pistas_pontes.append((a, b))
+        self.trechos_rua += 1
 
     def _encaixar_rua(self, a, b, modelo, limites, cota):
         delta = Vec3(*b) - Vec3(*a)
@@ -383,6 +453,9 @@ class Cena3D:
     def _livre(self, x, y, raio, *, afastamento_no=1.2):
         if abs(x) + raio > self.meia_largura - 1 or abs(y) + raio > self.meia_altura - 1:
             return False
+        for x0, y0, x1, y1 in self._agua:
+            if hypot(x - max(x0, min(x1, x)), y - max(y0, min(y1, y))) < raio + .1:
+                return False
         if self.distancia_rua(x, y) < raio + LARGURA_RUA / 2 + .4:
             return False
         if any(hypot(x - p[0], y - p[1]) < raio + afastamento_no for p in self.posicoes.values()):
