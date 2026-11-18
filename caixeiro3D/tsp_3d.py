@@ -178,6 +178,9 @@ class Aplicacao3D(ShowBase):
                 if ativo:
                     self.acao(acao)
                 return
+        area_controles = getattr(self.ui, '_area_controles', None)
+        if area_controles and area_controles().collidepoint(p):
+            return
         if self.ui.config_aberta or self.ocupado or not self.camera_iso.viewport.collidepoint(p):
             return
         candidatos = [(hypot(p[0] - q[0], p[1] - q[1]), n) for n, q in self.ui.posicoes_tela.items()]

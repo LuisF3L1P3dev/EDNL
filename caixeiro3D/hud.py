@@ -141,6 +141,7 @@ class HUD:
         self.pesos_tela = {}
         self.pesos_ativos = set()
         explorados = set(a.etapa.explorados if a.etapa else ())
+        controles = self._area_controles()
         if not a.viagem.caminho:
             atual = a.origem
         elif a.viagem.concluida:
@@ -183,6 +184,11 @@ class HUD:
                 round(max(viewport.top + cima + 2, min(viewport.bottom - baixo - 2,
                       p[1] + deslocamento_y if abaixo else p[1] - deslocamento_y))),
             )
+            # Preservar espaco para os controles quando o mapa for movido.
+            candidato = pygame.Rect(centro[0] - 23, centro[1] - cima, 46, cima + baixo)
+            if candidato.colliderect(controles):
+                centro = (centro[0], min(viewport.bottom - baixo - 2,
+                                         controles.bottom + cima + 2))
             self.posicoes_tela[no] = centro
             self.ancoras_tela[no] = p
             box = pygame.Rect(centro[0] - 23, centro[1] - 23, 46, 46)
@@ -222,7 +228,8 @@ class HUD:
         """Posiciona pesos próximos à sua rua sem encobrir pins ou outros pesos."""
         a = self.app
         self.pesos_ativos = set(selecionadas)
-        ocupadas = list(self.etiquetas_tela.values()) + [pygame.Rect(258, 100, 230, 50)]
+        ocupadas = list(self.etiquetas_tela.values()) + [pygame.Rect(258, 100, 230, 50),
+                                                        self._area_controles()]
         fracoes = (.5, .34, .66, .2, .8, .42, .58, .12, .88, .27, .73, .05, .95)
         deslocamentos = ((0, 0), (0, -16), (0, 16), (-16, 0), (16, 0),
                           (0, -32), (0, 32), (-32, 0), (32, 0),
@@ -373,7 +380,6 @@ class HUD:
         self.botao('pausa', 'Continuar' if pausado else 'Pausar', (w - 386, y + 17, 91, 35), ativo=a.ocupado or bool(a.viagem.pesos))
         self.botao('reiniciar', 'Reiniciar', (w - 286, y + 17, 88, 35), ativo=bool(a.viagem.caminho) and not a.ocupado)
         self.botao('velocidade', f'{a.viagem.velocidade:g}×', (w - 189, y + 17, 55, 35))
-        self.botao('reset', 'Centrar', (w - 125, y + 17, 91, 35))
         barra = pygame.Rect(34, y + 74, w - 68, 7)
         pygame.draw.rect(self.canvas, LINE, barra, border_radius=4)
         fracao = a.progresso_visual
@@ -381,6 +387,20 @@ class HUD:
             preenchido = barra.copy()
             preenchido.w = max(1, int(barra.w * fracao))
             pygame.draw.rect(self.canvas, GREEN if a.viagem.concluida else YELLOW, preenchido, border_radius=4)
+
+    def _area_controles(self):
+        viewport = self.app.camera_iso.viewport
+        return pygame.Rect(viewport.right - 216, viewport.top + 10, 206, 44)
+
+    def _controles_mapa(self):
+        r = self._area_controles()
+        camera = self.app.camera_iso
+        self.card(r)
+        self.botao('zoom-', '−', (r.x + 5, r.y + 5, 32, 34), ativo=camera.zoom > camera.ZOOM_MIN)
+        percentual = self.fonte(12, True).render(f'{round(camera.zoom * 100)}%', True, INK)
+        self.canvas.blit(percentual, percentual.get_rect(center=(r.x + 64, r.centery)))
+        self.botao('zoom+', '+', (r.x + 91, r.y + 5, 32, 34), ativo=camera.zoom < camera.ZOOM_MAX)
+        self.botao('reset', 'Centrar', (r.x + 128, r.y + 5, 73, 34))
 
     def _config(self, w, h):
         pygame.draw.rect(self.canvas, (22, 39, 46, 145), (0, 0, w, h))
@@ -431,6 +451,7 @@ class HUD:
         self._inferior(w, h)
         self.texto('VISTA ISOMÉTRICA', 260, 102, 10, MUTED, True)
         self.texto(a.mapa.nome, 260, 123, 16, INK, True)
+        self._controles_mapa()
         if self.config_aberta:
             self._config(w, h)
         if self.textura.getXSize() != w or self.textura.getYSize() != h:

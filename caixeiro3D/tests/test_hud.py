@@ -20,10 +20,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class _Camera:
+    ZOOM_MIN, ZOOM_MAX = .65, 3.
+
     def __init__(self, tamanho):
         w, h = tamanho
         self.viewport = pygame.Rect(244, 90, w - 494, h - 222)
         self.pontos_forcados = {}
+        self.zoom = 1.
 
     def projetar(self, ponto):
         if ponto[:2] in self.pontos_forcados:
@@ -89,6 +92,31 @@ class TestHUD(unittest.TestCase):
         self.addCleanup(app.ui.destruir)
         app.ui.desenhar()
         return app
+
+    def test_controles_de_zoom_reservam_area_e_capturam_cliques(self):
+        for tamanho in ((1100, 760), (1440, 960)):
+            app = self.construir(tamanho, 5)
+            area = app.ui._area_controles()
+            ponto = app.cena.posicoes[1]
+            app.camera_iso.pontos_forcados[ponto[:2]] = area.center
+            app.ui.desenhar()
+            self.assertFalse(area.colliderect(app.ui.etiquetas_tela[1]))
+            self.assertFalse(any(area.colliderect(box) for box in app.ui.pesos_tela.values()))
+            self.assertFalse(area.colliderect(app.ui.botoes['mapa1'][0]))
+            for acao in ('zoom-', 'zoom+', 'reset'):
+                app.mouse = app.ui.botoes[acao][0].center
+                Aplicacao3D.clicar(app)
+                self.assertEqual(app.acoes[-1], acao)
+            app.camera_iso.zoom = app.camera_iso.ZOOM_MAX
+            app.ui.desenhar()
+            self.assertFalse(app.ui.botoes['zoom+'][1])
+            antes = len(app.acoes)
+            app.mouse = app.ui.botoes['zoom+'][0].center
+            Aplicacao3D.clicar(app)
+            self.assertEqual(len(app.acoes), antes)
+            app.camera_iso.zoom = app.camera_iso.ZOOM_MIN
+            app.ui.desenhar()
+            self.assertFalse(app.ui.botoes['zoom-'][1])
 
     def test_acoes_visiveis_e_sem_sobreposicao_nas_resolucoes(self):
         for tamanho in [(1100, 760), (1100, 880), (1440, 960)]:
