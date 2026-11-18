@@ -550,7 +550,7 @@ class Cena3D:
             for i in range(partes):
                 t = (i + .5) / partes
                 for lado in (-1, 1):
-                    for recuo in (2.7, 3.5):
+                    for recuo in (2.7, 3.5, 5.5):
                         x, y = a[0] + dx*t + lado*nx*recuo, a[1] + dy*t + lado*ny*recuo
                         chave = (round(x, 3), round(y, 3))
                         if chave in vistas:
@@ -573,15 +573,26 @@ class Cena3D:
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
         for no_visual in self.mapa_visual.nos:
             self._adicionar_construcao_no(no_visual)
-        alvo_edificios = 28 + len(self.posicoes)
-        indice = len(self.construcoes_no)
+        alvo_edificios = 38 if len(self.posicoes) <= 5 else 52
+        residencias = tuple(f'building-type-{letra}' for letra in 'acdfghijklmnopqrstu')
+        comercio = tuple(f'building-{letra}' for letra in 'bdefgh') + (
+            'low-detail-building-wide-a', 'low-detail-building-wide-b',
+            'low-detail-building-c', 'low-detail-building-j',
+        )
+        indice = 0
         for x, y, orientacao in self._vagas_quarteiroes():
             if indice >= alvo_edificios:
                 break
-            kit = "cidade" if indice % 4 == 0 else "suburbio"
-            nome = f"building-{chr(97 + indice % 8)}" if kit == "cidade" else f"building-type-{chr(97 + indice % 12)}"
+            bloco, vaga = divmod(indice, 4)
+            if vaga == 0:
+                kit, nome = 'cidade', comercio[bloco % len(comercio)]
+                minimo, maximo = 1.9, 2.45
+            else:
+                kit = 'suburbio'
+                nome = residencias[(3 * bloco + vaga - 1) % len(residencias)]
+                minimo, maximo = 1.45, 2.35
             if self._adicionar_decoracao("edificio", kit, nome, x, y,
-                                        self._rng.uniform(1.8, 2.7), orientacao):
+                                        self._rng.uniform(minimo, maximo), orientacao):
                 indice += 1
         alvo_arvores = 90 + 2 * len(self.posicoes)
         for tentativa in range(3200):

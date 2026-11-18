@@ -183,12 +183,13 @@ class TestRender3D(unittest.TestCase):
                 edificios = [d for d in cena.decoracoes if d.tipo == 'edificio' and d.no is None]
                 outros = [d for d in repetida.decoracoes if d.tipo == 'edificio' and d.no is None]
                 self.assertEqual(edificios, outros)
-                self.assertEqual(len(edificios), 28)
+                self.assertEqual(len(edificios), 38 if len(grafo.ids) == 5 else 52)
                 self.assertGreaterEqual(len({(d.kit, d.modelo) for d in edificios}), 8)
                 quadras = {(int((d.x + cena.meia_largura) // 12),
                             int((d.y + cena.meia_altura) // 12)) for d in edificios}
                 self.assertGreaterEqual(len(quadras), 10 if len(grafo.ids) == 5 else 20)
-                self.assertTrue(all(cena.distancia_rua(d.x, d.y) <= 3.51 for d in edificios))
+                # A segunda fileira permite conjuntos de construções no interior.
+                self.assertTrue(all(cena.distancia_rua(d.x, d.y) <= 5.51 for d in edificios))
 
     def test_decoracoes_nao_invadem_ruas_nem_nos(self):
         for grafo in self.grafos:
