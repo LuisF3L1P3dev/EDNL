@@ -5,7 +5,7 @@ da adjacência e tem seu espaço reservado fora de todas as polilinhas de ruas.
 O veículo, as luzes e as etiquetas projetadas pertencem à aplicação.
 """
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from math import atan2, cos, degrees, dist, hypot, pi, sin
 from random import Random
@@ -533,20 +533,56 @@ class Cena3D:
         self.decoracoes.append(construcao)
         self.construcoes_no[no_visual.id] = construcao
 
+    def _vagas_quarteiroes(self):
+        """Vagas dos dois lados das ruas, alternadas por area da cidade."""
+        grupos = defaultdict(list)
+        vistas = set()
+        for a, b in self._segmentos:
+            if a[2] != b[2] or a[2] > .5:
+                continue
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            comprimento = hypot(dx, dy)
+            if comprimento < 1e-8:
+                continue
+            ux, uy = dx / comprimento, dy / comprimento
+            nx, ny = -uy, ux
+            partes = max(1, round(comprimento / 3.5))
+            for i in range(partes):
+                t = (i + .5) / partes
+                for lado in (-1, 1):
+                    for recuo in (2.7, 3.5):
+                        x, y = a[0] + dx*t + lado*nx*recuo, a[1] + dy*t + lado*ny*recuo
+                        chave = (round(x, 3), round(y, 3))
+                        if chave in vistas:
+                            continue
+                        vistas.add(chave)
+                        quadra = (int((x + self.meia_largura) // 12),
+                                  int((y + self.meia_altura) // 12))
+                        orientacao = degrees(atan2(lado * nx, -lado * ny))
+                        grupos[quadra].append((x, y, orientacao))
+        filas = [deque(sorted(grupos[chave])) for chave in sorted(grupos)]
+        while filas:
+            restantes = []
+            for fila in filas:
+                yield fila.popleft()
+                if fila:
+                    restantes.append(fila)
+            filas = restantes
+
     def _decorar(self):
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
         for no_visual in self.mapa_visual.nos:
             self._adicionar_construcao_no(no_visual)
         alvo_edificios = 28 + len(self.posicoes)
-        for tentativa in range(1600):
-            if sum(d.tipo == "edificio" for d in self.decoracoes) >= alvo_edificios:
+        indice = len(self.construcoes_no)
+        for x, y, orientacao in self._vagas_quarteiroes():
+            if indice >= alvo_edificios:
                 break
-            kit = "cidade" if tentativa % 4 == 0 else "suburbio"
-            nome = f"building-{chr(97 + tentativa % 8)}" if kit == "cidade" else f"building-type-{chr(97 + tentativa % 12)}"
-            x = self._rng.uniform(-self.meia_largura + 3, self.meia_largura - 3)
-            y = self._rng.uniform(-self.meia_altura + 3, self.meia_altura - 3)
-            self._adicionar_decoracao("edificio", kit, nome, x, y,
-                                     self._rng.uniform(1.8, 2.7), 90 * (tentativa % 4))
+            kit = "cidade" if indice % 4 == 0 else "suburbio"
+            nome = f"building-{chr(97 + indice % 8)}" if kit == "cidade" else f"building-type-{chr(97 + indice % 12)}"
+            if self._adicionar_decoracao("edificio", kit, nome, x, y,
+                                        self._rng.uniform(1.8, 2.7), orientacao):
+                indice += 1
         alvo_arvores = 90 + 2 * len(self.posicoes)
         for tentativa in range(3200):
             if sum(d.tipo == "arvore" for d in self.decoracoes) >= alvo_arvores:
