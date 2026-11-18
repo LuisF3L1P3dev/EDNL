@@ -221,6 +221,24 @@ class TestRender3D(unittest.TestCase):
                 self.assertGreater(cena._vegetacao_tipos['calcadas'], 0)
                 self.assertGreater(cena._vegetacao_tipos['bosques'], 0)
 
+    def test_mobiliario_urbano_e_poste_proximo_de_ponte(self):
+        for grafo in self.grafos:
+            with self.subTest(mapa=grafo.id):
+                _, cena = self.construir(grafo)
+                itens = {tipo: [d for d in cena.decoracoes if d.tipo == tipo]
+                         for tipo in ('poste', 'banco', 'passeio')}
+                self.assertEqual(tuple(len(itens[t]) for t in ('poste', 'banco', 'passeio')),
+                                 (14, 6, 8))
+                self.assertEqual({d.modelo for d in itens['poste']}, {'light-curved', 'light-square'})
+                self.assertTrue(all(abs(d.altura - 1.55) < .01 for d in itens['poste']))
+                self.assertTrue(all(d.modelo == 'banco' and d.altura == .69 for d in itens['banco']))
+                if cena.pontes:
+                    self.assertTrue(cena._postes_ponte)
+                    for centro, x, y in cena._postes_ponte:
+                        self.assertLess(dist((x, y), centro[:2]), 3.1)
+                        self.assertTrue(any(abs(d.x-x) < 1e-7 and abs(d.y-y) < 1e-7
+                                            for d in itens['poste']))
+
     def test_cada_no_tem_construcao_fixa_e_acesso_da_ancora_da_rua(self):
         for grafo in self.grafos:
             with self.subTest(grafo=grafo.id):

@@ -479,7 +479,7 @@ class Cena3D:
         return modelo, lo, hi, escala, raio
 
     def _adicionar_decoracao(self, tipo, kit, nome, x, y, tamanho, orientacao=0.):
-        modelo, lo, hi, escala, raio = self._dimensoes(kit, nome, tamanho, tipo == "arvore")
+        modelo, lo, hi, escala, raio = self._dimensoes(kit, nome, tamanho, tipo in ("arvore", "poste"))
         raio += .20 if tipo == "edificio" else .05
         if not self._livre(x, y, raio, afastamento_no=2. if tipo == "edificio" else 1.5):
             return False
@@ -594,8 +594,68 @@ class Cena3D:
             if self._adicionar_decoracao("edificio", kit, nome, x, y,
                                         self._rng.uniform(minimo, maximo), orientacao):
                 indice += 1
+        self._criar_mobiliario()
         self._plantar_vegetacao()
         self.decoracoes = tuple(self.decoracoes)
+
+    def _banco(self, x, y, orientacao):
+        raio = .55
+        if not self._livre(x, y, raio, afastamento_no=1.5):
+            return False
+        suporte = self.raiz.attachNewNode('banco')
+        suporte.setPos(x, y, NIVEL_GRAMA + .055)
+        suporte.setH(orientacao)
+        def caixa(nome, x0, x1, y0, y1, z0, z1, cor):
+            faces = [((x0,y0,z1), (x1,y0,z1), (x1,y1,z1), (x0,y1,z1)),
+                     ((x0,y0,z0), (x1,y0,z0), (x1,y0,z1), (x0,y0,z1)),
+                     ((x1,y0,z0), (x1,y1,z0), (x1,y1,z1), (x1,y0,z1)),
+                     ((x1,y1,z0), (x0,y1,z0), (x0,y1,z1), (x1,y1,z1)),
+                     ((x0,y1,z0), (x0,y0,z0), (x0,y0,z1), (x0,y1,z1))]
+            for face in faces:
+                superficie(suporte, nome, face, cor)
+        madeira, metal = (.52, .34, .19, 1), (.30, .35, .35, 1)
+        caixa('assento', -.42, .42, -.16, .16, .31, .39, madeira)
+        caixa('encosto', -.42, .42, .10, .17, .39, .69, madeira)
+        for x0 in (-.34, .24):
+            caixa('apoio-banco', x0, x0+.10, -.12, .12, 0, .31, metal)
+        self.decoracoes.append(Decoracao('banco', 'procedural', 'banco', x, y, raio, .69))
+        return True
+
+    def _criar_mobiliario(self):
+        """Posiciona mobiliario nas vagas livres e nas proximidades das pontes."""
+        self._postes_ponte = []
+        postes = bancos = caminhos = 0
+        for ponte in self.mapa_visual.pontes:
+            dx, dy = ponte.fim[0] - ponte.inicio[0], ponte.fim[1] - ponte.inicio[1]
+            comprimento = hypot(dx, dy)
+            ux, uy = dx / comprimento, dy / comprimento
+            for sinal in (-1, 1):
+                for lado in (-1, 1):
+                    x = ponte.centro[0] + sinal*ux*2.2 - lado*uy*2.0
+                    y = ponte.centro[1] + sinal*uy*2.2 + lado*ux*2.0
+                    if self._adicionar_decoracao('poste', 'rua', 'light-curved', x, y, 1.55):
+                        self._postes_ponte.append((ponte.centro, x, y))
+                        postes += 1
+                        break
+                if self._postes_ponte:
+                    break
+            if self._postes_ponte:
+                break
+        for i, (x, y, orientacao) in enumerate(self._vagas_quarteiroes()):
+            if postes < 14:
+                nome = 'light-curved' if i % 2 else 'light-square'
+                if self._adicionar_decoracao('poste', 'rua', nome, x, y, 1.55, orientacao):
+                    postes += 1
+                    continue
+            if bancos < 6 and self._banco(x, y, orientacao):
+                bancos += 1
+                continue
+            if caminhos < 8 and self._adicionar_decoracao('passeio', 'suburbio', 'path-stones-short',
+                                                          x, y, .9, orientacao):
+                caminhos += 1
+            if postes >= 14 and bancos >= 6 and caminhos >= 8:
+                break
+        self._mobiliario = {'postes': postes, 'bancos': bancos, 'passeios': caminhos}
 
     def _plantar_vegetacao(self):
         """Jardins, alinhamentos e pequenos bosques sem bloquear circulacao."""
