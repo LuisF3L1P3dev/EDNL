@@ -71,9 +71,10 @@ def posicoes_planejadas(grafo):
                  6: (4, 2), 7: (5, 3), 8: (1, 2), 9: (2, 2), 10: (3, 2),
                  11: (5, 2), 12: (0, 1), 13: (2, 1), 14: (3, 1),
                  15: (4, 1), 16: (1, 0), 17: (3, 0), 18: (5, 0)}
-        # A malha ampla reserva quarteirões entre prédios e deixa uma reta
-        # suficiente para as rampas das passagens elevadas inevitáveis.
-        return {no: ((c - 2.5) * 24, (l - 1.5) * 24, ALTURA_RUA)
+        # Catorze células por quarteirão conservam a folga de 1,65 no
+        # cruzamento das vias sem aumentar a área da ilha.
+        quadra = 14 * PASSO
+        return {no: ((c - 2.5) * quadra, (l - 1.5) * quadra, ALTURA_RUA)
                 for no, (c, l) in grade.items()}
     return {n.id: ((n.x - .5) * 46, (.5 - n.y) * 38, ALTURA_RUA) for n in grafo.nos}
 
