@@ -205,6 +205,22 @@ class TestRender3D(unittest.TestCase):
                     for x, y, _ in cena.posicoes.values():
                         self.assertGreater((d.x - x) ** 2 + (d.y - y) ** 2, (d.raio + 1.2) ** 2)
 
+    def test_vegetacao_diversificada_respeita_altura_e_jardins(self):
+        for grafo in self.grafos:
+            with self.subTest(mapa=grafo.id):
+                _, cena = self.construir(grafo)
+                arvores = [d for d in cena.decoracoes if d.tipo == 'arvore']
+                jardins = [d for d in cena.decoracoes if d.tipo == 'jardim']
+                edificios = [d for d in cena.decoracoes if d.tipo == 'edificio']
+                self.assertEqual(len(arvores), 90 + 2 * len(grafo.ids))
+                self.assertEqual(len(jardins), 12)
+                self.assertEqual({d.modelo for d in arvores}, {'tree-small', 'tree-large'})
+                self.assertTrue(all(1.04 <= d.altura <= 1.56 for d in arvores))
+                self.assertTrue(all(any(dist((j.x, j.y), (e.x, e.y)) <= e.raio + .86
+                                        for e in edificios) for j in jardins))
+                self.assertGreater(cena._vegetacao_tipos['calcadas'], 0)
+                self.assertGreater(cena._vegetacao_tipos['bosques'], 0)
+
     def test_cada_no_tem_construcao_fixa_e_acesso_da_ancora_da_rua(self):
         for grafo in self.grafos:
             with self.subTest(grafo=grafo.id):

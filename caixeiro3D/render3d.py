@@ -594,16 +594,61 @@ class Cena3D:
             if self._adicionar_decoracao("edificio", kit, nome, x, y,
                                         self._rng.uniform(minimo, maximo), orientacao):
                 indice += 1
-        alvo_arvores = 90 + 2 * len(self.posicoes)
-        for tentativa in range(3200):
-            if sum(d.tipo == "arvore" for d in self.decoracoes) >= alvo_arvores:
-                break
-            self._adicionar_decoracao("arvore", "suburbio",
-                                     "tree-large" if tentativa % 3 else "tree-small",
-                                     self._rng.uniform(-self.meia_largura + 1.5, self.meia_largura - 1.5),
-                                     self._rng.uniform(-self.meia_altura + 1.5, self.meia_altura - 1.5),
-                                     self._rng.uniform(1.1, 2.1), self._rng.uniform(0, 360))
+        self._plantar_vegetacao()
         self.decoracoes = tuple(self.decoracoes)
+
+    def _plantar_vegetacao(self):
+        """Jardins, alinhamentos e pequenos bosques sem bloquear circulacao."""
+        edificios = [d for d in self.decoracoes if d.tipo == 'edificio']
+        jardins = 0
+        for edificio in edificios:
+            for angulo in (0, 90, 180, 270):
+                a = (angulo + 45) * pi / 180
+                distancia = edificio.raio + .85
+                if self._adicionar_decoracao('jardim', 'suburbio', 'planter',
+                                             edificio.x + cos(a)*distancia,
+                                             edificio.y + sin(a)*distancia, .65, angulo):
+                    jardins += 1
+                    break
+            if jardins >= 12:
+                break
+
+        alvo = 90 + 2 * len(self.posicoes)
+        quantidades = {'jardins': jardins, 'calcadas': 0, 'bosques': 0, 'demais': 0}
+        def plantar(x, y, grupo, indice):
+            if sum(quantidades[k] for k in ('calcadas', 'bosques', 'demais')) >= alvo:
+                return False
+            sucesso = self._adicionar_decoracao(
+                'arvore', 'suburbio', 'tree-small' if indice % 3 == 0 else 'tree-large',
+                x, y, self._rng.uniform(1.05, 1.55), self._rng.uniform(0, 360))
+            if sucesso:
+                quantidades[grupo] += 1
+            return sucesso
+
+        for i, (x, y, _) in enumerate(self._vagas_quarteiroes()):
+            if quantidades['calcadas'] >= alvo // 3:
+                break
+            plantar(x, y, 'calcadas', i)
+
+        # Centros distintos com pequenos grupos organicos; tentativas passam
+        # pela mesma verificacao espacial usada para todos os demais objetos.
+        for grupo in range(80):
+            if quantidades['bosques'] >= alvo // 3:
+                break
+            cx = self._rng.uniform(-self.meia_largura + 3, self.meia_largura - 3)
+            cy = self._rng.uniform(-self.meia_altura + 3, self.meia_altura - 3)
+            for i in range(5):
+                if quantidades['bosques'] >= alvo // 3:
+                    break
+                angulo = self._rng.uniform(0, 2*pi)
+                raio = self._rng.uniform(0, 3.)
+                plantar(cx + cos(angulo)*raio, cy + sin(angulo)*raio, 'bosques', grupo*5+i)
+        for i in range(3200):
+            if sum(quantidades[k] for k in ('calcadas', 'bosques', 'demais')) >= alvo:
+                break
+            plantar(self._rng.uniform(-self.meia_largura + 1.5, self.meia_largura - 1.5),
+                    self._rng.uniform(-self.meia_altura + 1.5, self.meia_altura - 1.5), 'demais', i)
+        self._vegetacao_tipos = quantidades
 
     def mostrar_rota(self, caminho, cor=AMARELO):
         caminho = tuple(caminho)
