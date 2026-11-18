@@ -379,6 +379,15 @@ def rotear(grafo, posicoes, construcoes, *, w5=False):
     return RotasVisuais(tuple(caminhos.items()), pracas, tuple(portas.values()), tuple(pontes), expansoes)
 
 
+def _perfil_rampa(inicio, fim, subida):
+    """Aproxima uma curva vertical com entradas mais planas nas pontas."""
+    # As tangentes crescem nos primeiros 20% e diminuem nos últimos 20%,
+    # com um trecho central de declive constante e a mesma cota final.
+    for t, h in ((0., 0.), (.10, .03125), (.20, .125),
+                 (.80, .875), (.90, .96875), (1., 1.)):
+        yield inicio + (fim - inicio) * t, ALTURA_PONTE * (h if subida else 1. - h)
+
+
 def _pontes(roteadas, cruzamentos, pracas):
     # Uma ponte cabe somente numa reta com rampas livres dos nós e das curvas.
     necessidades = {}
@@ -420,7 +429,9 @@ def _pontes(roteadas, cruzamentos, pracas):
                     unidos.append((inicio,fim))
             comprimento = hypot(b[0]-a[0],b[1]-a[1])
             for inicio,fim in unidos:
-                for s,h in ((inicio-RAMPA,0),(inicio,ALTURA_PONTE),(fim,ALTURA_PONTE),(fim+RAMPA,0)):
+                rampa = (*_perfil_rampa(inicio - RAMPA, inicio, True),
+                         *_perfil_rampa(fim, fim + RAMPA, False))
+                for s,h in rampa:
                     t=s/comprimento
                     novo.append((a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,ALTURA_RUA+h))
             novo.append(b)

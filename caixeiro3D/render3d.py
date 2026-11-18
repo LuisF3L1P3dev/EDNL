@@ -480,6 +480,10 @@ class Cena3D:
 
     def _adicionar_decoracao(self, tipo, kit, nome, x, y, tamanho, orientacao=0.):
         modelo, lo, hi, escala, raio = self._dimensoes(kit, nome, tamanho, tipo in ("arvore", "poste"))
+        if tipo == 'edificio':
+            escala_limitada = min(escala, 3.2 / (hi.z - lo.z))
+            raio *= escala_limitada / escala
+            escala = escala_limitada
         raio += .20 if tipo == "edificio" else .05
         if not self._livre(x, y, raio, afastamento_no=2. if tipo == "edificio" else 1.5):
             return False
