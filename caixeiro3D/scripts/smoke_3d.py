@@ -3,6 +3,7 @@
 Executar da raiz: python scripts/smoke_3d.py. Não controla o desktop.
 """
 import argparse
+from itertools import combinations
 import json
 from math import dist
 from pathlib import Path
@@ -13,7 +14,9 @@ from time import perf_counter
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from direct.showbase.MessengerGlobal import messenger
 from panda3d.core import PNMImage, StringStream
+from geometria3d import medir_rua
 from tsp_3d import Aplicacao3D
 
 DESTINO = ROOT / 'tmp' / '3d-review'
@@ -49,6 +52,93 @@ def calcular(app):
     assert app.mapa.custo(app.viagem.caminho) == app.resultado.custo
 
 
+def clicar(app, acao):
+    """Usa o alvo que o HUD acabou de desenhar."""
+    app.ui.desenhar()
+    rect, ativo = app.ui.botoes[acao]
+    assert ativo, acao
+    mouse = app.mouse_pixel
+    try:
+        app.mouse_pixel = lambda: rect.center
+        app.clicar()
+    finally:
+        app.mouse_pixel = mouse
+
+
+def verificar_posicionamento(app):
+    app.ui.desenhar()
+    cena, hud, camera = app.cena, app.ui, app.camera_iso
+    nos = cena.mapa_visual.nos
+    assert len({n.ancora_rua for n in nos}) == len(nos)
+    assert len(hud.etiquetas_tela) == len(nos)
+    assert len(hud.pesos_tela) == len(app.mapa.arestas)
+    for no in nos:
+        assert hud.ancoras_tela[no.id] == camera.projetar(no.ancora_rua)
+        assert no.id in cena.construcoes_no
+        assert no.acesso == (no.ancora_rua, no.entrada)
+        for vizinho in no.conexoes:
+            assert cena.ruas[no.id, vizinho][0] == no.ancora_rua
+    etiquetas = list(hud.etiquetas_tela.values()) + list(hud.pesos_tela.values())
+    assert not any(a.colliderect(b) for a, b in combinations(etiquetas, 2))
+    assert not any(r.colliderect(hud._area_controles()) for r in etiquetas)
+
+
+def verificar_acompanhamento(app, sufixo, n):
+    camera, v = app.camera_iso, app.viagem
+    clicar(app, 'zoom+')
+    assert camera.zoom > 1.
+    zoom = camera.zoom
+    messenger.send('wheel_up')
+    assert camera.zoom > zoom
+    clicar(app, 'zoom-')
+    assert abs(camera.zoom - zoom) < 1e-9
+    clicar(app, 'reset')
+    assert camera.zoom == 1. and not camera.pan.length()
+
+    camera.mudar_zoom(100)
+    clicar(app, 'acompanhar')
+    assert app.acompanhando
+    clicar(app, 'velocidade')
+    clicar(app, 'velocidade')
+    clicar(app, 'pausa')
+    for _ in range(90):
+        app.atualizar(1/60)
+    capturar(app, f'mapa{n}-acompanhamento-{sufixo}.png')
+    clicar(app, 'pausa')
+    posicao, pan = tuple(app.carro.getPos()), tuple(camera.pan)
+    app.atualizar(.25)
+    assert tuple(app.carro.getPos()) == posicao and tuple(camera.pan) == pan
+    clicar(app, 'reiniciar')
+    assert dist(app.carro.getPos(), app.cena.posicoes[app.origem]) < 1e-4
+    assert tuple(camera.pan) == pan and app.acompanhando
+    for _ in range(90):
+        app.atualizar(1/60)
+    clicar(app, 'pausa')
+    chegadas = set()
+    for frames in range(1, 601):
+        app.atualizar(1/60)
+        i, fracao = v.trecho
+        par = v.caminho[i:i + 2]
+        amostra = medir_rua(app.cena.ruas[par]).amostrar(fracao)
+        assert dist(app.carro.getPos(), amostra.ponto) < 1e-4
+        p = camera.projetar(app.carro.getPos(app.render))
+        assert p is not None and camera.viewport.collidepoint(p), (n, frames, par, p)
+        if v.em_chegada:
+            chegadas.add(v.caminho[i])
+            assert amostra.ponto == app.cena.posicoes[v.caminho[i]]
+        if v.concluida:
+            break
+    assert v.concluida and chegadas | {app.origem} == set(app.mapa.ids)
+    pan = tuple(camera.pan)
+    app.atualizar(.25)
+    assert tuple(camera.pan) == pan and camera.zoom == 3.
+    clicar(app, 'acompanhar')
+    assert not app.acompanhando and tuple(camera.pan) == pan
+    clicar(app, 'reset')
+    v.velocidade = 1
+    return frames
+
+
 def verificar(tamanho):
     sufixo = f'{tamanho[0]}x{tamanho[1]}'
     app = Aplicacao3D(tamanho=tamanho, offscreen=True)
@@ -56,6 +146,7 @@ def verificar(tamanho):
     try:
         for indice, n in enumerate((5, 18)):
             app.acao(f'mapa{indice}')
+            verificar_posicionamento(app)
             app.ui.desenhar()
             assert len(app.ui.posicoes_tela) == n
             for p in app.ui.posicoes_tela.values():
@@ -84,9 +175,9 @@ def verificar(tamanho):
             assert dist(tuple(app.carro.getPos()), app.cena.posicoes[app.origem]) < 1e-4
             assert app.fase == 'Concluido'
             capturar(app, f'mapa{n}-final-{sufixo}.png')
-            resultados.append({'resolucao': sufixo, 'mapa': n, 'algoritmo': app.metodo,
-                               'custo': app.resultado.custo, 'rota': app.viagem.caminho,
-                               'visitados': len(app.viagem.visitadas), 'retorno_origem': True})
+            resultado = {'resolucao': sufixo, 'mapa': n, 'algoritmo': app.metodo,
+                         'custo': app.resultado.custo, 'rota': app.viagem.caminho,
+                         'visitados': len(app.viagem.visitadas), 'retorno_origem': True}
             app.acao('reiniciar')
             assert app.viagem.custo_atual == 0
             assert not app.viagem.reproduzindo
@@ -97,6 +188,8 @@ def verificar(tamanho):
             assert app.camera_iso.zoom == 1
             assert app.camera_iso.pan.length() == 0
             app.viagem.velocidade = 1
+            resultado['quadros_acompanhados_em_4x'] = verificar_acompanhamento(app, sufixo, n)
+            resultados.append(resultado)
 
         # Seleção pelos mesmos alvos de clique usados pela interface real.
         app.acao('selecionar_dijkstra')

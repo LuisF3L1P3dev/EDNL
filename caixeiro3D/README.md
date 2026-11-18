@@ -50,17 +50,20 @@ custos lógicos; a distância exibida em `u.` mede unidades geométricas do cen�
 | Reiniciar | Voltar ao início do percurso calculado |
 | `←`, `→` | Voltar ou avançar uma chegada |
 | Botão `1×`, `2×`, `4×` | Alterar velocidade |
-| Scroll / arraste com botão direito | Zoom / movimentar câmera |
-| Centrar / `Z` | Restaurar enquadramento |
+| `+`, `−` ou roda do mouse | Aproximar ou afastar a câmera de 65% a 300% |
+| Arraste com botão direito | Mover a câmera e desligar o acompanhamento |
+| Centrar / `Z` | Enquadrar todo o mapa e voltar a 100% |
+| Acompanhar veículo | Ligar ou desligar o acompanhamento da van |
 | Configurações / `C` | Abrir diálogo de opções visuais |
 | `P` | Mostrar ou ocultar pesos |
 | Ver todas as distâncias | Inspecionar distâncias e nós explorados de Dijkstra |
 | `Esc` | Fechar diálogo ou encerrar jogo |
 
 O diálogo permite ocultar pesos e legendas e desativar a reprodução da busca.
-As cores identificam pontos em azul, rota e exploração em amarelo, chegadas em
-verde e erros em vermelho. A animação tem uma breve sinalização a cada chegada.
-O custo conta todas as arestas efetivamente percorridas, incluindo revisitas.
+As cores identificam pontos em azul, rota e exploração em amarelo, visitados em
+verde, ponto atual em roxo e erros em vermelho. A animação tem uma breve
+sinalização a cada chegada. A barra indica a distância física percorrida. O
+custo conta os pesos das arestas efetivamente percorridas, incluindo revisitas.
 
 ## Arquivos e responsabilidades
 
@@ -71,7 +74,7 @@ O custo conta todas as arestas efetivamente percorridas, incluindo revisitas.
 | `solvers.py` | Força bruta, Dijkstra, fecho métrico, vizinho próximo e 2-opt |
 | `assets3d.py` | Cache de OBJ/MTL, texturas e normalização de escala |
 | `geometria3d.py`, `render3d.py` | Ruas por aresta, cidade, decoração e realce de rota |
-| `camera3d.py` | Projeção, enquadramento, zoom e arraste |
+| `camera3d.py` | Projeção, enquadramento, zoom, arraste e acompanhamento |
 | `mundo3d.py` | Relógio e validação da viagem, pausa, velocidades e chegadas |
 | `hud.py` | Interface Pygame, resultados, etiquetas e diálogos |
 | `tests/`, `scripts/smoke_3d.py` | Testes automáticos e verificação OpenGL com capturas |
@@ -95,7 +98,11 @@ também foram preservados. Não houve download de assets.
 O smoke usa OpenGL real em framebuffer fora da tela e salva imagens e o resumo
 em `tmp/3d-review/`. Verifica os dois mapas em 1440×960 e 1100×760, custo,
 retorno físico à origem, pausa, reinício, velocidades, seleção por clique,
-cancelamento, diálogos e troca de mapa durante uma busca.
+cancelamento, diálogos e troca de mapa durante uma busca. Também confere o
+alinhamento dos marcadores e acompanha cada circuito a 4× com zoom de 300%.
+
+Os resultados e as capturas das tasks complementares estão no
+[relatório de posicionamento e câmera](docs/complementares/validacao.md).
 
 Captura rápida, sem manter uma janela aberta:
 

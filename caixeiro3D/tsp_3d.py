@@ -206,6 +206,7 @@ class Aplicacao3D(ShowBase):
 
     def _limpar(self):
         self._invalidar()
+        self._acompanhar_reinicio = False
         velocidade = self.viagem.velocidade
         self.viagem = Viagem(velocidade=velocidade)
         self.resultado = None
@@ -298,6 +299,7 @@ class Aplicacao3D(ShowBase):
                 self._acompanhar_reinicio = False
             else:
                 self.viagem.reproduzir()
+                self._acompanhar_reinicio = False
         elif acao == 'reiniciar':
             if self.ocupado:
                 self._limpar()
