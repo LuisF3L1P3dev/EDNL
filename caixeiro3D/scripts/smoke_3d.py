@@ -139,6 +139,40 @@ def verificar_acompanhamento(app, sufixo, n):
     return frames
 
 
+def capturar_ponte(app):
+    """Captura uma ponte do circuito heurístico com a van sobre o tabuleiro."""
+    viagem = app.viagem
+    for i, par in enumerate(zip(viagem.caminho, viagem.caminho[1:])):
+        ponte = next((p for p in app.cena.mapa_visual.pontes
+                      if set(p.aresta) == set(par)), None)
+        if ponte:
+            break
+    else:
+        raise AssertionError('O circuito não percorreu uma ponte elevada.')
+    rua = medir_rua(app.cena.ruas[par])
+    for j, (a, b) in enumerate(rua.segmentos):
+        if a[2] != ponte.centro[2] or b[2] != a[2]:
+            continue
+        if dist(a, ponte.centro) + dist(b, ponte.centro) <= dist(a, b) + 1e-7:
+            fracao = (rua.acumulados[j] + dist(a, ponte.centro)) / rua.comprimento
+            break
+    else:
+        raise AssertionError('O centro da ponte não pertence ao tabuleiro.')
+    app.acao('reiniciar')
+    viagem.velocidade = 1
+    app.acao('pausa')
+    taxa = viagem.total / 30.
+    app.atualizar((sum(viagem.pesos[:i]) + fracao * viagem.pesos[i]) / taxa
+                  + i * viagem.PAUSA_CHEGADA)
+    assert dist(app.carro.getPos(), ponte.centro) < 1e-4
+    ponto = app.camera_iso.projetar(ponte.centro)
+    cx, cy = app.camera_iso.viewport.center
+    app.camera_iso.arrastar(cx - ponto[0], cy - ponto[1])
+    app.camera_iso.mudar_zoom(3)
+    capturar(app, 'travessia-ponte-1440x960.png')
+    app.acao('reset')
+
+
 def verificar(tamanho):
     sufixo = f'{tamanho[0]}x{tamanho[1]}'
     app = Aplicacao3D(tamanho=tamanho, offscreen=True)
@@ -190,6 +224,8 @@ def verificar(tamanho):
             app.viagem.velocidade = 1
             resultado['quadros_acompanhados_em_4x'] = verificar_acompanhamento(app, sufixo, n)
             resultados.append(resultado)
+            if n == 18 and tamanho == (1440, 960):
+                capturar_ponte(app)
 
         # Seleção pelos mesmos alvos de clique usados pela interface real.
         app.acao('selecionar_dijkstra')
