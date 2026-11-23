@@ -1,12 +1,13 @@
 """O layout pode mudar; o cadastro matemático e seus resultados permanecem."""
 from dataclasses import FrozenInstanceError, replace
+from itertools import combinations
 from math import cos, dist, radians, sin
 from pathlib import Path
 import unittest
 
 from geometria3d import (ArestaVisual, ConstrucaoVisual, MapaVisual,
                         criar_mapa_visual, posicoes_mundo, ruas_mundo)
-from roteamento3d import ALTURA_RUA, MEIO_TABULEIRO, RAMPA, VAO_LIVRE, posicoes_planejadas
+from roteamento3d import ALTURA_RUA, MEIO_TABULEIRO, RAIO_PRACA, RAMPA, VAO_LIVRE, posicoes_planejadas
 from solvers import executar
 from tsp_core import Aresta, carregar_cenarios, carregar_mapa
 
@@ -190,8 +191,33 @@ class LayoutVisualTest(unittest.TestCase):
             x, y, _ = ponte.centro
             altas = self._altura_no_cruzamento(visual.ruas[ponte.aresta], x, y)
             baixas = self._altura_no_cruzamento(visual.ruas[ponte.inferior], x, y)
-            self.assertGreaterEqual(max(altas) - min(baixas) + 1e-8, VAO_LIVRE)
+            self.assertGreaterEqual(min(altas) - max(baixas) + 1e-8, VAO_LIVRE)
             self.assertNotEqual(ponte.aresta, ponte.inferior)
+
+    def test_cidade_compacta_tem_apenas_cruzamentos_elevados_fora_das_pracas(self):
+        grande = next(g for g in self.grafos if len(g.ids) == 18)
+        visual = criar_mapa_visual(grande)
+        x0, y0, x1, y1 = visual.limites_xy
+        self.assertLessEqual(x1 - x0, 94.)
+        self.assertLessEqual(y1 - y0, 64.)
+        pontes = {(frozenset((p.aresta, p.inferior)), p.centro[:2]) for p in visual.pontes}
+        encontrados = set()
+        for e, f in combinations(visual.arestas, 2):
+            par_e, par_f = (e.origem, e.destino), (f.origem, f.destino)
+            pracas = [visual.posicoes[n] for n in set(par_e) & set(par_f)]
+            for a, b in zip(e.caminho, e.caminho[1:]):
+                for c, d in zip(f.caminho, f.caminho[1:]):
+                    if (a[0] == b[0]) == (c[0] == d[0]):
+                        continue
+                    (h0, h1), (v0, v1) = ((c, d), (a, b)) if a[0] == b[0] else ((a, b), (c, d))
+                    x, y = v0[0], h0[1]
+                    if (abs(x - h0[0]) + abs(x - h1[0]) > abs(h0[0] - h1[0]) + 1e-8 or
+                            abs(y - v0[1]) + abs(y - v1[1]) > abs(v0[1] - v1[1]) + 1e-8):
+                        continue
+                    if any(max(abs(x - px), abs(y - py)) <= RAIO_PRACA for px, py, _ in pracas):
+                        continue
+                    encontrados.add((frozenset((par_e, par_f)), (x, y)))
+        self.assertEqual(encontrados, pontes)
 
     def test_limites_incluem_lotes_e_desvios_distantes(self):
         g = self.grafos[0]

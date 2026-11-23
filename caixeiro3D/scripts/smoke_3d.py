@@ -173,6 +173,22 @@ def capturar_ponte(app):
     app.acao('reset')
 
 
+def capturar_cidade(app):
+    capturar(app, 'cidade-18-1440x960.png')
+    app.ui.mostrar_pesos = False
+    camera = app.camera_iso
+    # Enquadra o conjunto misto de quadras entre 11, 15 e 18.
+    pontos = [app.cena.posicoes[n] for n in (11, 15, 18)]
+    centro = tuple(sum(eixo) / len(pontos) for eixo in zip(*pontos))
+    x, y = camera.projetar(centro)
+    cx, cy = camera.viewport.center
+    camera.arrastar(cx - x, cy - y)
+    camera.mudar_zoom(2.65)
+    capturar(app, 'quadras-1440x960.png')
+    app.ui.mostrar_pesos = True
+    app.acao('reset')
+
+
 def verificar(tamanho):
     sufixo = f'{tamanho[0]}x{tamanho[1]}'
     app = Aplicacao3D(tamanho=tamanho, offscreen=True)
@@ -181,6 +197,8 @@ def verificar(tamanho):
         for indice, n in enumerate((5, 18)):
             app.acao(f'mapa{indice}')
             verificar_posicionamento(app)
+            if n == 18 and tamanho == (1440, 960):
+                capturar_cidade(app)
             app.ui.desenhar()
             assert len(app.ui.posicoes_tela) == n
             for p in app.ui.posicoes_tela.values():

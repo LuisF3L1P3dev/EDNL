@@ -8,7 +8,7 @@ from threading import Event
 
 import pygame
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import AmbientLight, DirectionalLight, Vec3, loadPrcFileData
+from panda3d.core import AmbientLight, AntialiasAttrib, DirectionalLight, Vec3, loadPrcFileData
 
 from assets3d import Biblioteca, instancia_normalizada
 from camera3d import CameraIsometrica
@@ -29,13 +29,18 @@ FASES = {'enumeracao': 'Comparando circuitos', 'dijkstra': 'Explorando caminhos'
 class Aplicacao3D(ShowBase):
     def __init__(self, tamanho=(1440, 960), *, offscreen=False):
         tamanho = max(1100, tamanho[0]), max(760, tamanho[1])
+        # O pbuffer WGL usado nas capturas não oferece MSAA.
+        amostras = 0 if offscreen else 4
         loadPrcFileData('tsp', f'win-size {tamanho[0]} {tamanho[1]}\nwindow-title Caixeiro 3D\n'
-                        'audio-library-name null\nsync-video false\nclock-mode limited\nclock-frame-rate 60\nnotify-level warning\n')
+                        'audio-library-name null\nsync-video false\nclock-mode limited\nclock-frame-rate 60\n'
+                        f'multisamples {amostras}\nframebuffer-multisample {int(amostras > 0)}\n'
+                        'notify-level warning\n')
         super().__init__(windowType='offscreen' if offscreen else None)
         if self.win is None:
             raise RuntimeError('Nao foi possivel abrir uma janela Panda3D')
         self.disableMouse()
-        self.setBackgroundColor(.83, .89, .81, 1)
+        self.setBackgroundColor(.88, .94, .95, 1)
+        self.render.setAntialias(AntialiasAttrib.MMultisample)
         pygame.font.init()
         self.biblioteca = Biblioteca()
         self.mapas = carregar_cenarios(ROOT / 'data')
@@ -112,10 +117,10 @@ class Aplicacao3D(ShowBase):
 
     def _luzes(self):
         ambiente = AmbientLight('ambiente')
-        ambiente.setColor((.65, .68, .72, 1))
+        ambiente.setColor((.78, .79, .84, 1))
         self.render.setLight(self.render.attachNewNode(ambiente))
         sol = DirectionalLight('sol')
-        sol.setColor((.43, .40, .36, 1))
+        sol.setColor((.33, .30, .24, 1))
         no = self.render.attachNewNode(sol)
         no.setHpr(-35, -55, 0)
         self.render.setLight(no)

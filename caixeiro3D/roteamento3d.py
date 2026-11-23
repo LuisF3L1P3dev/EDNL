@@ -9,6 +9,7 @@ PASSO = 1.5
 RAIO_PRACA = 3.0
 LARGURA_VIA = .95
 ALTURA_RUA = .12
+CUSTO_CURVA = 3
 VAO_LIVRE = 1.4
 ALTURA_PONTE = 1.65
 RAMPA = 3.6
@@ -71,9 +72,7 @@ def posicoes_planejadas(grafo):
                  6: (4, 2), 7: (5, 3), 8: (1, 2), 9: (2, 2), 10: (3, 2),
                  11: (5, 2), 12: (0, 1), 13: (2, 1), 14: (3, 1),
                  15: (4, 1), 16: (1, 0), 17: (3, 0), 18: (5, 0)}
-        # Catorze células por quarteirão conservam a folga de 1,65 no
-        # cruzamento das vias sem aumentar a área da ilha.
-        quadra = 14 * PASSO
+        quadra = 12 * PASSO
         return {no: ((c - 2.5) * quadra, (l - 1.5) * quadra, ALTURA_RUA)
                 for no, (c, l) in grade.items()}
     return {n.id: ((n.x - .5) * 46, (.5 - n.y) * 38, ALTURA_RUA) for n in grafo.nos}
@@ -135,11 +134,14 @@ def _interior(centro, porta):
     return _compactar((centro, (px, y, z), porta.posicao))
 
 
-def _slots(no,centro):
-    x,y,z=centro
-    return tuple(PortaVisual(no,0,((round(x/PASSO)+dx*2-dy*offset)*PASSO,
-                                   (round(y/PASSO)+dy*2+dx*offset)*PASSO,z),(dx,dy))
-                 for dx,dy in _DIRS for offset in (-1,1))
+def _slots(no, centro):
+    x, y, z = centro
+    gx, gy = round(x / PASSO), round(y / PASSO)
+    raio = round(RAIO_PRACA / PASSO)
+    # A saída central permite ligar praças alinhadas em uma única reta.
+    return tuple(PortaVisual(no, 0, ((gx + dx * raio - dy * offset) * PASSO,
+                                     (gy + dy * raio + dx * offset) * PASSO, z), (dx, dy))
+                 for dx, dy in _DIRS for offset in (-1, 0, 1))
 
 
 def _buscar_portas(u, v, livres, bloqueados, usos, acessos, limites, *, permitir_cruzar=False):
@@ -179,7 +181,7 @@ def _buscar_portas(u, v, livres, bloqueados, usos, acessos, limites, *, permitir
             if outros and (not permitir_cruzar or len(outros) != 1 or
                            outros[0][1] == dd % 2 or outros[0][2]):
                 continue
-            novo=custo+1+(3 if dd!=d else 0)+(900 if outros else 0)
+            novo=custo+1+(CUSTO_CURVA if dd!=d else 0)+(900 if outros else 0)
             chave=xx,yy,dd,origem
             if novo>=custos.get(chave,float('inf')):continue
             custos[chave]=novo; anteriores[chave]=x,y,d,origem
@@ -223,7 +225,7 @@ def _astar(inicio, fim, saida, chegada, bloqueados, usos, proibidos, limites):
             eixo = d % 2
             if outros and (len(outros) != 1 or outros[0][1] == eixo or outros[0][2]):
                 continue
-            novo_custo = custo + 1 + (1.8 if d != direcao else 0) + (900 if outros else 0)
+            novo_custo = custo + 1 + (CUSTO_CURVA if d != direcao else 0) + (900 if outros else 0)
             chave = xx, yy, d
             if novo_custo >= custos.get(chave, float('inf')):
                 continue
@@ -290,14 +292,15 @@ def rotear(grafo, posicoes, construcoes, *, w5=False):
         x, y = round(porta.posicao[0]/PASSO), round(porta.posicao[1]/PASSO)
         dx, dy = porta.direcao
         acessos.setdefault((x+dx,y+dy),set()).add(no)
-    # Os hubs de grau alto escolhem seus portões antes das ruas periféricas.
-    # Ordenar só por distância consumia os oito encaixes de 4 e 14 e podia
-    # deixar a ligação entre eles sem saída.
+    # Hubs escolhem suas saídas primeiro. Entre arestas com os mesmos graus,
+    # reserve os corredores diagonais antes das ruas alinhadas, que podem usar
+    # as saídas centrais para atravessar o quarteirão em linha reta.
     graus = {no: len(vizinhos) for no, vizinhos in grafo.adjacencia().items()}
     ordem = sorted(
         grafo.arestas,
         key=lambda e: (-max(graus[e.origem], graus[e.destino]),
                        -(graus[e.origem] + graus[e.destino]),
+                       any(a == b for a, b in zip(posicoes[e.origem][:2], posicoes[e.destino][:2])),
                        abs(posicoes[e.origem][0] - posicoes[e.destino][0]) +
                        abs(posicoes[e.origem][1] - posicoes[e.destino][1]),
                        e.origem, e.destino),
@@ -330,9 +333,6 @@ def rotear(grafo, posicoes, construcoes, *, w5=False):
         a=PortaVisual(par[0],par[1],a.posicao,a.direcao)
         b=PortaVisual(par[1],par[0],b.posicao,b.direcao)
         portas[par],portas[par[::-1]]=a,b
-        inicio = round(a.posicao[0]/PASSO), round(a.posicao[1]/PASSO)
-        fim = round(b.posicao[0]/PASSO), round(b.posicao[1]/PASSO)
-        saida, chegada = _DIRS.index(a.direcao), (_DIRS.index(b.direcao) + 2) % 4
         expansoes += n
         pontos = list(_interior(posicoes[e.origem], a))
         pontos.extend((x*PASSO, y*PASSO, ALTURA_RUA) for x,y in passos)

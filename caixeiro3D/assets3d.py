@@ -31,6 +31,11 @@ class Biblioteca:
             self.modelos[chave] = self._ler_obj(caminho, cota_minima)
         return self.modelos[chave]
 
+    def paleta(self, kit, variante):
+        """Carrega uma variação de cor do próprio kit, com os mesmos UVs."""
+        caminho = self.root / KITS[kit] / "Models" / "Textures" / f"variation-{variante}.png"
+        return self._textura(caminho)
+
     def _textura(self, caminho):
         if caminho not in self.texturas:
             if not caminho.is_file():

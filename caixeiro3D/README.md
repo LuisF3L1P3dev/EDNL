@@ -104,6 +104,10 @@ alinhamento dos marcadores e acompanha cada circuito a 4× com zoom de 300%.
 Os resultados e as capturas das tasks complementares estão no
 [relatório de posicionamento e câmera](docs/complementares/validacao.md).
 
+O [relatório do refinamento gráfico](docs/refinamento-grafico/validacao.md)
+reúne as medidas da cidade compactada, os testes e as capturas das ruas,
+dos cruzamentos e das quadras.
+
 Captura rápida, sem manter uma janela aberta:
 
 ```powershell

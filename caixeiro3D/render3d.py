@@ -15,12 +15,18 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
                          TransparencyAttrib, Vec3)
 
 from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, medir_rua
+from roteamento3d import LARGURA_VIA
 
 
-LARGURA_RUA = .95
+LARGURA_RUA = LARGURA_VIA
 LARGURA_ACESSO = .52
 AMARELO = (1., .76, .13, 1.)
 ESCALA_VERTICAL_RUA = .55
+COR_GRAMA = (.60, .79, .52, 1)
+COR_CALCADA = (.88, .84, .73, 1)
+COR_CONTORNO_PONTE = (.56, .60, .65, 1)
+COR_GUARDA_CORPO = (.94, .74, .52, 1)
+TINTA_RUA = (1.08, 1.08, 1.04, 1)
 
 
 def superficie(parent, nome, pontos, cor, *, material=None):
@@ -195,6 +201,7 @@ class Cena3D:
         self.construcoes_no = {}
         self._acessos = tuple(no.acesso for no in self.mapa_visual.nos)
         self.modelos_usados = set()
+        self._limites_modelos = {}
         self.trechos_rua = 0
         self.pontes = len(self.mapa_visual.pontes)
         self._apoios_pontes = ()
@@ -253,15 +260,16 @@ class Cena3D:
 
     def _terreno(self):
         w, h = self.meia_largura, self.meia_altura
-        superficie(self.raiz, "gramado", [(-w, -h, NIVEL_GRAMA), (w, -h, NIVEL_GRAMA),
-                   (w, h, NIVEL_GRAMA), (-w, h, NIVEL_GRAMA)], (.52, .73, .43, 1))
-        cantos = [(-w, -h), (w, -h), (w, h), (-w, h)]
+        corte = 1.8
+        cantos = [(-w + corte, -h), (w - corte, -h), (w, -h + corte), (w, h - corte),
+                  (w - corte, h), (-w + corte, h), (-w, h - corte), (-w, -h + corte)]
+        superficie(self.raiz, "gramado", [(*p, NIVEL_GRAMA) for p in cantos], COR_GRAMA)
         for a, b in zip(cantos, cantos[1:] + cantos[:1]):
-            superficie(self.raiz, "terra-da-ilha", [(*a, NIVEL_GRAMA), (*b, NIVEL_GRAMA),
-                       (*b, -1.15), (*a, -1.15)], (.37, .52, .31, 1))
-            # Faixa clara na borda destaca a espessura da maquete.
-            superficie(self.raiz, "borda-da-ilha", [(*a, NIVEL_GRAMA), (*b, NIVEL_GRAMA),
-                       (*b, NIVEL_GRAMA - .12), (*a, NIVEL_GRAMA - .12)], (.66, .77, .52, 1))
+            meio = NIVEL_GRAMA - .15
+            superficie(self.raiz, "terra-da-ilha", [(*a, meio), (*a, -1.15),
+                       (*b, -1.15), (*b, meio)], (.65, .61, .49, 1))
+            superficie(self.raiz, "borda-da-ilha", [(*a, NIVEL_GRAMA), (*a, meio),
+                       (*b, meio), (*b, NIVEL_GRAMA)], (.49, .69, .46, 1))
         self._sombras = self.raiz.attachNewNode("sombras-de-contato")
         self._sombras.setTransparency(TransparencyAttrib.M_alpha)
         self._sombras.setDepthWrite(False)
@@ -271,8 +279,8 @@ class Cena3D:
             x = self._rng.uniform(-w + 3, w - 3)
             y = self._rng.uniform(-h + 3, h - 3)
             _disco(self.raiz, "canteiro-gramado", x, y, NIVEL_GRAMA + .002,
-                   self._rng.uniform(1.4, 3.1), (.50, .71, .40, 1),
-                   proporcao=self._rng.uniform(.6, 1.2), lados=9)
+                   self._rng.uniform(1.4, 3.1), (.58, .77, .50, 1),
+                   proporcao=self._rng.uniform(.6, 1.2))
 
     def _criar_agua_local(self):
         """Canal curto sob uma ponte, fora das ruas no nivel do solo."""
@@ -298,7 +306,7 @@ class Cena3D:
                     continue
                 superficie(self.raiz, 'agua-local', [(x0, y0, NIVEL_GRAMA + .006),
                            (x1, y0, NIVEL_GRAMA + .006), (x1, y1, NIVEL_GRAMA + .006),
-                           (x0, y1, NIVEL_GRAMA + .006)], (.31, .63, .74, 1))
+                           (x0, y1, NIVEL_GRAMA + .006)], (.40, .75, .81, 1))
                 self._agua = ((x0, y0, x1, y1),)
                 return
 
@@ -317,7 +325,8 @@ class Cena3D:
         for ponto, bracos, caixa in juncoes:
             self._piso_juncao(ponto, bracos, caixa, textura)
         for no, (x, y, z) in self.posicoes.items():
-            _disco(self.raiz, f"ponto-{no}", x, y, z + .012, .27, (.18, .58, .87, 1))
+            _disco(self.raiz, f"aro-ponto-{no}", x, y, z + .014, .40, (.91, .95, .96, 1))
+            _disco(self.raiz, f"ponto-{no}", x, y, z + .015, .29, (.25, .60, .86, 1))
         if self.pontes:
             self._construir_apoios()
 
@@ -330,8 +339,8 @@ class Cena3D:
         nx, ny = -dy / comprimento, dx / comprimento
         metade = LARGURA_RUA / 2
         secoes = (-metade, -.40, -.38, .38, .40, metade)
-        cores = ((.70, .72, .69, 1), (.90, .91, .84, 1),
-                 (1, 1, 1, 1), (.90, .91, .84, 1), (.70, .72, .69, 1))
+        cores = (COR_CALCADA, (.96, .93, .84, 1), TINTA_RUA,
+                 (.96, .93, .84, 1), COR_CALCADA)
         for i, (esquerda, direita) in enumerate(zip(secoes, secoes[1:])):
             pontos = [(a[0] + nx * direita, a[1] + ny * direita, a[2]),
                       (a[0] + nx * esquerda, a[1] + ny * esquerda, a[2]),
@@ -345,12 +354,12 @@ class Cena3D:
             x2, y2 = b[0] + nx * lado * metade, b[1] + ny * lado * metade
             superficie(self.raiz, 'borda-tabuleiro', [(x1, y1, a[2] - espessura),
                        (x2, y2, b[2] - espessura), (x2, y2, b[2]),
-                       (x1, y1, a[2])], (.39, .42, .40, 1))
+                       (x1, y1, a[2])], COR_CONTORNO_PONTE)
         superficie(self.raiz, 'fundo-tabuleiro',
                    [(a[0] - nx*metade, a[1] - ny*metade, a[2] - espessura),
                     (b[0] - nx*metade, b[1] - ny*metade, b[2] - espessura),
                     (b[0] + nx*metade, b[1] + ny*metade, b[2] - espessura),
-                    (a[0] + nx*metade, a[1] + ny*metade, a[2] - espessura)], (.39, .42, .40, 1))
+                    (a[0] + nx*metade, a[1] + ny*metade, a[2] - espessura)], COR_CONTORNO_PONTE)
         # Guarda-corpos fora da faixa de rodagem, sem ergue-los no solo.
         if max(a[2], b[2]) > .8:
             for lado in (-1, 1):
@@ -358,7 +367,7 @@ class Cena3D:
                 x1, y1 = a[0] + nx * offset, a[1] + ny * offset
                 x2, y2 = b[0] + nx * offset, b[1] + ny * offset
                 superficie(self.raiz, 'guarda-corpo', [(x1, y1, a[2]), (x2, y2, b[2]),
-                           (x2, y2, b[2] + .19), (x1, y1, a[2] + .19)], (.76, .79, .77, 1))
+                           (x2, y2, b[2] + .19), (x1, y1, a[2] + .19)], COR_GUARDA_CORPO)
         self._pistas_pontes.append((a, b))
         self.trechos_rua += 1
 
@@ -375,6 +384,7 @@ class Cena3D:
             suporte.setHpr(-degrees(atan2(delta.x, delta.y)),
                            degrees(atan2(delta.z, hypot(delta.x, delta.y))), 0)
             malha = modelo.copyTo(suporte)
+            malha.setColorScale(*TINTA_RUA)
             malha.setH(90)
             malha.setScale(sx, sy, ESCALA_VERTICAL_RUA)
             malha.setPos((lo.y + hi.y) * sy / 2, -(lo.x + hi.x) * sx / 2,
@@ -389,6 +399,7 @@ class Cena3D:
             cruzamento = self._modelo("rua", "road-crossroad").copyTo(self.raiz)
             cruzamento.setScale(LARGURA_RUA, LARGURA_RUA, ESCALA_VERTICAL_RUA)
             cruzamento.setPos(x, y, z - .01 * ESCALA_VERTICAL_RUA)
+            cruzamento.setColorScale(*TINTA_RUA)
             return
         secoes = (-metade, -.8 * metade, .8 * metade, metade)
         for i, (a, b) in enumerate(zip(secoes, secoes[1:]), -1):
@@ -403,7 +414,7 @@ class Cena3D:
                 superficie(self.raiz, "piso-juncao",
                            [(esquerda, baixo, altura), (direita, baixo, altura),
                             (direita, cima, altura), (esquerda, cima, altura)],
-                           (1., 1., 1., 1.), material=(textura, uv))
+                           TINTA_RUA, material=(textura, uv))
 
     def _construir_apoios(self):
         modelo = self._modelo("rua", "bridge-pillar-wide")
@@ -466,25 +477,30 @@ class Cena3D:
         return not any(hypot(x - d.x, y - d.y) < raio + d.raio + .3 for d in self.decoracoes)
 
     def _sombra(self, x, y, raio):
-        for i, (fator, alfa) in enumerate(((1.25, .035), (1.07, .05), (.88, .065))):
+        for i, (fator, alfa) in enumerate(((1.30, .026), (1.17, .05), (1.04, .085), (.87, .10))):
             _disco(self._sombras, "sombra-suave", x + .14, y + .12,
                    NIVEL_GRAMA + .006 + i * .001, raio * fator,
-                   (.12, .22, .12, alfa), proporcao=.78, lados=16)
+                   (.22, .37, .31, alfa), proporcao=.78, lados=24)
 
     def _dimensoes(self, kit, nome, tamanho, altura=False):
         modelo = self._modelo(kit, nome)
-        lo, hi = modelo.getTightBounds()
+        chave = kit, nome
+        if chave not in self._limites_modelos:
+            self._limites_modelos[chave] = modelo.getTightBounds()
+        lo, hi = self._limites_modelos[chave]
         escala = tamanho / ((hi.z - lo.z) if altura else max(hi.x - lo.x, hi.y - lo.y))
         raio = hypot(hi.x - lo.x, hi.y - lo.y) * escala / 2
         return modelo, lo, hi, escala, raio
 
-    def _adicionar_decoracao(self, tipo, kit, nome, x, y, tamanho, orientacao=0.):
+    def _adicionar_decoracao(self, tipo, kit, nome, x, y, tamanho, orientacao=0., variante=None):
         modelo, lo, hi, escala, raio = self._dimensoes(kit, nome, tamanho, tipo in ("arvore", "poste"))
         if tipo == 'edificio':
-            escala_limitada = min(escala, 3.2 / (hi.z - lo.z))
-            raio *= escala_limitada / escala
-            escala = escala_limitada
-        raio += .20 if tipo == "edificio" else .05
+            escala = min(escala, 2.8 / (hi.z - lo.z))
+            metade_x = (hi.x - lo.x) * escala / 2
+            metade_y = (hi.y - lo.y) * escala / 2
+            raio = hypot(metade_x + .12, metade_y + .24)
+        else:
+            raio += .05
         if not self._livre(x, y, raio, afastamento_no=2. if tipo == "edificio" else 1.5):
             return False
         suporte = self.raiz.attachNewNode(tipo)
@@ -496,12 +512,19 @@ class Cena3D:
                      -(lo.y + hi.y) * escala / 2, -lo.z * escala)
         self._sombra(x, y, raio)
         if tipo == "edificio":
-            # O lote não toca as ruas: nenhum caminho decorativo vira conexão.
-            metade_x = (hi.x - lo.x) * escala / 2 + .14
-            metade_y = (hi.y - lo.y) * escala / 2 + .14
-            superficie(suporte, "lote-calcado", [(-metade_x, -metade_y, -.025),
-                       (metade_x, -metade_y, -.025), (metade_x, metade_y, -.025),
-                       (-metade_x, metade_y, -.025)], (.79, .81, .71, 1))
+            if variante:
+                malha.setTexture(self.biblioteca.paleta(kit, variante), 2)
+            malha.setColorScale(1.14, 1.12, 1.09, 1)
+            if kit == 'suburbio':
+                cor_lote = (.70, .80, .58, 1)
+                _faixa(suporte, 'passeio-do-lote', (0., metade_y * .5, -.020),
+                       (0., metade_y + .24, -.020), .36, COR_CALCADA)
+            else:
+                cor_lote = COR_CALCADA
+            x_lote, fundos, frente = metade_x + .12, -metade_y - .12, metade_y + .24
+            superficie(suporte, "lote-calcado", [(-x_lote, fundos, -.025),
+                       (x_lote, fundos, -.025), (x_lote, frente, -.025),
+                       (-x_lote, frente, -.025)], cor_lote)
         self.decoracoes.append(Decoracao(tipo, kit, nome, x, y, raio, (hi.z - lo.z) * escala))
         return True
 
@@ -521,16 +544,21 @@ class Cena3D:
         suporte.setH(endereco.rotacao)
         malha = modelo.copyTo(suporte)
         malha.setScale(escala)
+        if endereco.kit == 'suburbio':
+            variante = ('a', 'b', None)[no_visual.id % 3]
+            if variante:
+                malha.setTexture(self.biblioteca.paleta(endereco.kit, variante), 2)
+        malha.setColorScale(1.14, 1.12, 1.09, 1)
         malha.setPos(-(lo.x + hi.x) * escala / 2,
                      -(lo.y + hi.y) * escala / 2, -lo.z * escala)
         superficie(suporte, "lote-do-no", [(-metade, -metade, COTA_LOTE),
                    (metade, -metade, COTA_LOTE), (metade, metade, COTA_LOTE),
-                   (-metade, metade, COTA_LOTE)], (.79, .81, .71, 1))
+                   (-metade, metade, COTA_LOTE)], COR_CALCADA)
         ancora, entrada = no_visual.acesso
         _faixa(self.raiz, f"acesso-no-{no_visual.id}", ancora, entrada,
-               LARGURA_ACESSO, (.79, .81, .71, 1))
+               LARGURA_ACESSO, COR_CALCADA)
         _faixa(self.raiz, f"porta-no-{no_visual.id}", entrada, no_visual.porta,
-               LARGURA_ACESSO, (.71, .75, .67, 1))
+               LARGURA_ACESSO, COR_CALCADA)
         self._sombra(x, y, raio)
         construcao = Decoracao("edificio", endereco.kit, endereco.nome, x, y,
                                raio, altura, no_visual.id)
@@ -550,18 +578,17 @@ class Cena3D:
                 continue
             ux, uy = dx / comprimento, dy / comprimento
             nx, ny = -uy, ux
-            partes = max(1, round(comprimento / 3.5))
+            partes = max(1, round(comprimento / 2.75))
             for i in range(partes):
                 t = (i + .5) / partes
                 for lado in (-1, 1):
-                    for recuo in (2.7, 3.5, 5.5):
+                    for recuo in (2.35, 3.35, 4.45, 5.5):
                         x, y = a[0] + dx*t + lado*nx*recuo, a[1] + dy*t + lado*ny*recuo
                         chave = (round(x, 3), round(y, 3))
                         if chave in vistas:
                             continue
                         vistas.add(chave)
-                        quadra = (int((x + self.meia_largura) // 12),
-                                  int((y + self.meia_altura) // 12))
+                        quadra = self._quadra(x, y)
                         orientacao = degrees(atan2(lado * nx, -lado * ny))
                         grupos[quadra].append((x, y, orientacao))
         filas = [deque(sorted(grupos[chave])) for chave in sorted(grupos)]
@@ -573,33 +600,43 @@ class Cena3D:
                     restantes.append(fila)
             filas = restantes
 
+    def _quadra(self, x, y):
+        return (int((x + self.meia_largura) // 10), int((y + self.meia_altura) // 10))
+
     def _decorar(self):
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
         for no_visual in self.mapa_visual.nos:
             self._adicionar_construcao_no(no_visual)
-        alvo_edificios = 38 if len(self.posicoes) <= 5 else 52
+        alvo_edificios = 52 if len(self.posicoes) <= 5 else 80
         residencias = tuple(f'building-type-{letra}' for letra in 'acdfghijklmnopqrstu')
         comercio = tuple(f'building-{letra}' for letra in 'bdefgh') + (
             'low-detail-building-wide-a', 'low-detail-building-wide-b',
             'low-detail-building-c', 'low-detail-building-j',
         )
+        vagas = tuple(self._vagas_quarteiroes())
         indice = 0
-        for x, y, orientacao in self._vagas_quarteiroes():
+        ocupacao = defaultdict(int)
+        for x, y, orientacao in vagas:
             if indice >= alvo_edificios:
                 break
-            bloco, vaga = divmod(indice, 4)
-            if vaga == 0:
-                kit, nome = 'cidade', comercio[bloco % len(comercio)]
-                minimo, maximo = 1.9, 2.45
+            coluna, linha = quadra = self._quadra(x, y)
+            vaga = ocupacao[quadra]
+            # Vizinhanças comerciais alternam com fileiras residenciais.
+            if (coluna + 2 * linha) % 4 == 0 or vaga % 5 == 3:
+                kit, nome = 'cidade', comercio[(2 * coluna + linha + vaga) % len(comercio)]
+                minimo, maximo = 1.75, 2.35
+                variante = 'b' if vaga % 2 == 0 else None
             else:
                 kit = 'suburbio'
-                nome = residencias[(3 * bloco + vaga - 1) % len(residencias)]
-                minimo, maximo = 1.45, 2.35
+                nome = residencias[(3 * coluna + 5 * linha + vaga) % len(residencias)]
+                minimo, maximo = 1.45, 2.25
+                variante = ('a', 'b', None)[(coluna + linha + vaga) % 3]
             if self._adicionar_decoracao("edificio", kit, nome, x, y,
-                                        self._rng.uniform(minimo, maximo), orientacao):
+                                        self._rng.uniform(minimo, maximo), orientacao, variante):
+                ocupacao[quadra] += 1
                 indice += 1
-        self._criar_mobiliario()
-        self._plantar_vegetacao()
+        self._criar_mobiliario(vagas)
+        self._plantar_vegetacao(vagas)
         self.decoracoes = tuple(self.decoracoes)
 
     def _banco(self, x, y, orientacao):
@@ -625,7 +662,7 @@ class Cena3D:
         self.decoracoes.append(Decoracao('banco', 'procedural', 'banco', x, y, raio, .69))
         return True
 
-    def _criar_mobiliario(self):
+    def _criar_mobiliario(self, vagas):
         """Posiciona mobiliario nas vagas livres e nas proximidades das pontes."""
         self._postes_ponte = []
         postes = bancos = caminhos = 0
@@ -645,7 +682,7 @@ class Cena3D:
                     break
             if self._postes_ponte:
                 break
-        for i, (x, y, orientacao) in enumerate(self._vagas_quarteiroes()):
+        for i, (x, y, orientacao) in enumerate(vagas):
             if postes < 14:
                 nome = 'light-curved' if i % 2 else 'light-square'
                 if self._adicionar_decoracao('poste', 'rua', nome, x, y, 1.55, orientacao):
@@ -661,7 +698,7 @@ class Cena3D:
                 break
         self._mobiliario = {'postes': postes, 'bancos': bancos, 'passeios': caminhos}
 
-    def _plantar_vegetacao(self):
+    def _plantar_vegetacao(self, vagas):
         """Jardins, alinhamentos e pequenos bosques sem bloquear circulacao."""
         edificios = [d for d in self.decoracoes if d.tipo == 'edificio']
         jardins = 0
@@ -689,7 +726,7 @@ class Cena3D:
                 quantidades[grupo] += 1
             return sucesso
 
-        for i, (x, y, _) in enumerate(self._vagas_quarteiroes()):
+        for i, (x, y, _) in enumerate(vagas):
             if quantidades['calcadas'] >= alvo // 3:
                 break
             plantar(x, y, 'calcadas', i)

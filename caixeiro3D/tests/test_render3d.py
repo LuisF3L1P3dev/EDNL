@@ -183,11 +183,13 @@ class TestRender3D(unittest.TestCase):
                 edificios = [d for d in cena.decoracoes if d.tipo == 'edificio' and d.no is None]
                 outros = [d for d in repetida.decoracoes if d.tipo == 'edificio' and d.no is None]
                 self.assertEqual(edificios, outros)
-                self.assertEqual(len(edificios), 38 if len(grafo.ids) == 5 else 52)
+                self.assertEqual(len(edificios), 52 if len(grafo.ids) == 5 else 80)
                 self.assertGreaterEqual(len({(d.kit, d.modelo) for d in edificios}), 8)
-                quadras = {(int((d.x + cena.meia_largura) // 12),
-                            int((d.y + cena.meia_altura) // 12)) for d in edificios}
+                quadras = {cena._quadra(d.x, d.y) for d in edificios}
                 self.assertGreaterEqual(len(quadras), 10 if len(grafo.ids) == 5 else 20)
+                self.assertTrue(all(d.altura <= 2.8 + 1e-9 for d in edificios))
+                for a, b in combinations(edificios, 2):
+                    self.assertGreaterEqual(dist((a.x, a.y), (b.x, b.y)) + 1e-9, a.raio + b.raio)
                 # A segunda fileira permite conjuntos de construções no interior.
                 self.assertTrue(all(cena.distancia_rua(d.x, d.y) <= 5.51 for d in edificios))
 
