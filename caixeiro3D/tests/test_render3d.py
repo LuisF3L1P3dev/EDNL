@@ -75,9 +75,11 @@ class TestRender3D(unittest.TestCase):
                 self.assertGreater(cena.trechos_rua, len(grafo.arestas))
                 for aresta in grafo.arestas:
                     a, b = aresta.origem, aresta.destino
-                    self.assertEqual(cena.ruas[a, b], tuple(reversed(cena.ruas[b, a])))
-                    self.assertEqual(cena.ruas[a, b][0], cena.posicoes[a])
-                    self.assertEqual(cena.ruas[a, b][-1], cena.posicoes[b])
+                    if not {a, b} & {r.no for r in cena.rotatorias}:
+                        self.assertEqual(cena.ruas[a, b], tuple(reversed(cena.ruas[b, a])))
+                    for u, v in ((a, b), (b, a)):
+                        self.assertEqual(cena.ruas[u, v][0], cena.posicoes[u])
+                        self.assertEqual(cena.ruas[u, v][-1], cena.posicoes[v])
 
     def test_malhas_reais_e_texturas_preservadas(self):
         for grafo in self.grafos:
@@ -94,7 +96,7 @@ class TestRender3D(unittest.TestCase):
                     self.assertGreater(textura.getXSize(), 0)
                     self.assertGreater(textura.getYSize(), 0)
                 self.assertIn(("rua", "road-straight"), cena.modelos_usados)
-                self.assertIn(("rua", "road-crossroad"), cena.modelos_usados)
+                self.assertIn(("rua", "road-roundabout"), cena.modelos_usados)
                 self.assertTrue(any(kit == "cidade" for kit, _ in cena.modelos_usados))
                 self.assertTrue(any(kit == "suburbio" for kit, _ in cena.modelos_usados))
                 if len(grafo.ids) == 5:
@@ -142,9 +144,11 @@ class TestRender3D(unittest.TestCase):
         for grafo in self.grafos:
             with self.subTest(grafo=grafo.id):
                 mapa = criar_mapa_visual(grafo)
-                segmentos = tuple((a, b) for e in mapa.arestas for a, b in zip(e.caminho, e.caminho[1:]))
-                trechos, juncoes = _pavimento(segmentos, mapa.posicoes.values())
-                self.assertTrue(set(mapa.posicoes.values()) <= {p for p, _, _ in juncoes})
+                segmentos = tuple((a, b) for (u, v), eixo in mapa.eixos_pavimento.items() if u < v
+                                  for a, b in zip(eixo, eixo[1:]))
+                ancoras = set(mapa.posicoes.values()) - {r.centro for r in mapa.rotatorias}
+                trechos, juncoes = _pavimento(segmentos, ancoras)
+                self.assertTrue(ancoras <= {p for p, _, _ in juncoes})
                 pisos = [(p[2], caixa) for p, _, caixa in juncoes]
                 for a, b in trechos:
                     if a[2] != b[2]:
@@ -202,10 +206,12 @@ class TestRender3D(unittest.TestCase):
                 self.assertGreaterEqual(len(edificios), 20)
                 self.assertGreaterEqual(len(arvores), 60)
                 for d in cena.decoracoes:
+                    margem = .15 if d.tipo in ('poste', 'placa') else .4
                     self.assertGreaterEqual(cena.distancia_rua(d.x, d.y) + 1e-9,
-                                            d.raio + LARGURA_RUA / 2 + .4)
+                                            d.raio + LARGURA_RUA / 2 + margem)
                     for x, y, _ in cena.posicoes.values():
-                        self.assertGreater((d.x - x) ** 2 + (d.y - y) ** 2, (d.raio + 1.2) ** 2)
+                        afastamento = .85 if d.tipo == 'placa' else 1.2
+                        self.assertGreater((d.x - x) ** 2 + (d.y - y) ** 2, (d.raio + afastamento) ** 2)
 
     def test_vegetacao_diversificada_respeita_altura_e_jardins(self):
         for grafo in self.grafos:
@@ -230,9 +236,14 @@ class TestRender3D(unittest.TestCase):
                 _, cena = self.construir(grafo)
                 itens = {tipo: [d for d in cena.decoracoes if d.tipo == tipo]
                          for tipo in ('poste', 'banco', 'passeio')}
-                self.assertEqual(tuple(len(itens[t]) for t in ('poste', 'banco', 'passeio')),
-                                 (14, 6, 8))
+                self.assertGreaterEqual(len(itens['poste']), 20)
+                self.assertEqual(tuple(len(itens[t]) for t in ('banco', 'passeio')), (6, 8))
                 self.assertEqual({d.modelo for d in itens['poste']}, {'light-curved', 'light-square'})
+                tipos = [tipo for tipo, _, _ in cena.sinalizacao]
+                self.assertEqual(tipos.count('preferencia'), 4)
+                self.assertTrue({'velocidade', 'direcao', 'curva'} <= set(tipos))
+                if cena.cidades:
+                    self.assertIn('cidade', tipos)
                 self.assertTrue(all(abs(d.altura - 1.55) < .01 for d in itens['poste']))
                 self.assertTrue(all(d.modelo == 'banco' and d.altura == .69 for d in itens['banco']))
                 if cena.pontes:
@@ -265,8 +276,15 @@ class TestRender3D(unittest.TestCase):
                     self.assertEqual((edificio.kit, edificio.modelo),
                                      (endereco.kit, endereco.nome))
                     self.assertEqual((edificio.x, edificio.y), endereco.posicao[:2])
-                    self.assertEqual(cena.marcadores_no[no_visual.id], no_visual.ancora_rua)
-                    self.assertEqual(acessos[f"acesso-no-{no_visual.id}"], no_visual.acesso)
+                    entrada = acessos[f"acesso-no-{no_visual.id}"]
+                    self.assertEqual(entrada[1], no_visual.entrada)
+                    rotatoria = next((r for r in cena.rotatorias if r.no == no_visual.id), None)
+                    if rotatoria:
+                        self.assertEqual(cena.marcadores_no[no_visual.id], rotatoria.chegada)
+                        self.assertGreater(dist(entrada[0], rotatoria.centro), dist(rotatoria.chegada, rotatoria.centro))
+                    else:
+                        self.assertEqual(cena.marcadores_no[no_visual.id], no_visual.ancora_rua)
+                        self.assertEqual(entrada, no_visual.acesso)
                     metade = endereco.tamanho / 2 + endereco.margem_lote
                     # O círculo que contém o lote não alcança o eixo de uma via.
                     self.assertGreaterEqual(cena.distancia_rua(edificio.x, edificio.y),

@@ -3,6 +3,7 @@
 Leitura via Python também funciona no ambiente restrito de desenvolvimento.
 As malhas e texturas são compartilhadas por todas as instâncias.
 """
+from math import hypot
 from pathlib import Path
 from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
                          GeomVertexFormat, GeomVertexWriter, NodePath,
@@ -18,17 +19,19 @@ class Biblioteca:
         self.modelos = {}
         self.texturas = {}
 
-    def modelo(self, kit, nome, *, cota_minima=None):
+    def modelo(self, kit, nome, *, cota_minima=None, raio_maximo=None):
         if kit not in KITS:
             raise ValueError(f"Kit desconhecido: {kit!r}. Disponiveis: {', '.join(KITS)}")
         if not nome or Path(nome).name != nome or nome in (".", ".."):
             raise ValueError(f"Nome de modelo invalido: {nome!r}")
         chave = (kit, nome) if cota_minima is None else (kit, nome, cota_minima)
+        if raio_maximo is not None:
+            chave = (kit, nome, cota_minima, raio_maximo)
         if chave not in self.modelos:
             caminho = self.root / KITS[kit] / "Models" / "OBJ format" / f"{nome}.obj"
             if not caminho.is_file():
                 raise FileNotFoundError(f"Asset ausente: {caminho}. Preserve a pasta Models dos kits Kenney.")
-            self.modelos[chave] = self._ler_obj(caminho, cota_minima)
+            self.modelos[chave] = self._ler_obj(caminho, cota_minima, raio_maximo)
         return self.modelos[chave]
 
     def paleta(self, kit, variante):
@@ -50,7 +53,7 @@ class Biblioteca:
             self.texturas[caminho] = textura
         return self.texturas[caminho]
 
-    def _ler_obj(self, caminho, cota_minima):
+    def _ler_obj(self, caminho, cota_minima, raio_maximo):
         vertices, normais, uvs, faces = [], [], [], {}
         material = ""
         for linha in caminho.read_text(encoding="utf-8").splitlines():
@@ -90,8 +93,12 @@ class Biblioteca:
                 triangulos = [t for t in triangulos
                               if all(vertices[i - 1 if i > 0 else i][2] >= cota_minima
                                      for i, *_ in t)]
-                if not triangulos:
-                    continue
+            if raio_maximo is not None:
+                triangulos = [t for t in triangulos
+                              if all(hypot(*vertices[i - 1 if i > 0 else i][:2]) <= raio_maximo
+                                     for i, *_ in t)]
+            if not triangulos:
+                continue
             dados = GeomVertexData(material, GeomVertexFormat.getV3n3t2(), Geom.UH_static)
             dados.setNumRows(len(triangulos) * 3)
             v, n, uv = (GeomVertexWriter(dados, campo) for campo in ("vertex", "normal", "texcoord"))

@@ -10,13 +10,14 @@ from dataclasses import dataclass
 from math import atan2, cos, degrees, dist, hypot, pi, sin
 from random import Random
 
-from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
+from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData, TextNode,
                          GeomVertexFormat, GeomVertexWriter,
                          TransparencyAttrib, Vec3)
 
-from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, medir_rua
+from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, fracao_com_rotatoria, medir_rua
 from roteamento3d import LARGURA_VIA
 from cidades3d import COTA_PRACA, planejar_cidades
+from rotatorias3d import BOCA, RAIO_EXTERNO, RAIO_INTERNO, RAIO_PISTA
 
 
 LARGURA_RUA = LARGURA_VIA
@@ -199,8 +200,9 @@ class Cena3D:
         self.grafo = grafo
         self.biblioteca = biblioteca
         self.mapa_visual = criar_mapa_visual(grafo)
-        self.posicoes = self.mapa_visual.posicoes
-        self.ruas = self.mapa_visual.ruas
+        self.posicoes = self.mapa_visual.chegadas
+        self.ruas = self.mapa_visual.trajetos
+        self.rotatorias = self.mapa_visual.rotatorias
         self.raiz = base.render.attachNewNode(f"cidade-{grafo.id}")
         self.rota = base.render.attachNewNode("rota-calculada")
         self.rota.setLightOff()
@@ -208,7 +210,7 @@ class Cena3D:
         self.construcoes_no = {}
         self.cidades = {}
         self._espacos_urbanos = ()
-        self._acessos = tuple(no.acesso for no in self.mapa_visual.nos)
+        self._acessos = tuple((self.posicoes[no.id], no.entrada) for no in self.mapa_visual.nos)
         self.modelos_usados = set()
         self._limites_modelos = {}
         self.trechos_rua = 0
@@ -216,9 +218,10 @@ class Cena3D:
         self._apoios_pontes = ()
         self._agua = ()
         self._trecho_destacado = None
+        self.sinalizacao = []
         self._segmentos = tuple(
             trecho for aresta in grafo.arestas
-            for trecho in medir_rua(self.ruas[aresta.origem, aresta.destino]).segmentos
+            for trecho in medir_rua(self.mapa_visual.eixos_pavimento[aresta.origem, aresta.destino]).segmentos
         )
         self._rng = Random(410 + len(grafo.ids))
         x0, y0, x1, y1 = self.mapa_visual.limites_xy
@@ -242,7 +245,10 @@ class Cena3D:
 
     @property
     def marcadores_no(self):
-        return self.mapa_visual.posicoes
+        return self.posicoes
+
+    def fracao_percurso(self, par, fracao):
+        return fracao_com_rotatoria(self.ruas[par], self.mapa_visual.zonas_rotatorias.get(par), fracao)
 
     def pontos_enquadramento(self):
         """Envelope completo que a câmera ortográfica precisa preservar.
@@ -266,7 +272,7 @@ class Cena3D:
                     pontos.append((x, y, NIVEL_GRAMA))
                     pontos.append((x, y, NIVEL_GRAMA + decoracao.altura))
         for no in self.mapa_visual.nos:
-            pontos.extend((no.posicao_marcador, no.entrada))
+            pontos.extend((self.posicoes[no.id], no.entrada))
         return tuple(pontos)
 
     def _modelo(self, kit, nome, **opcoes):
@@ -326,7 +332,10 @@ class Cena3D:
                 return
 
     def _construir_ruas(self):
-        trechos, juncoes = _pavimento(self._segmentos, self.posicoes.values())
+        ancoras_retas = (p for n, p in self.posicoes.items() if n not in {r.no for r in self.rotatorias})
+        trechos, juncoes = _pavimento(self._segmentos, ancoras_retas)
+        self._trechos_pavimento = trechos
+        self._juncoes_pavimento = juncoes
         reta = self._modelo("rua", "road-straight")
         textura = reta.find("**/+GeomNode").getTexture()
         limites_reta = reta.getTightBounds()
@@ -339,6 +348,8 @@ class Cena3D:
                 self._encaixar_rua(a, b, reta, limites_reta, .01)
         for ponto, bracos, caixa in juncoes:
             self._piso_juncao(ponto, bracos, caixa, textura)
+        for rotatoria in self.rotatorias:
+            self._construir_rotatoria(rotatoria, textura)
         for no, (x, y, z) in self.posicoes.items():
             _disco(self.raiz, f"aro-ponto-{no}", x, y, z + .014, .40, (.91, .95, .96, 1))
             cidade = self.cidades.get(no)
@@ -346,6 +357,32 @@ class Cena3D:
             _disco(self.raiz, f"ponto-{no}", x, y, z + .015, .29, cor)
         if self.pontes:
             self._construir_apoios()
+
+    def _construir_rotatoria(self, rotatoria, textura):
+        x, y, z = rotatoria.centro
+        meio_fio = self._modelo('rua', 'road-roundabout', raio_maximo=.351).copyTo(self.raiz)
+        escala = RAIO_INTERNO / .35
+        meio_fio.setScale(escala, escala, 3.)
+        meio_fio.setPos(x, y, z - .03)
+        _disco(self.raiz, 'grama-da-ilha', x, y, z + .02, .25 * escala, COR_GRAMA, lados=48)
+        arvore = self._modelo('suburbio', 'tree-small').copyTo(self.raiz)
+        altura = arvore.getTightBounds()[1].z
+        arvore.setScale(1.08 / altura)
+        arvore.setPos(x, y, z + .02)
+        perfis = tuple(rotatoria.perfis_pavimento())
+        for (a, b), (c, d) in zip(perfis, perfis[1:]):
+            superficie(self.raiz, 'piso-rotatoria', [a, b, d, c], TINTA_RUA,
+                       material=(textura, (.03125, .125)))
+        self.trechos_rua += len(perfis) - 1
+        for _, angulo in rotatoria.bracos:
+            dx, dy = cos(angulo), sin(angulo)
+            for lateral in (.14, .32):
+                cx, cy = x + dx * (BOCA - .14) - dy * lateral, y + dy * (BOCA - .14) + dx * lateral
+                superficie(self.raiz, 'marca-preferencia',
+                           [(cx - dx * .11, cy - dy * .11, z + .008),
+                            (cx + dx * .055 - dy * .065, cy + dy * .055 + dx * .065, z + .008),
+                            (cx + dx * .055 + dy * .065, cy + dy * .055 - dx * .065, z + .008)],
+                           (.98, .95, .86, 1))
 
     def _pista_ponte(self, a, b, textura):
         """Pista e laterais em faixas contiguas, seguindo a polilinha real."""
@@ -476,15 +513,21 @@ class Cena3D:
 
     def distancia_rua(self, x, y):
         """Distância XY à rua mais próxima, útil para verificar lotes."""
-        return min((_distancia_segmento(x, y, a, b) for a, b in self._segmentos), default=float("inf"))
+        retas = min((_distancia_segmento(x, y, a, b) for a, b in self._segmentos), default=float("inf"))
+        anel = min((abs(hypot(x - r.centro[0], y - r.centro[1]) - RAIO_PISTA)
+                    for r in self.rotatorias), default=float("inf"))
+        return min(retas, anel)
 
-    def _livre(self, x, y, raio, *, afastamento_no=1.2):
+    def _livre(self, x, y, raio, *, afastamento_no=1.2, margem_rua=.4):
         if abs(x) + raio > self.meia_largura - 1 or abs(y) + raio > self.meia_altura - 1:
             return False
         for x0, y0, x1, y1 in self._agua + self._espacos_urbanos:
             if hypot(x - max(x0, min(x1, x)), y - max(y0, min(y1, y))) < raio + .1:
                 return False
-        if self.distancia_rua(x, y) < raio + LARGURA_RUA / 2 + .4:
+        if any(hypot(x - r.centro[0], y - r.centro[1]) < RAIO_EXTERNO + raio + .32
+               for r in self.rotatorias):
+            return False
+        if self.distancia_rua(x, y) < raio + LARGURA_RUA / 2 + margem_rua:
             return False
         if any(hypot(x - p[0], y - p[1]) < raio + afastamento_no for p in self.posicoes.values()):
             return False
@@ -518,7 +561,8 @@ class Cena3D:
             raio = hypot(metade_x + .12, metade_y + .24)
         else:
             raio += .05
-        if not self._livre(x, y, raio, afastamento_no=2. if tipo == "edificio" else 1.5):
+        if not self._livre(x, y, raio, afastamento_no=2. if tipo == "edificio" else 1.5,
+                           margem_rua=.15 if tipo == 'poste' else .4):
             return False
         suporte = self.raiz.attachNewNode(tipo)
         suporte.setPos(x, y, NIVEL_GRAMA + .055)
@@ -571,7 +615,11 @@ class Cena3D:
         superficie(suporte, "lote-do-no", [(-metade, -metade, COTA_LOTE),
                    (metade, -metade, COTA_LOTE), (metade, metade, COTA_LOTE),
                    (-metade, metade, COTA_LOTE)], COR_CALCADA)
-        ancora, entrada = no_visual.acesso
+        ancora, entrada = self.posicoes[no_visual.id], no_visual.entrada
+        if any(r.no == no_visual.id for r in self.rotatorias):
+            # A calçada da cidade chega ao passeio pelo lado externo do anel.
+            r = next(r for r in self.rotatorias if r.no == no_visual.id)
+            ancora = r.ponto(r.angulo_chegada, RAIO_EXTERNO)
         _faixa(self.raiz, f"acesso-no-{no_visual.id}", ancora, entrada,
                LARGURA_ACESSO, COR_CALCADA)
         _faixa(self.raiz, f"porta-no-{no_visual.id}", entrada, no_visual.porta,
@@ -675,6 +723,7 @@ class Cena3D:
         if self.cidades:
             for cidade in self.cidades.values():
                 self._construir_cidade(cidade)
+            self._sinalizar()
             vagas = tuple(self._vagas_quarteiroes())
             self._criar_mobiliario(vagas)
             self._plantar_vegetacao(vagas, alvo=45, limite_jardins=0)
@@ -683,6 +732,7 @@ class Cena3D:
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
         for no_visual in self.mapa_visual.nos:
             self._adicionar_construcao_no(no_visual)
+        self._sinalizar()
         alvo_edificios = 52 if len(self.posicoes) <= 5 else 80
         residencias = tuple(f'building-type-{letra}' for letra in 'acdfghijklmnopqrstu')
         comercio = tuple(f'building-{letra}' for letra in 'bdefgh') + (
@@ -738,10 +788,143 @@ class Cena3D:
         self.decoracoes.append(Decoracao('banco', 'procedural', 'banco', x, y, raio, .69))
         return True
 
+    def _placa(self, tipo, x, y, direcao, texto=''):
+        raio = .41 if texto else .25
+        if not self._livre(x, y, raio, afastamento_no=.85, margem_rua=.15):
+            return False
+        dx, dy = direcao
+        orientacao = degrees(atan2(dx, -dy))
+        modelo = 'road-sign-warning' if tipo == 'curva' else 'road-sign-empty'
+        original, lo, hi, escala, _ = self._dimensoes('rua', modelo, .89, altura=True)
+        suporte = self.raiz.attachNewNode(f'placa-{tipo}')
+        suporte.setPos(x, y, NIVEL_GRAMA + .04)
+        suporte.setH(orientacao)
+        haste = original.copyTo(suporte)
+        haste.setScale(escala)
+        haste.setZ(-lo.z * escala)
+        if tipo == 'preferencia':
+            a, b, c = (-.24, -.045, 1.04), (.24, -.045, 1.04), (0., -.045, .64)
+            superficie(suporte, 'acesso-preferencial', [a, b, c], (.88, .25, .31, 1))
+            superficie(suporte, 'miolo-preferencial',
+                       [(-.158, -.053, 1.), (.158, -.053, 1.), (0., -.053, .727)], (.99, .97, .91, 1))
+        elif texto:
+            if tipo == 'velocidade':
+                # A placa circular tem a face em -Y, na direção da aproximação.
+                for raio_face, frente, cor in ((.25, -.047, (.84, .22, .27, 1)),
+                                               (.192, -.056, (.99, .97, .91, 1))):
+                    superficie(suporte, 'limite-de-velocidade',
+                               [(raio_face * cos(i*pi/10), frente, .90 + raio_face*sin(i*pi/10))
+                                for i in range(20)], cor)
+                cor_texto = (.16, .20, .23, 1)
+            else:
+                cor = (.20, .53, .52, 1) if tipo == 'cidade' else (.20, .41, .66, 1)
+                superficie(suporte, 'painel-direcional', [(-.40, -.05, .74), (.40, -.05, .74),
+                           (.40, -.05, 1.06), (-.40, -.05, 1.06)], cor)
+                cor_texto = (.99, .98, .91, 1)
+            letreiro = TextNode(tipo)
+            letreiro.setText(texto)
+            letreiro.setAlign(TextNode.ACenter)
+            letreiro.setTextColor(*cor_texto)
+            legenda = suporte.attachNewNode(letreiro.generate())
+            legenda.setPos(-.065 if tipo == 'direcao' else 0, -.066, .836)
+            legenda.setScale(.18)
+            legenda.setLightOff()
+            if tipo == 'direcao':
+                superficie(suporte, 'haste-da-seta', [(.20, -.066, .87), (.28, -.066, .87),
+                           (.28, -.066, .93), (.20, -.066, .93)], cor_texto)
+                superficie(suporte, 'ponta-da-seta',
+                           [(.28, -.066, .83), (.37, -.066, .90), (.28, -.066, .97)], cor_texto)
+        self.decoracoes.append(Decoracao('placa', 'rua', modelo, x, y, raio, 1.18))
+        self.sinalizacao.append((tipo, (x, y), direcao))
+        return True
+
+    def _sinalizar(self):
+        for r in self.rotatorias:
+            cx, cy, _ = r.centro
+            limite_colocado = False
+            acessos = sorted(r.bracos, key=lambda braco: sin(braco[1]) - cos(braco[1]))
+            for vizinho, angulo in acessos:
+                dx, dy = cos(angulo), sin(angulo)
+                vagas = ((cx + (BOCA + recuo) * dx - lateral * dy,
+                          cy + (BOCA + recuo) * dy + lateral * dx)
+                         for lateral in (1.08, 1.32, 1.58, -1.08)
+                         for recuo in (.55, .95, 1.35, 1.85, 2.35))
+                for x, y in vagas:
+                    if self._placa('preferencia', x, y, (dx, dy)):
+                        break
+                for recuo in (2.4, 2.9, 3.45):
+                    x = cx + (BOCA + recuo) * dx + 1.12 * dy
+                    y = cy + (BOCA + recuo) * dy - 1.12 * dx
+                    tipo = 'direcao' if limite_colocado else 'velocidade'
+                    texto = '30' if tipo == 'velocidade' else f'VIA {vizinho:02}'
+                    if self._placa(tipo, x, y, (dx, dy), texto):
+                        limite_colocado = True
+                        break
+
+        for cidade in self.cidades.values():
+            x, y, _ = cidade.ponto_na_via
+            dx, dy = cidade.frente
+            for lado in (1, -1):
+                if self._placa('cidade', x + 1.08*dx - lado*.98*dy, y + 1.08*dy + lado*.98*dx,
+                               (-lado*dy, lado*dx), f'NO {cidade.no:02}'):
+                    break
+
+        curvas = 0
+        for ponto, bracos, _ in self._juncoes_pavimento:
+            if len(bracos) != 2 or len({bool(dx) for dx, _ in bracos}) != 2:
+                continue
+            for dx, dy in sorted(bracos):
+                x, y = ponto[0] + 2.0*dx - .98*dy, ponto[1] + 2.0*dy + .98*dx
+                if self._placa('curva', x, y, (dx, dy)):
+                    curvas += 1
+                    break
+            if curvas >= (7 if self.cidades else 4):
+                break
+
+    def _iluminar_ruas(self):
+        postes = 0
+        for r in self.rotatorias:
+            x, y, _ = r.centro
+            for _, angulo in r.bracos:
+                dx, dy = cos(angulo), sin(angulo)
+                for recuo in (.35, .80, 1.15):
+                    px, py = x + (BOCA + recuo)*dx + 1.0*dy, y + (BOCA + recuo)*dy - 1.0*dx
+                    if self._adicionar_decoracao('poste', 'rua', 'light-curved', px, py, 1.55,
+                                                degrees(atan2(dy, dx))):
+                        postes += 1
+                        break
+        setores = defaultdict(list)
+        for i, (a, b) in enumerate(self._trechos_pavimento):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            comprimento = hypot(dx, dy)
+            if a[2] != b[2] or a[2] > .5 or comprimento < 5.:
+                continue
+            ux, uy = dx / comprimento, dy / comprimento
+            quantidade = max(1, round(comprimento / (9. if self.cidades else 7.)))
+            for j in range(quantidade):
+                trecho = comprimento * (j + .5) / quantidade
+                lado = -1 if (i + j) % 2 else 1
+                x, y = a[0] + trecho * ux, a[1] + trecho * uy
+                modelo = 'light-square' if i % 3 else 'light-curved'
+                setores[self._quadra(x, y)].append((x, y, ux, uy, lado, modelo))
+        vagas = sorted((i, setor, vaga) for setor, pontos in setores.items()
+                       for i, vaga in enumerate(pontos))
+        for _, _, (x, y, ux, uy, lado, modelo) in vagas:
+            for sinal in (lado, -lado):
+                if self._adicionar_decoracao('poste', 'rua', modelo,
+                                            x - sinal*uy*1.05, y + sinal*ux*1.05, 1.55,
+                                            degrees(atan2(-sinal*uy, sinal*ux))):
+                    postes += 1
+                    break
+            if postes >= (48 if self.cidades else 24):
+                break
+        return postes
+
     def _criar_mobiliario(self, vagas):
-        """Posiciona mobiliario nas vagas livres e nas proximidades das pontes."""
+        """Distribui sinalização e luz nas vias, com bancos e passeios livres."""
+        postes = self._iluminar_ruas()
         self._postes_ponte = []
-        postes = bancos = caminhos = 0
+        bancos = caminhos = 0
         for ponte in self.mapa_visual.pontes:
             dx, dy = ponte.fim[0] - ponte.inicio[0], ponte.fim[1] - ponte.inicio[1]
             comprimento = hypot(dx, dy)
@@ -758,19 +941,14 @@ class Cena3D:
                     break
             if self._postes_ponte:
                 break
-        for i, (x, y, orientacao) in enumerate(vagas):
-            if postes < 14:
-                nome = 'light-curved' if i % 2 else 'light-square'
-                if self._adicionar_decoracao('poste', 'rua', nome, x, y, 1.55, orientacao):
-                    postes += 1
-                    continue
+        for x, y, orientacao in vagas:
             if bancos < 6 and self._banco(x, y, orientacao):
                 bancos += 1
                 continue
             if caminhos < 8 and self._adicionar_decoracao('passeio', 'suburbio', 'path-stones-short',
                                                           x, y, .9, orientacao):
                 caminhos += 1
-            if postes >= 14 and bancos >= 6 and caminhos >= 8:
+            if bancos >= 6 and caminhos >= 8:
                 break
         self._mobiliario = {'postes': postes, 'bancos': bancos, 'passeios': caminhos}
 

@@ -138,8 +138,8 @@ def _intersecta(a, b, margem=0.):
 
 def planejar_cidades(mapa, meia_largura, meia_altura, agua=()):
     """Encaixa os lotes no espaço livre da malha viária já calculada."""
-    ruas = [((e.origem, e.destino), a, b, _retangulo(a, b))
-            for e in mapa.arestas for a, b in zip(e.caminho, e.caminho[1:])]
+    ruas = [(par, a, b, _retangulo(a, b)) for par, caminho in mapa.eixos_pavimento.items()
+            if par[0] < par[1] for a, b in zip(caminho, caminho[1:])]
     cidades = {}
     for no, ancora in mapa.posicoes.items():
         x, y, z = ancora
@@ -148,7 +148,8 @@ def planejar_cidades(mapa, meia_largura, meia_altura, agua=()):
         acessos = [r for r in vias if no in r[0] and r[1][2] == r[2][2] == z]
         # A área de busca fica aquém da metade dos 18 u. entre âncoras.
         # Os conectores também são reservados para as cidades seguintes.
-        reservas = [cidade.limites_xy for cidade in cidades.values()]
+        reservas = [r.limites_xy for r in mapa.rotatorias]
+        reservas.extend(cidade.limites_xy for cidade in cidades.values())
         reservas.extend(cidade.limites_acesso for cidade in cidades.values())
         dados = _melhor_lote(ancora, (meia_largura, meia_altura), vias, acessos, (*agua, *reservas))
         if dados is None:
@@ -156,7 +157,7 @@ def planejar_cidades(mapa, meia_largura, meia_altura, agua=()):
         perfil, densidade = _PERFIS[(no - 1) % len(_PERFIS)]
         if no % 4 == 0:
             densidade = (densidade[0] - 1, densidade[1]) if densidade[0] > 4 else (4, 2)
-        cidades[no] = gerar_cidade(no, ancora, *dados, perfil=perfil, densidade=densidade)
+        cidades[no] = gerar_cidade(no, mapa.chegadas[no], *dados, perfil=perfil, densidade=densidade)
     return cidades
 
 

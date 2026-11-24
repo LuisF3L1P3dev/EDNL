@@ -185,11 +185,12 @@ class HUD:
             self._chave_pesos = None
         cidades = getattr(a.cena, 'cidades', {})
         nos = sorted(a.cena.mapa_visual.nos, key=lambda n: (n.id != a.origem, n.id))
+        marcadores = getattr(a.cena, 'marcadores_no', {})
         offsets = _offsets_pins(viewport.w, viewport.h)
         proximos = _OFFSETS_CIDADES if cidades else tuple(d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
         for no_visual in nos:
             no = no_visual.id
-            p = a.camera_iso.projetar(no_visual.posicao_marcador)
+            p = a.camera_iso.projetar(marcadores.get(no, no_visual.posicao_marcador))
             if not p or not viewport.collidepoint(p):
                 continue
             label = ''
@@ -290,7 +291,7 @@ class HUD:
         """Retangulos conservadores das construcoes reais projetadas."""
         caixas = []
         for d in getattr(self.app.cena, 'decoracoes', ()):
-            if d.tipo != 'edificio':
+            if d.tipo not in ('edificio', 'placa'):
                 continue
             hx, hy = getattr(d, 'semieixos', None) or (d.raio, d.raio)
             pontos = [self.app.camera_iso.projetar((d.x + x, d.y + y, z))

@@ -108,6 +108,7 @@ class Aplicacao3D(ShowBase):
             return 0., 0.
         indice, fracao = self.viagem.trecho
         caminho = self.viagem.caminho
+        fracao = self._fracao_percurso(caminho[indice:indice + 2], fracao)
         ruas = tuple(medir_rua(self.cena.ruas[a, b]) for a, b in zip(caminho, caminho[1:]))
         total = sum(rua.comprimento for rua in ruas)
         if self.viagem.concluida:
@@ -359,7 +360,8 @@ class Aplicacao3D(ShowBase):
             return
 
         indice, fracao = self.viagem.trecho
-        amostra = medir_rua(self.cena.ruas[caminho[indice:indice + 2]]).amostrar(fracao)
+        par = caminho[indice:indice + 2]
+        amostra = medir_rua(self.cena.ruas[par]).amostrar(self._fracao_percurso(par, fracao))
         local = heading_da_direcao(amostra.tangente)
         pitch = pitch_da_direcao(amostra.tangente)
         if self.viagem.em_chegada:
@@ -378,6 +380,10 @@ class Aplicacao3D(ShowBase):
             self._heading_carro = limitar_heading(local, heading)
         self.carro.setPos(*amostra.ponto)
         self.carro.setHpr(self._heading_carro, pitch, 0)
+
+    def _fracao_percurso(self, par, fracao):
+        perfil = getattr(self.cena, 'fracao_percurso', None)
+        return perfil(par, fracao) if perfil else fracao
 
     def _destacar_trecho_atual(self):
         if not self.viagem.pesos:
@@ -462,8 +468,9 @@ class Aplicacao3D(ShowBase):
             alvo = list(posicao_carro)
             if self.viagem.reproduzindo and self.viagem.pesos and not self.viagem.em_chegada:
                 indice, fracao = self.viagem.trecho
-                rua = self.cena.ruas[self.viagem.caminho[indice:indice + 2]]
-                tangente = medir_rua(rua).amostrar(fracao).tangente
+                par = self.viagem.caminho[indice:indice + 2]
+                rua = self.cena.ruas[par]
+                tangente = medir_rua(rua).amostrar(self._fracao_percurso(par, fracao)).tangente
                 comprimento = sum(v * v for v in tangente) ** .5
                 if comprimento:
                     for eixo in range(3):

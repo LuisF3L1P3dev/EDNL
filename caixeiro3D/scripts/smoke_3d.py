@@ -17,6 +17,8 @@ sys.path.insert(0, str(ROOT))
 from direct.showbase.MessengerGlobal import messenger
 from panda3d.core import PNMImage, StringStream
 from geometria3d import medir_rua
+from mundo3d import diferenca_angular, heading_da_direcao
+from rotatorias3d import RAIO_INTERNO, RAIO_PISTA
 from tsp_3d import Aplicacao3D
 
 DESTINO = ROOT / 'tmp' / '3d-review'
@@ -69,22 +71,23 @@ def verificar_posicionamento(app):
     app.ui.desenhar()
     cena, hud, camera = app.cena, app.ui, app.camera_iso
     nos = cena.mapa_visual.nos
-    assert len({n.ancora_rua for n in nos}) == len(nos)
+    assert len(set(cena.marcadores_no.values())) == len(nos)
     assert len(hud.etiquetas_tela) == len(nos)
     assert len(hud.pesos_tela) == len(app.mapa.arestas)
     if cena.cidades:
         assert not any(r.collidelist(hud._edificios_tela) >= 0 for r in hud.etiquetas_tela.values())
     for no in nos:
-        assert hud.ancoras_tela[no.id] == camera.projetar(no.ancora_rua)
+        ancora = cena.marcadores_no[no.id]
+        assert hud.ancoras_tela[no.id] == camera.projetar(ancora)
         if cena.cidades:
             cidade = cena.cidades[no.id]
-            assert cidade.ancora_rua == no.ancora_rua
+            assert cidade.ancora_rua == ancora
             assert set(cidade.via_acesso) <= {no.id, *no.conexoes}
         else:
             assert no.id in cena.construcoes_no
             assert no.acesso == (no.ancora_rua, no.entrada)
         for vizinho in no.conexoes:
-            assert cena.ruas[no.id, vizinho][0] == no.ancora_rua
+            assert cena.ruas[no.id, vizinho][0] == ancora
     etiquetas = list(hud.etiquetas_tela.values()) + list(hud.pesos_tela.values())
     assert not any(a.colliderect(b) for a, b in combinations(etiquetas, 2))
     assert not any(r.colliderect(hud._area_controles()) for r in etiquetas)
@@ -126,8 +129,14 @@ def verificar_acompanhamento(app, sufixo, n):
         app.atualizar(1/60)
         i, fracao = v.trecho
         par = v.caminho[i:i + 2]
-        amostra = medir_rua(app.cena.ruas[par]).amostrar(fracao)
+        amostra = medir_rua(app.cena.ruas[par]).amostrar(app.cena.fracao_percurso(par, fracao))
         assert dist(app.carro.getPos(), amostra.ponto) < 1e-4
+        if par in app.cena.mapa_visual.zonas_rotatorias:
+            r = app.cena.rotatorias[0]
+            assert dist(amostra.ponto[:2], r.centro[:2]) >= RAIO_INTERNO
+            if not v.em_chegada:
+                heading = heading_da_direcao(amostra.tangente)
+                assert abs(diferenca_angular(heading, app.carro.getH())) <= 45.001
         p = camera.projetar(app.carro.getPos(app.render))
         assert p is not None and camera.viewport.collidepoint(p), (n, frames, par, p)
         if v.em_chegada:
@@ -180,6 +189,37 @@ def capturar_ponte(app):
     app.acao('reset')
 
 
+def capturar_rotatoria(app, n):
+    viagem = app.viagem
+    rotatoria, = app.cena.rotatorias
+    zonas = app.cena.mapa_visual.zonas_rotatorias
+    _, i = max((max(zonas[par]), i) for i, par in enumerate(zip(viagem.caminho, viagem.caminho[1:]))
+               if par in zonas)
+    par = viagem.caminho[i:i + 2]
+    rua = medir_rua(app.cena.ruas[par])
+    alvo = rua.acumulados[8 if zonas[par][0] else -9] / rua.comprimento
+    esquerda, direita = 0., 1.
+    for _ in range(40):
+        meio = (esquerda + direita) / 2
+        if app.cena.fracao_percurso(par, meio) < alvo:
+            esquerda = meio
+        else:
+            direita = meio
+    app.acao('reiniciar')
+    viagem.velocidade = 1
+    app.acao('pausa')
+    taxa = viagem.total / 30.
+    app.atualizar((sum(viagem.pesos[:i]) + direita * viagem.pesos[i]) / taxa
+                  + i * viagem.PAUSA_CHEGADA)
+    assert abs(dist(tuple(app.carro.getPos())[:2], rotatoria.centro[:2]) - RAIO_PISTA) < .01
+    x, y = app.camera_iso.projetar(rotatoria.centro)
+    cx, cy = app.camera_iso.viewport.center
+    app.camera_iso.arrastar(cx - x, cy - y)
+    app.camera_iso.mudar_zoom(3)
+    capturar(app, f'rotatoria-mapa{n}.png')
+    app.acao('reset')
+
+
 def capturar_cidade(app):
     capturar(app, 'regiao-18-cidades.png')
     app.ui.mostrar_pesos = False
@@ -206,6 +246,8 @@ def verificar(tamanho):
         for indice, n in enumerate((5, 18)):
             app.acao(f'mapa{indice}')
             verificar_posicionamento(app)
+            if tamanho == (1440, 960):
+                capturar(app, f'ruas-mapa{n}.png')
             if n == 18 and tamanho == (1440, 960):
                 capturar_cidade(app)
             if n == 18:
@@ -255,8 +297,10 @@ def verificar(tamanho):
             app.viagem.velocidade = 1
             resultado['quadros_acompanhados_em_4x'] = verificar_acompanhamento(app, sufixo, n)
             resultados.append(resultado)
-            if n == 18 and tamanho == (1440, 960):
-                capturar_ponte(app)
+            if tamanho == (1440, 960):
+                capturar_rotatoria(app, n)
+                if n == 18:
+                    capturar_ponte(app)
 
         # Seleção pelos mesmos alvos de clique usados pela interface real.
         app.acao('selecionar_dijkstra')

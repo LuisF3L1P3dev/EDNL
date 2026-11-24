@@ -7,12 +7,13 @@ from bisect import bisect_right
 from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import accumulate
-from math import cos, dist, isfinite, radians, sin, ulp
+from math import ceil, cos, dist, isfinite, pi, radians, sin, ulp
 from types import MappingProxyType
 from typing import Mapping
 
 from tsp_core import Aresta, Grafo, No
 from roteamento3d import ALTURA_RUA, posicoes_planejadas, rotear
+from rotatorias3d import Rotatoria, planejar_rotatoria, separar_pavimento
 
 
 XYZ = tuple[float, float, float]
@@ -173,6 +174,11 @@ class MapaVisual:
     nos: tuple[NoVisual, ...]
     arestas: tuple[ArestaVisual, ...]
     pontes: tuple = ()
+    rotatorias: tuple[Rotatoria, ...] = ()
+    chegadas: Mapping[int, XYZ] = field(init=False, repr=False, compare=False)
+    eixos_pavimento: Mapping[tuple[int, int], tuple[XYZ, ...]] = field(init=False, repr=False, compare=False)
+    trajetos: Mapping[tuple[int, int], tuple[XYZ, ...]] = field(init=False, repr=False, compare=False)
+    zonas_rotatorias: Mapping[tuple[int, int], tuple[int, int]] = field(init=False, repr=False, compare=False)
     _posicoes: Mapping[int, XYZ] = field(init=False, repr=False, compare=False)
     _ruas: Mapping[tuple[int, int], tuple[XYZ, ...]] = field(init=False, repr=False, compare=False)
 
@@ -201,6 +207,14 @@ class MapaVisual:
             ruas[e.destino, e.origem] = tuple(reversed(e.caminho))
         object.__setattr__(self, '_posicoes', MappingProxyType(posicoes))
         object.__setattr__(self, '_ruas', MappingProxyType(ruas))
+        rotatorias = tuple(self.rotatorias)
+        object.__setattr__(self, 'rotatorias', rotatorias)
+        chegadas = posicoes | {r.no: r.chegada for r in rotatorias}
+        eixos, trajetos, zonas = separar_pavimento(ruas, rotatorias)
+        object.__setattr__(self, 'chegadas', MappingProxyType(chegadas))
+        object.__setattr__(self, 'eixos_pavimento', eixos)
+        object.__setattr__(self, 'trajetos', trajetos)
+        object.__setattr__(self, 'zonas_rotatorias', zonas)
 
     @property
     def posicoes(self):
@@ -208,6 +222,7 @@ class MapaVisual:
 
     @property
     def ruas(self):
+        """Eixos ortogonais do traçado, antes de aplicar as rotatórias."""
         return self._ruas
 
     @property
@@ -240,7 +255,7 @@ class _IdentidadeGrafo:
 
 
 @lru_cache(maxsize=16)
-def _criar_em_cache(identidade, posicoes, construcoes):
+def _criar_em_cache(identidade, posicoes, construcoes, com_rotatorias):
     grafo = identidade.grafo
     posicoes, construcoes = dict(posicoes), dict(construcoes)
     adj = grafo.adjacencia()
@@ -253,7 +268,8 @@ def _criar_em_cache(identidade, posicoes, construcoes):
     # explicitamente fornecido permanece livre para ferramentas e testes da
     # task anterior; ele recebe uma polilinha ortogonal simples, sem mudar
     # topologia nem exigir que seus pontos caibam na grade planejada.
-    if ancoras == posicoes_planejadas(grafo):
+    layout_padrao = ancoras == posicoes_planejadas(grafo)
+    if layout_padrao:
         rotas = rotear(grafo, ancoras, construcoes, w5=len(grafo.ids) == 5)
         por_aresta = dict(rotas.caminhos)
         pontes = rotas.pontes
@@ -264,9 +280,28 @@ def _criar_em_cache(identidade, posicoes, construcoes):
             curva = (b[0], a[1], ALTURA_RUA)
             por_aresta[aresta.origem, aresta.destino] = (a, curva, b) if curva not in (a, b) else (a, b)
         pontes = ()
+    rotatorias = ()
+    if layout_padrao and com_rotatorias:
+        if grafo.id == 'mapa_18' and set(adj.get(17, ())) == {14, 15, 16, 18}:
+            x, y, z = ancoras[17]
+            # Abre quatro corredores independentes na praça. O acesso de
+            # oeste fica reto, e as vias do sul e do leste separam-se na origem.
+            lado_leste = por_aresta[15, 17][1][0]
+            por_aresta[15, 17] = (ancoras[15], por_aresta[15, 17][1], (lado_leste, y, z), ancoras[17])
+            por_aresta[16, 17] = (ancoras[16], ancoras[17])
+            por_aresta[17, 18] = (ancoras[17], (x, y - 4.5, z),
+                                  (ancoras[18][0], y - 4.5, z), ancoras[18])
+            no, angulo = 17, 3 * pi / 4
+        elif grafo.id == 'mapa_05' and set(adj.get(4, ())) == {1, 2, 3, 5}:
+            no, angulo = 4, -pi / 4
+        else:
+            no = None
+        if no is not None:
+            eixos = por_aresta | {(v, u): p[::-1] for (u, v), p in por_aresta.items()}
+            rotatorias = (planejar_rotatoria(no, ancoras[no], sorted(adj[no]), eixos, angulo),)
     arestas = [ArestaVisual(aresta, por_aresta[aresta.origem, aresta.destino])
                for aresta in grafo.arestas]
-    return MapaVisual(grafo, nos, tuple(arestas), tuple(pontes))
+    return MapaVisual(grafo, nos, tuple(arestas), tuple(pontes), rotatorias)
 
 
 def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
@@ -300,15 +335,18 @@ def criar_mapa_visual(grafo, *, posicoes=None, construcoes=None):
         rotacao = (90. if dx > 0 else -90.) if abs(dx) >= abs(dy) else (180. if dy > 0 else 0.)
         enderecos[no] = ConstrucaoVisual(
             (x + dx, y + dy, base), kit, nome, rotacao=rotacao)
+    com_rotatorias = True
     if construcoes is not None:
         if not set(construcoes) <= set(grafo.ids):
             raise ValueError("Endereço associado a um nó inexistente.")
         if not all(isinstance(c, ConstrucaoVisual) for c in construcoes.values()):
             raise ValueError("Endereços devem ser objetos ConstrucaoVisual imutáveis.")
+        # As bocas e o contorno de cada anel foram encaixados no cadastro padrão.
+        com_rotatorias = all(enderecos[no] == lote for no, lote in construcoes.items())
         enderecos.update(construcoes)
     return _criar_em_cache(_IdentidadeGrafo(grafo),
                           tuple((no, posicoes[no]) for no in grafo.ids),
-                          tuple((no, enderecos[no]) for no in grafo.ids))
+                          tuple((no, enderecos[no]) for no in grafo.ids), com_rotatorias)
 
 
 criar_mapa_visual.cache_info = _criar_em_cache.cache_info
@@ -317,12 +355,12 @@ criar_mapa_visual.cache_clear = _criar_em_cache.cache_clear
 
 def posicoes_mundo(grafo):
     """Compatibilidade: cópia mutável das posições da apresentação padrão."""
-    return dict(criar_mapa_visual(grafo).posicoes)
+    return dict(criar_mapa_visual(grafo).chegadas)
 
 
 def ruas_mundo(grafo):
     """Compatibilidade: ruas bidirecionais da mesma apresentação em cache."""
-    return dict(criar_mapa_visual(grafo).ruas)
+    return dict(criar_mapa_visual(grafo).trajetos)
 
 
 @dataclass(frozen=True)
@@ -393,5 +431,41 @@ def _medir_rua(pontos):
 def interpolar(pontos, fracao):
     amostra = medir_rua(pontos).amostrar(fracao)
     return amostra.ponto, amostra.tangente
+
+
+def fracao_com_rotatoria(pontos, zonas, fracao):
+    """Converte fração do relógio em distância, com desaceleração nas bocas."""
+    if not zonas or not 0. < fracao < 1.:
+        return fracao
+    distancias, tempos, comprimento = _perfil_rotatoria(pontos, zonas)
+    t = fracao * tempos[-1]
+    i = bisect_right(tempos, t) - 1
+    progresso = (t - tempos[i]) / (tempos[i + 1] - tempos[i])
+    return (distancias[i] + progresso * (distancias[i + 1] - distancias[i])) / comprimento
+
+
+@lru_cache(maxsize=64)
+def _perfil_rotatoria(pontos, zonas):
+    rua = medir_rua(pontos)
+    inicio, fim = zonas
+    fim_inicio = rua.acumulados[inicio] if inicio else None
+    inicio_fim = rua.acumulados[-fim - 1] if fim else None
+    passos = ceil(rua.comprimento / .20)
+    passo = rua.comprimento / passos
+
+    def densidade(s):
+        distancias = [1.4]
+        if fim_inicio is not None:
+            distancias.append(max(0., s - fim_inicio))
+        if inicio_fim is not None:
+            distancias.append(max(0., inicio_fim - s))
+        t = 1. - min(distancias) / 1.4
+        return 1. + .85 * t * t * (3. - 2. * t)
+
+    distancias = tuple(i * passo for i in range(passos + 1))
+    densidades = tuple(map(densidade, distancias))
+    tempos = tuple(accumulate(((a + b) * passo / 2 for a, b in zip(densidades, densidades[1:])),
+                              initial=0.))
+    return distancias, tempos, rua.comprimento
 
 

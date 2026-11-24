@@ -112,6 +112,9 @@ dos cruzamentos e das quadras.
 O [relatório das 18 cidades](docs/18-cidades/validacao.md) reúne a vista
 geral da região, detalhes dos três perfis de cidade e as medições do HUD.
 
+O [relatório de rotatórias e sinalização](docs/rotatorias/validacao.md)
+reúne as capturas dos novos acessos, postes e placas e os testes do percurso.
+
 Captura rápida, sem manter uma janela aberta:
 
 ```powershell

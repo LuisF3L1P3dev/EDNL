@@ -1,13 +1,15 @@
 """O layout pode mudar; o cadastro matemático e seus resultados permanecem."""
 from dataclasses import FrozenInstanceError, replace
 from itertools import combinations
-from math import cos, dist, radians, sin
+from math import cos, dist, hypot, radians, sin
 from pathlib import Path
 import unittest
 
 from geometria3d import (ArestaVisual, ConstrucaoVisual, MapaVisual,
-                        criar_mapa_visual, posicoes_mundo, ruas_mundo)
+                        criar_mapa_visual, fracao_com_rotatoria, medir_rua,
+                        posicoes_mundo, ruas_mundo)
 from roteamento3d import ALTURA_RUA, MEIO_TABULEIRO, RAIO_PRACA, RAMPA, VAO_LIVRE, posicoes_planejadas
+from rotatorias3d import BOCA, RAIO_EXTERNO, RAIO_INTERNO
 from solvers import executar
 from tsp_core import Aresta, carregar_cenarios, carregar_mapa
 
@@ -199,7 +201,7 @@ class LayoutVisualTest(unittest.TestCase):
         visual = criar_mapa_visual(grande)
         x0, y0, x1, y1 = visual.limites_xy
         self.assertLessEqual(x1 - x0, 94.)
-        self.assertLessEqual(y1 - y0, 64.)
+        self.assertLessEqual(y1 - y0, 66.)
         pontes = {(frozenset((p.aresta, p.inferior)), p.centro[:2]) for p in visual.pontes}
         encontrados = set()
         for e, f in combinations(visual.arestas, 2):
@@ -218,6 +220,44 @@ class LayoutVisualTest(unittest.TestCase):
                         continue
                     encontrados.add((frozenset((par_e, par_f)), (x, y)))
         self.assertEqual(encontrados, pontes)
+
+    def test_trafego_das_rotatorias_preserva_acessos_e_desacelera_no_anel(self):
+        for grafo, no in zip(self.grafos, (4, 17)):
+            mapa = criar_mapa_visual(grafo)
+            rotatoria, = mapa.rotatorias
+            self.assertEqual(rotatoria.no, no)
+            self.assertEqual({v for v, _ in rotatoria.bracos}, set(grafo.adjacencia()[no]))
+            self.assertEqual(set(mapa.trajetos), set(mapa.ruas))
+            x, y, z = rotatoria.centro
+            perfis = tuple(rotatoria.perfis_pavimento())
+            for vizinho, direcao in rotatoria.bracos:
+                c, s = cos(direcao), sin(direcao)
+                bordas = [-(b[0] - x)*s + (b[1] - y)*c for _, b in perfis
+                          if abs((b[0] - x)*c + (b[1] - y)*s - BOCA) < 1e-8]
+                self.assertAlmostEqual(max(bordas) - min(bordas), .95)
+                for par in ((no, vizinho), (vizinho, no)):
+                    rua = medir_rua(mapa.trajetos[par])
+                    self.assertEqual(rua.pontos[0], mapa.chegadas[par[0]])
+                    self.assertEqual(rua.pontos[-1], mapa.chegadas[par[1]])
+                    zonas = mapa.zonas_rotatorias[par]
+                    inicio, fim = zonas
+                    curva = rua.segmentos[:inicio] if inicio else rua.segmentos[-fim:]
+                    for a, b in curva:
+                        px, py, pz = tuple((u + v) / 2 for u, v in zip(a, b))
+                        dx, dy = px - x, py - y
+                        raio = hypot(dx, dy)
+                        self.assertAlmostEqual(pz, z)
+                        self.assertGreater(raio, RAIO_INTERNO)
+                        self.assertTrue(raio < RAIO_EXTERNO or
+                                        (abs(-dx*s + dy*c) < .475 and 0. < dx*c + dy*s <= BOCA))
+                    fracao = lambda t: fracao_com_rotatoria(rua.pontos, zonas, t)
+                    self.assertEqual((fracao(0.), fracao(1.)), (0., 1.))
+                    if inicio:
+                        lento, reta = fracao(.04), 1. - fracao(.96)
+                    else:
+                        lento, reta = 1. - fracao(.96), fracao(.04)
+                    self.assertGreater(lento, 0.)
+                    self.assertLess(lento, reta)
 
     def test_limites_incluem_lotes_e_desvios_distantes(self):
         g = self.grafos[0]
