@@ -9,7 +9,7 @@ from itertools import chain
 import pygame
 from panda3d.core import CardMaker, Texture, TransparencyAttrib
 
-from geometria3d import medir_rua
+from geometria3d import NIVEL_GRAMA, medir_rua
 
 INK = (32, 47, 64)
 MUTED = (72, 91, 105)
@@ -36,6 +36,16 @@ def _offsets_pins(largura, altura):
 _OFFSETS_PESOS = tuple(sorted(((x, y) for x in range(-144, 145, 16)
                                for y in range(-144, 145, 16)),
                               key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
+_OFFSETS_CIDADES = tuple(sorted(((x, y) for x in range(-120, 121, 12)
+                                 for y in range(-120, 121, 12) if x*x + y*y <= 120**2),
+                                key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
+
+
+@lru_cache(maxsize=128)
+def _amostras_pesos(pontos):
+    rua = medir_rua(pontos)
+    return tuple(rua.amostrar(f).ponto for f in (.5, .34, .66, .2, .8, .42, .58,
+                                                 .12, .88, .27, .73, .05, .95))
 
 
 class HUD:
@@ -49,6 +59,8 @@ class HUD:
         self.etiquetas_tela = {}
         self.pesos_tela = {}
         self.pesos_ativos = set()
+        self._projecao_anterior = None
+        self._chave_pesos = None
         self.config_aberta = False
         self.mostrar_pesos = True
         self.mostrar_legendas = True
@@ -165,10 +177,16 @@ class HUD:
             indice_atual, fracao = a.viagem.trecho
             atual = a.viagem.caminho[indice_atual] if fracao <= 1e-9 else None
         ocupadas_pins = [pygame.Rect(258, 100, 230, 50), controles]
-        self._edificios_tela = self._construcoes_tela(viewport)
+        projecao = getattr(a.camera_iso, 'chave_projecao', None)
+        chave = (a.cena, projecao)
+        if projecao is None or chave != self._projecao_anterior:
+            self._edificios_tela = self._construcoes_tela(viewport)
+            self._projecao_anterior = chave
+            self._chave_pesos = None
+        cidades = getattr(a.cena, 'cidades', {})
         nos = sorted(a.cena.mapa_visual.nos, key=lambda n: (n.id != a.origem, n.id))
         offsets = _offsets_pins(viewport.w, viewport.h)
-        proximos = tuple(d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
+        proximos = _OFFSETS_CIDADES if cidades else tuple(d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
         for no_visual in nos:
             no = no_visual.id
             p = a.camera_iso.projetar(no_visual.posicao_marcador)
@@ -241,8 +259,15 @@ class HUD:
             pygame.draw.circle(self.canvas, (35, 63, 66, 65), (centro[0], centro[1] + 3), 18)
             pygame.draw.circle(self.canvas, WHITE, centro, 18)
             pygame.draw.circle(self.canvas, cor, centro, 15)
-            img = self.fonte(14, True).render(str(no), True, INK if cor == YELLOW else WHITE)
-            self.canvas.blit(img, img.get_rect(center=centro))
+            tinta = INK if cor == YELLOW else WHITE
+            if no in cidades:
+                sigla = self.fonte(8, True).render('NÓ', True, tinta)
+                self.canvas.blit(sigla, sigla.get_rect(center=(centro[0], centro[1] - 6)))
+                img = self.fonte(13, True).render(f'{no:02}', True, tinta)
+                self.canvas.blit(img, img.get_rect(center=(centro[0], centro[1] + 4)))
+            else:
+                img = self.fonte(14, True).render(str(no), True, tinta)
+                self.canvas.blit(img, img.get_rect(center=centro))
             if no == a.origem:
                 pygame.draw.circle(self.canvas, GREEN, centro, 21, 2)
             if label:
@@ -267,9 +292,10 @@ class HUD:
         for d in getattr(self.app.cena, 'decoracoes', ()):
             if d.tipo != 'edificio':
                 continue
+            hx, hy = getattr(d, 'semieixos', None) or (d.raio, d.raio)
             pontos = [self.app.camera_iso.projetar((d.x + x, d.y + y, z))
-                      for x in (-d.raio, d.raio) for y in (-d.raio, d.raio)
-                      for z in (-.35, -.35 + d.altura)]
+                      for x in (-hx, hx) for y in (-hy, hy)
+                      for z in (NIVEL_GRAMA, NIVEL_GRAMA + d.altura)]
             pontos = [p for p in pontos if p is not None]
             if pontos:
                 x0, x1 = min(p[0] for p in pontos), max(p[0] for p in pontos)
@@ -281,26 +307,41 @@ class HUD:
 
     def _desenhar_pesos(self, viewport, selecionadas):
         """Posiciona pesos próximos à sua rua sem encobrir pins ou outros pesos."""
-        a = self.app
+        chave = (frozenset(selecionadas), tuple(tuple(r) for r in self.etiquetas_tela.values()))
+        if chave != self._chave_pesos:
+            self._layout_pesos = self._posicionar_pesos(viewport, selecionadas)
+            self._chave_pesos = chave
         self.pesos_ativos = set(selecionadas)
+        for par, texto, caixa, ligacao in self._layout_pesos:
+            if ligacao:
+                pygame.draw.line(self.canvas, (80, 96, 100, 150), *ligacao, 1)
+            ativa = frozenset(par) in selecionadas
+            pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235),
+                             caixa, border_radius=6)
+            pygame.draw.rect(self.canvas, YELLOW if ativa else LINE, caixa, 1, border_radius=6)
+            self.texto(texto, caixa.x + 7, caixa.y + 2, 12, INK, True)
+            self.pesos_tela[par] = caixa
+
+    def _posicionar_pesos(self, viewport, selecionadas):
+        a = self.app
         ocupadas = list(self.etiquetas_tela.values()) + [pygame.Rect(258, 100, 230, 50),
                                                         self._area_controles()]
         ocupadas.extend(self._edificios_tela)
-        fracoes = (.5, .34, .66, .2, .8, .42, .58, .12, .88, .27, .73, .05, .95)
-        deslocamentos = _OFFSETS_PESOS
         fonte = self.fonte(12, True)
         arestas = sorted(a.mapa.arestas, key=lambda e: frozenset((e.origem, e.destino)) not in selecionadas)
+        layout = []
         for e in arestas:
             texto = f'{e.peso:g}'
             tamanho = fonte.size(texto)
             escolhido = None
-            rua = medir_rua(a.cena.ruas[e.origem, e.destino])
-            projetados = [a.camera_iso.projetar(rua.amostrar(fracao).ponto) for fracao in fracoes]
+            amostras = _amostras_pesos(a.cena.ruas[e.origem, e.destino])
+            projetados = [a.camera_iso.projetar(ponto) for ponto in amostras]
+            projetados = [p for p in projetados if p is not None]
+            if not projetados:
+                continue
             box = pygame.Rect(0, 0, tamanho[0] + 14, 22)
-            for dx, dy in deslocamentos:
+            for dx, dy in _OFFSETS_PESOS:
                 for projetado in projetados:
-                    if not projetado:
-                        continue
                     box.center = round(projetado[0] + dx), round(projetado[1] + dy)
                     if viewport.contains(box) and box.collidelist(ocupadas) < 0:
                         escolhido = box.copy()
@@ -326,19 +367,16 @@ class HUD:
                         dx, dy = escolhido.centerx - ancora_peso[0], escolhido.centery - ancora_peso[1]
             if escolhido is None:
                 continue
+            ligacao = None
             if hypot(dx, dy) > 22:
                 ponta = (max(escolhido.left, min(escolhido.right, round(ancora_peso[0]))),
                          max(escolhido.top, min(escolhido.bottom, round(ancora_peso[1]))))
                 inicio = tuple(map(round, ancora_peso))
                 if viewport.collidepoint(inicio) and not any(r.clipline(inicio, ponta) for r in ocupadas):
-                    pygame.draw.line(self.canvas, (80, 96, 100, 150), inicio, ponta, 1)
-            ativa = frozenset((e.origem, e.destino)) in selecionadas
-            pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235),
-                             escolhido, border_radius=6)
-            pygame.draw.rect(self.canvas, YELLOW if ativa else LINE, escolhido, 1, border_radius=6)
-            self.texto(texto, escolhido.x + 7, escolhido.y + 2, 12, INK, True)
-            self.pesos_tela[e.origem, e.destino] = escolhido
+                    ligacao = inicio, ponta
+            layout.append(((e.origem, e.destino), texto, escolhido, ligacao))
             ocupadas.append(escolhido)
+        return layout
 
     def _esquerda(self):
         a = self.app
@@ -518,7 +556,7 @@ class HUD:
         self.texto('ROTAS & ENTREGAS', 80, 51, 9, MUTED, True)
         self.texto('Cada entrega encontra seu caminho.', 270, 35, 15, MUTED, largura=w - 690)
         self.botao('mapa0', '01  /  Bairro · 5 pontos', (w - 406, 28, 181, 34), selecionado=a.indice_mapa == 0)
-        self.botao('mapa1', '02  /  Cidade · 18 pontos', (w - 215, 28, 183, 34), selecionado=a.indice_mapa == 1)
+        self.botao('mapa1', '02  /  Região · 18 cidades', (w - 215, 28, 183, 34), selecionado=a.indice_mapa == 1)
         self._esquerda()
         self._direita(w, h)
         self._inferior(w, h)

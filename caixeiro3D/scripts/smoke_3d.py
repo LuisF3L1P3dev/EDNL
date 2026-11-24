@@ -72,10 +72,17 @@ def verificar_posicionamento(app):
     assert len({n.ancora_rua for n in nos}) == len(nos)
     assert len(hud.etiquetas_tela) == len(nos)
     assert len(hud.pesos_tela) == len(app.mapa.arestas)
+    if cena.cidades:
+        assert not any(r.collidelist(hud._edificios_tela) >= 0 for r in hud.etiquetas_tela.values())
     for no in nos:
         assert hud.ancoras_tela[no.id] == camera.projetar(no.ancora_rua)
-        assert no.id in cena.construcoes_no
-        assert no.acesso == (no.ancora_rua, no.entrada)
+        if cena.cidades:
+            cidade = cena.cidades[no.id]
+            assert cidade.ancora_rua == no.ancora_rua
+            assert set(cidade.via_acesso) <= {no.id, *no.conexoes}
+        else:
+            assert no.id in cena.construcoes_no
+            assert no.acesso == (no.ancora_rua, no.entrada)
         for vizinho in no.conexoes:
             assert cena.ruas[no.id, vizinho][0] == no.ancora_rua
     etiquetas = list(hud.etiquetas_tela.values()) + list(hud.pesos_tela.values())
@@ -174,19 +181,21 @@ def capturar_ponte(app):
 
 
 def capturar_cidade(app):
-    capturar(app, 'cidade-18-1440x960.png')
+    capturar(app, 'regiao-18-cidades.png')
     app.ui.mostrar_pesos = False
     camera = app.camera_iso
-    # Enquadra o conjunto misto de quadras entre 11, 15 e 18.
-    pontos = [app.cena.posicoes[n] for n in (11, 15, 18)]
-    centro = tuple(sum(eixo) / len(pontos) for eixo in zip(*pontos))
-    x, y = camera.projetar(centro)
-    cx, cy = camera.viewport.center
-    camera.arrastar(cx - x, cy - y)
-    camera.mudar_zoom(2.65)
-    capturar(app, 'quadras-1440x960.png')
+    for no in (1, 5, 18):
+        cidade = app.cena.cidades[no]
+        centro = tuple((a + b) / 2 for a, b in zip(cidade.centro, cidade.ancora_rua))
+        x, y = camera.projetar((*centro, cidade.entrada[2]))
+        cx, cy = camera.viewport.center
+        camera.arrastar(cx - x, cy - y)
+        camera.mudar_zoom(3)
+        capturar(app, f'cidade-{no:02}.png')
+        assert no in app.ui.etiquetas_tela
+        assert app.ui.etiquetas_tela[no].collidelist(app.ui._edificios_tela) < 0
+        app.acao('reset')
     app.ui.mostrar_pesos = True
-    app.acao('reset')
 
 
 def verificar(tamanho):
@@ -199,6 +208,10 @@ def verificar(tamanho):
             verificar_posicionamento(app)
             if n == 18 and tamanho == (1440, 960):
                 capturar_cidade(app)
+            if n == 18:
+                app.camera_iso.mudar_zoom(.65)
+                verificar_posicionamento(app)
+                app.acao('reset')
             app.ui.desenhar()
             assert len(app.ui.posicoes_tela) == n
             for p in app.ui.posicoes_tela.values():
@@ -298,7 +311,16 @@ def verificar(tamanho):
             app.ui.desenhar()
             app.graphicsEngine.renderFrame()
             tempos.append((perf_counter() - inicio) * 1000)
+        tempos_arraste = []
+        app.camera_iso.mudar_zoom(1.5)
+        for passo in range(16):
+            inicio = perf_counter()
+            app.camera_iso.arrastar(7 if passo < 8 else -7, 2)
+            app.ui.desenhar()
+            app.graphicsEngine.renderFrame()
+            tempos_arraste.append((perf_counter() - inicio) * 1000)
         resultados.append({'resolucao': sufixo, 'frame_com_hud_mediana_ms': round(statistics.median(tempos), 2),
+                           'frame_arraste_mediana_ms': round(statistics.median(tempos_arraste), 2),
                            'modelos_em_cache': len(app.biblioteca.modelos),
                            'texturas_em_cache': len(app.biblioteca.texturas),
                            'selecao_pelo_mapa': True, 'cancelamento': True,

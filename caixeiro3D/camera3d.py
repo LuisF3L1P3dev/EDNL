@@ -88,6 +88,8 @@ class CameraIsometrica:
         alvo = centro + self.pan
         self.base.camera.setPos(alvo + direcao * 500)
         self.base.camera.lookAt(alvo)
+        self.chave_projecao = (tuple(self.viewport), tuple(self.lente.getFilmSize()),
+                               tuple(alvo), self.azimute, self.elevacao)
 
     def acompanhar(self, ponto, dt, *, veiculo=None):
         """Move apenas o pan para o ponto, sem recalcular o enquadramento."""

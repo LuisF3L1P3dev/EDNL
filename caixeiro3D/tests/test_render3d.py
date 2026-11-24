@@ -176,17 +176,17 @@ class TestRender3D(unittest.TestCase):
                         self.assertGreaterEqual(_distancia_segmento(x, y, a, b) + 1e-7, LARGURA_RUA / 2 + raio)
 
     def test_edificios_ocupam_quarteiroes_com_distribuicao_deterministica(self):
-        for grafo in self.grafos:
+        for grafo in self.grafos[:1]:
             with self.subTest(mapa=grafo.id):
                 _, cena = self.construir(grafo)
                 _, repetida = self.construir(grafo)
                 edificios = [d for d in cena.decoracoes if d.tipo == 'edificio' and d.no is None]
                 outros = [d for d in repetida.decoracoes if d.tipo == 'edificio' and d.no is None]
                 self.assertEqual(edificios, outros)
-                self.assertEqual(len(edificios), 52 if len(grafo.ids) == 5 else 80)
+                self.assertEqual(len(edificios), 52)
                 self.assertGreaterEqual(len({(d.kit, d.modelo) for d in edificios}), 8)
                 quadras = {cena._quadra(d.x, d.y) for d in edificios}
-                self.assertGreaterEqual(len(quadras), 10 if len(grafo.ids) == 5 else 20)
+                self.assertGreaterEqual(len(quadras), 10)
                 self.assertTrue(all(d.altura <= 2.8 + 1e-9 for d in edificios))
                 for a, b in combinations(edificios, 2):
                     self.assertGreaterEqual(dist((a.x, a.y), (b.x, b.y)) + 1e-9, a.raio + b.raio)
@@ -214,10 +214,11 @@ class TestRender3D(unittest.TestCase):
                 arvores = [d for d in cena.decoracoes if d.tipo == 'arvore']
                 jardins = [d for d in cena.decoracoes if d.tipo == 'jardim']
                 edificios = [d for d in cena.decoracoes if d.tipo == 'edificio']
-                self.assertEqual(len(arvores), 90 + 2 * len(grafo.ids))
-                self.assertEqual(len(jardins), 12)
-                self.assertEqual({d.modelo for d in arvores}, {'tree-small', 'tree-large'})
-                self.assertTrue(all(1.04 <= d.altura <= 1.56 for d in arvores))
+                arvores_do_entorno = [d for d in arvores if d.no is None]
+                self.assertEqual(len(arvores_do_entorno), 45 if cena.cidades else 100)
+                self.assertEqual(len(jardins), 0 if cena.cidades else 12)
+                self.assertEqual({d.modelo for d in arvores_do_entorno}, {'tree-small', 'tree-large'})
+                self.assertTrue(all(1.04 <= d.altura <= 1.56 for d in arvores_do_entorno))
                 self.assertTrue(all(any(dist((j.x, j.y), (e.x, e.y)) <= e.raio + .86
                                         for e in edificios) for j in jardins))
                 self.assertGreater(cena._vegetacao_tipos['calcadas'], 0)
@@ -242,7 +243,7 @@ class TestRender3D(unittest.TestCase):
                                             for d in itens['poste']))
 
     def test_cada_no_tem_construcao_fixa_e_acesso_da_ancora_da_rua(self):
-        for grafo in self.grafos:
+        for grafo in self.grafos[:1]:
             with self.subTest(grafo=grafo.id):
                 acessos = {}
 
@@ -270,6 +271,47 @@ class TestRender3D(unittest.TestCase):
                     # O círculo que contém o lote não alcança o eixo de uma via.
                     self.assertGreaterEqual(cena.distancia_rua(edificio.x, edificio.y),
                                             (2 * metade ** 2) ** .5 + LARGURA_RUA / 2)
+
+    def test_cidades_tem_lotes_exclusivos_e_acessos_as_suas_ruas(self):
+        grafo = self.grafos[1]
+        _, cena = self.construir(grafo)
+        _, segunda = self.construir(grafo)
+        self.assertEqual(set(cena.cidades), set(grafo.ids))
+        self.assertEqual(cena.cidades, segunda.cidades)
+        self.assertEqual(cena.decoracoes, segunda.decoracoes)
+        self.assertEqual({c.perfil for c in cena.cidades.values()},
+                         {'residencial', 'misto', 'comercial'})
+        for cidade in cena.cidades.values():
+            with self.subTest(cidade=cidade.no):
+                self.assertEqual(cidade.ancora_rua, cena.marcadores_no[cidade.no])
+                self.assertIn(cidade.no, cidade.via_acesso)
+                rua = cena.ruas[cidade.via_acesso]
+                x, y, _ = cidade.ponto_na_via
+                self.assertTrue(any(_distancia_segmento(x, y, a, b) < 1e-8
+                                    and a[2] == b[2] == cidade.ancora_rua[2]
+                                    for a, b in zip(rua, rua[1:])))
+                self.assertAlmostEqual(cena.distancia_rua(*cidade.meio_fio[:2]), LARGURA_RUA / 2 + .002)
+                self.assertEqual(len(cidade.grupos), 2)
+                self.assertTrue(all(any(lote.tipo == 'edificio' for lote in grupo) for grupo in cidade.grupos))
+                lotes = [d for d in cena.decoracoes if d.no == cidade.no]
+                casas = [d for d in lotes if d.tipo == 'edificio' and d.kit == 'suburbio']
+                predios = [d for d in lotes if d.tipo == 'edificio' and d.kit == 'cidade']
+                self.assertGreaterEqual(len(casas), 4)
+                self.assertGreaterEqual(len(predios), 1)
+                self.assertTrue(any(d.tipo == 'arvore' for d in lotes))
+                x0, y0, x1, y1 = cidade.limites_xy
+                for d in lotes:
+                    hx, hy = d.semieixos
+                    self.assertTrue(x0 < d.x - hx < d.x + hx < x1)
+                    self.assertTrue(y0 < d.y - hy < d.y + hy < y1)
+                    self.assertLessEqual(d.altura, 1.65 + .025 + 1e-8)
+                for a, b in combinations(lotes, 2):
+                    self.assertTrue(abs(a.x - b.x) > a.semieixos[0] + b.semieixos[0] or
+                                    abs(a.y - b.y) > a.semieixos[1] + b.semieixos[1])
+        for a, b in combinations(cena.cidades.values(), 2):
+            x0, y0, x1, y1 = a.limites_xy
+            u0, v0, u1, v1 = b.limites_xy
+            self.assertTrue(x1 < u0 or x0 > u1 or y1 < v0 or y0 > v1)
 
     def test_camera_enquadra_ilha_ruas_predios_e_ancoras_em_ambos_os_mapas(self):
         for grafo in self.grafos:

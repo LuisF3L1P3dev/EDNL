@@ -24,7 +24,7 @@ disponíveis localmente. Para executá-lo agora, basta o último comando.
 | Mapa | Ruas | Métodos | Resultado de referência, origem 1 |
 | --- | --- | --- | --- |
 | Bairro, 5 pontos | 8 | Força bruta e Dijkstra A → B | Circuito ótimo 1 → 2 → 3 → 5 → 4 → 1, custo **15** |
-| Cidade, 18 pontos | 45 | Dijkstra A → B e circuito heurístico | Circuito heurístico de custo **340** |
+| Região, 18 cidades | 45 | Dijkstra A → B e circuito heurístico | Circuito heurístico de custo **340** |
 
 O circuito de 18 pontos usa Dijkstra para obter distâncias e caminhos entre
 todos os pares, vizinho mais próximo, melhoria 2-opt e expansão de cada trecho
@@ -74,6 +74,7 @@ custo conta os pesos das arestas efetivamente percorridas, incluindo revisitas.
 | `solvers.py` | Força bruta, Dijkstra, fecho métrico, vizinho próximo e 2-opt |
 | `assets3d.py` | Cache de OBJ/MTL, texturas e normalização de escala |
 | `geometria3d.py`, `render3d.py` | Ruas por aresta, cidade, decoração e realce de rota |
+| `cidades3d.py` | Lotes, calçadas de acesso e composição visual das 18 cidades |
 | `camera3d.py` | Projeção, enquadramento, zoom, arraste e acompanhamento |
 | `mundo3d.py` | Relógio e validação da viagem, pausa, velocidades e chegadas |
 | `hud.py` | Interface Pygame, resultados, etiquetas e diálogos |
@@ -107,6 +108,9 @@ Os resultados e as capturas das tasks complementares estão no
 O [relatório do refinamento gráfico](docs/refinamento-grafico/validacao.md)
 reúne as medidas da cidade compactada, os testes e as capturas das ruas,
 dos cruzamentos e das quadras.
+
+O [relatório das 18 cidades](docs/18-cidades/validacao.md) reúne a vista
+geral da região, detalhes dos três perfis de cidade e as medições do HUD.
 
 Captura rápida, sem manter uma janela aberta:
 

@@ -16,6 +16,7 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData,
 
 from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, medir_rua
 from roteamento3d import LARGURA_VIA
+from cidades3d import COTA_PRACA, planejar_cidades
 
 
 LARGURA_RUA = LARGURA_VIA
@@ -27,6 +28,11 @@ COR_CALCADA = (.88, .84, .73, 1)
 COR_CONTORNO_PONTE = (.56, .60, .65, 1)
 COR_GUARDA_CORPO = (.94, .74, .52, 1)
 TINTA_RUA = (1.08, 1.08, 1.04, 1)
+CORES_CIDADES = {
+    'residencial': ((.71, .83, .60, 1), (.27, .58, .39, 1)),
+    'misto': ((.80, .83, .66, 1), (.22, .63, .66, 1)),
+    'comercial': ((.84, .82, .70, 1), (.72, .46, .28, 1)),
+}
 
 
 def superficie(parent, nome, pontos, cor, *, material=None):
@@ -185,6 +191,7 @@ class Decoracao:
     raio: float
     altura: float
     no: int | None = None
+    semieixos: tuple[float, float] | None = None
 
 
 class Cena3D:
@@ -199,6 +206,8 @@ class Cena3D:
         self.rota.setLightOff()
         self.decoracoes = []
         self.construcoes_no = {}
+        self.cidades = {}
+        self._espacos_urbanos = ()
         self._acessos = tuple(no.acesso for no in self.mapa_visual.nos)
         self.modelos_usados = set()
         self._limites_modelos = {}
@@ -218,6 +227,12 @@ class Cena3D:
         try:
             self._terreno()
             self._criar_agua_local()
+            if grafo.id == 'mapa_18' and len(grafo.ids) == 18:
+                self.cidades = planejar_cidades(
+                    self.mapa_visual, self.meia_largura, self.meia_altura, self._agua)
+                self._acessos = ()
+                self._espacos_urbanos = tuple(limites for c in self.cidades.values()
+                                              for limites in (c.limites_xy, c.limites_acesso))
             self._construir_ruas()
             self._decorar()
             self.raiz.flattenStrong()
@@ -326,7 +341,9 @@ class Cena3D:
             self._piso_juncao(ponto, bracos, caixa, textura)
         for no, (x, y, z) in self.posicoes.items():
             _disco(self.raiz, f"aro-ponto-{no}", x, y, z + .014, .40, (.91, .95, .96, 1))
-            _disco(self.raiz, f"ponto-{no}", x, y, z + .015, .29, (.25, .60, .86, 1))
+            cidade = self.cidades.get(no)
+            cor = CORES_CIDADES[cidade.perfil][1] if cidade else (.25, .60, .86, 1)
+            _disco(self.raiz, f"ponto-{no}", x, y, z + .015, .29, cor)
         if self.pontes:
             self._construir_apoios()
 
@@ -464,7 +481,7 @@ class Cena3D:
     def _livre(self, x, y, raio, *, afastamento_no=1.2):
         if abs(x) + raio > self.meia_largura - 1 or abs(y) + raio > self.meia_altura - 1:
             return False
-        for x0, y0, x1, y1 in self._agua:
+        for x0, y0, x1, y1 in self._agua + self._espacos_urbanos:
             if hypot(x - max(x0, min(x1, x)), y - max(y0, min(y1, y))) < raio + .1:
                 return False
         if self.distancia_rua(x, y) < raio + LARGURA_RUA / 2 + .4:
@@ -476,10 +493,10 @@ class Cena3D:
             return False
         return not any(hypot(x - d.x, y - d.y) < raio + d.raio + .3 for d in self.decoracoes)
 
-    def _sombra(self, x, y, raio):
+    def _sombra(self, x, y, raio, *, piso=NIVEL_GRAMA):
         for i, (fator, alfa) in enumerate(((1.30, .026), (1.17, .05), (1.04, .085), (.87, .10))):
             _disco(self._sombras, "sombra-suave", x + .14, y + .12,
-                   NIVEL_GRAMA + .006 + i * .001, raio * fator,
+                   piso + .005 + i * .001, raio * fator,
                    (.22, .37, .31, alfa), proporcao=.78, lados=24)
 
     def _dimensoes(self, kit, nome, tamanho, altura=False):
@@ -565,6 +582,57 @@ class Cena3D:
         self.decoracoes.append(construcao)
         self.construcoes_no[no_visual.id] = construcao
 
+    def _construir_cidade(self, cidade):
+        largura, comprimento = cidade.area
+        faixa, destaque = CORES_CIDADES[cidade.perfil]
+        x0, y0, x1, y1 = cidade.limites_xy
+        z = COTA_PRACA
+        superficie(self.raiz, "lote-urbano", [(x0, y0, z), (x1, y0, z),
+                   (x1, y1, z), (x0, y1, z)], faixa)
+        fundo = (*cidade.ponto_local(0, -comprimento / 2 + .20), z + .002)
+        entrada = (*cidade.entrada[:2], z + .002)
+        _faixa(self.raiz, "alameda-pedonal", fundo, entrada, .64, COR_CALCADA)
+        praca = (*cidade.ponto_local(0, comprimento / 2 - .56), z + .003)
+        _faixa(self.raiz, "praca-de-chegada", praca, (*entrada[:2], z + .003), 1.08, COR_CALCADA)
+        # A faixa termina no meio-fio da rua incidente, fora da pista da van.
+        _faixa(self.raiz, "acesso-pedonal", entrada, cidade.meio_fio, .52, COR_CALCADA)
+        a = (*cidade.ponto_local(-.32, comprimento / 2 - .20), z + .004)
+        b = (*cidade.ponto_local(.32, comprimento / 2 - .20), z + .004)
+        _faixa(self.raiz, "entrada-urbana", a, b, .22, destaque)
+
+        for grupo in cidade.grupos:
+            for lote in grupo:
+                self._instanciar_lote_urbano(cidade.no, lote, (largura - .74) / 4 + .02)
+
+    def _instanciar_lote_urbano(self, no, lote, distancia_alameda):
+        arvore = lote.tipo == 'arvore'
+        modelo, lo, hi, escala, _ = self._dimensoes(lote.kit, lote.modelo, lote.tamanho, arvore)
+        altura_maxima = 1.65 if lote.kit == 'cidade' else 1.35
+        escala = min(escala, altura_maxima / (hi.z - lo.z))
+        meia_x, meia_y = (hi.x - lo.x) * escala / 2, (hi.y - lo.y) * escala / 2
+        x, y, z = lote.posicao
+        suporte = self.raiz.attachNewNode(lote.tipo)
+        suporte.setPos(x, y, z)
+        suporte.setH(lote.rotacao)
+        malha = modelo.copyTo(suporte)
+        malha.setScale(escala)
+        malha.setPos(-(lo.x + hi.x) * escala / 2,
+                     -(lo.y + hi.y) * escala / 2, -lo.z * escala)
+        if arvore:
+            _disco(suporte, 'jardim-urbano', 0, 0, .002, .34, (.58, .73, .46, 1), lados=12)
+        else:
+            if lote.paleta:
+                malha.setTexture(self.biblioteca.paleta(lote.kit, lote.paleta), 2)
+            malha.setColorScale(1.14, 1.12, 1.09, 1)
+            inicio = (0., meia_y * .75, .003)
+            fim = (0., distancia_alameda, .003)
+            _faixa(suporte, 'passeio-entrada', inicio, fim, .30, COR_CALCADA)
+        raio = hypot(meia_x, meia_y)
+        self._sombra(x, y, raio, piso=z)
+        semieixos = (meia_y, meia_x) if lote.rotacao % 180 else (meia_x, meia_y)
+        self.decoracoes.append(Decoracao(lote.tipo, lote.kit, lote.modelo, x, y, raio,
+                                         (hi.z - lo.z) * escala + z - NIVEL_GRAMA, no, semieixos))
+
     def _vagas_quarteiroes(self):
         """Vagas dos dois lados das ruas, alternadas por area da cidade."""
         grupos = defaultdict(list)
@@ -604,6 +672,14 @@ class Cena3D:
         return (int((x + self.meia_largura) // 10), int((y + self.meia_altura) // 10))
 
     def _decorar(self):
+        if self.cidades:
+            for cidade in self.cidades.values():
+                self._construir_cidade(cidade)
+            vagas = tuple(self._vagas_quarteiroes())
+            self._criar_mobiliario(vagas)
+            self._plantar_vegetacao(vagas, alvo=45, limite_jardins=0)
+            self.decoracoes = tuple(self.decoracoes)
+            return
         # O endereço cadastrado é a cidade de cada nó, sempre na mesma posição.
         for no_visual in self.mapa_visual.nos:
             self._adicionar_construcao_no(no_visual)
@@ -698,11 +774,13 @@ class Cena3D:
                 break
         self._mobiliario = {'postes': postes, 'bancos': bancos, 'passeios': caminhos}
 
-    def _plantar_vegetacao(self, vagas):
+    def _plantar_vegetacao(self, vagas, *, alvo=None, limite_jardins=12):
         """Jardins, alinhamentos e pequenos bosques sem bloquear circulacao."""
         edificios = [d for d in self.decoracoes if d.tipo == 'edificio']
         jardins = 0
         for edificio in edificios:
+            if jardins >= limite_jardins:
+                break
             for angulo in (0, 90, 180, 270):
                 a = (angulo + 45) * pi / 180
                 distancia = edificio.raio + .85
@@ -711,10 +789,9 @@ class Cena3D:
                                              edificio.y + sin(a)*distancia, .65, angulo):
                     jardins += 1
                     break
-            if jardins >= 12:
-                break
 
-        alvo = 90 + 2 * len(self.posicoes)
+        if alvo is None:
+            alvo = 90 + 2 * len(self.posicoes)
         quantidades = {'jardins': jardins, 'calcadas': 0, 'bosques': 0, 'demais': 0}
         def plantar(x, y, grupo, indice):
             if sum(quantidades[k] for k in ('calcadas', 'bosques', 'demais')) >= alvo:
