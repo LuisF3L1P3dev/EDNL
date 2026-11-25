@@ -18,11 +18,12 @@ GREEN = (35, 161, 115)
 GREEN_TEXT = (22, 113, 80)
 YELLOW = (247, 188, 56)
 CURRENT = (137, 79, 190)
+PASSAGEM = (78, 120, 133)
 RED = (184, 45, 57)
 WHITE = (253, 254, 251)
 LINE = (224, 232, 229)
 METHODS = {'forca': 'Força bruta · TSP exato', 'dijkstra': 'Dijkstra · caminho mínimo',
-           'heuristica': 'Dijkstra + heurística'}
+           'circuito': 'Circuito exato · TSP', 'heuristica': 'Passeio heurístico com Dijkstra'}
 
 
 @lru_cache(maxsize=8)
@@ -65,6 +66,7 @@ class HUD:
         self.mostrar_pesos = True
         self.mostrar_legendas = True
         self.animar_busca = True
+        self.mostrar_percurso = False
         self.dist_pagina = 0
         self.dist_aberta = False
         self.textura = Texture('HUD Pygame')
@@ -145,6 +147,8 @@ class HUD:
             self.mostrar_legendas = not self.mostrar_legendas
         elif acao == 'animacao':
             self.animar_busca = not self.animar_busca
+        elif acao == 'alternar_percurso':
+            self.mostrar_percurso = not self.mostrar_percurso
         elif acao == 'distancias':
             self.dist_aberta = True
             self.config_aberta = True
@@ -168,6 +172,8 @@ class HUD:
         self.pesos_tela = {}
         self.pesos_ativos = set()
         explorados = set(a.etapa.explorados if a.etapa else ())
+        entregas = a.viagem.visitadas
+        passagens = a.viagem.passagens
         controles = self._area_controles()
         if not a.viagem.caminho:
             atual = a.origem
@@ -259,7 +265,14 @@ class HUD:
             pygame.draw.line(self.canvas, (26, 50, 54, 80), ancora, ponta, 5)
             pygame.draw.line(self.canvas, WHITE, ancora, ponta, 2)
             pygame.draw.circle(self.canvas, WHITE, ancora, 3)
-            cor = CURRENT if no == atual else GREEN if no in a.viagem.visitadas else YELLOW if no in explorados and a.ocupado else BLUE
+            if no in passagens:
+                cor = PASSAGEM
+            elif no == atual:
+                cor = CURRENT
+            elif no in entregas:
+                cor = GREEN
+            else:
+                cor = YELLOW if no in explorados and a.ocupado else BLUE
             pygame.draw.circle(self.canvas, (35, 63, 66, 65), (centro[0], centro[1] + 3), 18)
             pygame.draw.circle(self.canvas, WHITE, centro, 18)
             pygame.draw.circle(self.canvas, cor, centro, 15)
@@ -390,8 +403,10 @@ class HUD:
         self.texto('PLANEJAR ENTREGA', 32, 112, 10, MUTED, True)
         self.texto('Sua próxima rota', 32, 135, 19, INK, True)
         self.texto('ALGORITMO', 32, 173, 10, MUTED, True)
-        for i, (chave, titulo) in enumerate((('forca', 'Força bruta · exato'), ('dijkstra', 'Dijkstra · A → B'), ('heuristica', 'Dijkstra + heurística'))):
-            disponivel = chave == 'dijkstra' or (chave == 'forca') == (a.indice_mapa == 0)
+        circuito = ('forca', 'Força bruta · exato') if a.indice_mapa == 0 else ('circuito', 'Circuito exato · TSP')
+        opcoes = (circuito, ('dijkstra', 'Dijkstra · A → B'), ('heuristica', 'Passeio · aceita revisitas'))
+        for i, (chave, titulo) in enumerate(opcoes):
+            disponivel = a.indice_mapa == 1 or chave != 'heuristica'
             self.botao('selecionar_' + chave, titulo, (32, 195 + i * 39, 180, 33),
                        ativo=disponivel and not a.ocupado, selecionado=a.metodo == chave)
         self.texto('ORIGEM', 32, 323, 10, MUTED, True)
@@ -411,14 +426,17 @@ class HUD:
             self.texto('Scroll: zoom · Direito: mover', 32, 607, 12, MUTED)
             self.card((16, y, 212, 128))
             self.texto('LEGENDA DO MAPA', 32, y + 14, 10, MUTED, True)
-            for i, (cor, label) in enumerate(((BLUE, 'Ponto de entrega'), (YELLOW, 'Rota / exploração'), (GREEN, 'Ponto visitado'), (CURRENT, 'Ponto atual'))):
-                pygame.draw.circle(self.canvas, cor, (39, y + 43 + i * 20), 5)
-                self.texto(label, 52, y + 34 + i * 20, 13, MUTED)
+            for i, (cor, label) in enumerate(((BLUE, 'Ponto de entrega'), (YELLOW, 'Rota / exploração'),
+                                              (GREEN, 'Entrega concluída'), (PASSAGEM, 'Passagem intermediária'),
+                                              (CURRENT, 'Ponto atual'))):
+                pygame.draw.circle(self.canvas, cor, (39, y + 41 + i * 17), 5)
+                self.texto(label, 52, y + 32 + i * 17, 13, MUTED)
         else:
             for x, y_item, cor, label in ((37, 603, BLUE, 'Ponto'),
-                                           (125, 603, YELLOW, 'Rota'),
-                                           (37, 625, GREEN, 'Visitado'),
-                                           (125, 625, CURRENT, 'Atual')):
+                                           (98, 603, YELLOW, 'Rota'),
+                                           (157, 603, CURRENT, 'Atual'),
+                                           (37, 625, GREEN, 'Entregue'),
+                                           (125, 625, PASSAGEM, 'Passagem')):
                 pygame.draw.circle(self.canvas, cor, (x, y_item), 4)
                 self.texto(label, x + 8, y_item - 9, 12, MUTED)
 
@@ -441,14 +459,31 @@ class HUD:
         self.texto('CUSTO DA ROTA', x + 16, 251, 10, MUTED, True)
         self.texto('—' if custo is None else f'{custo:g}', x + 16, 271, 35, INK, True)
         self.texto(f'Percorrido: {a.viagem.custo_atual:.1f}', x + 16, 319, 13, GREEN_TEXT)
-        self.texto(f'Visitados: {len(a.viagem.visitadas)} / {len(a.mapa.ids)}', x + 16, 342, 13, MUTED)
+        total_entregas = len(set(a.viagem.ordem_visita)) or len(a.mapa.ids)
+        self.texto(f'Entregas: {len(a.viagem.visitadas)} / {total_entregas}', x + 16, 342, 13, MUTED)
         self.texto(f'Distância: {a.distancia_percorrida:.1f} u.', x + 16, 365, 13, MUTED)
         tempo = a.resultado.tempo_ms if a.resultado else None
         self.texto('Cálculo: —' if tempo is None else f'Cálculo: {tempo:.2f} ms', x + 16, 388, 13, MUTED)
-        self.texto('SEQUÊNCIA DA ROTA', x + 16, 424, 10, MUTED, True)
-        caminho = a.viagem.caminho or (a.etapa.caminho if a.etapa else ())
-        self.linhas(' → '.join(map(str, caminho)) if caminho else 'Aguardando sua partida.', x + 16, 447, 186, 13, INK, 6)
-        garantia = a.resultado.garantia if a.resultado else 'Heurística: sem garantia de ótimo global.' if a.metodo == 'heuristica' else 'Busca exata de circuito Hamiltoniano.' if a.metodo == 'forca' else 'Caminho mínimo entre dois pontos.'
+        caminho, entregas = a.viagem.caminho, a.viagem.ordem_visita
+        expandido = bool(caminho and caminho != entregas)
+        fisico = expandido and self.mostrar_percurso
+        titulo = 'PERCURSO FÍSICO' if fisico else 'ORDEM DE ENTREGA' if caminho else 'PRÉVIA DA ROTA'
+        self.texto(titulo, x + 16, 424, 10, MUTED, True)
+        sequencia = caminho if fisico else entregas
+        if not caminho and a.etapa:
+            sequencia = a.etapa.caminho
+        linhas = self.linhas(' → '.join(map(str, sequencia)) if sequencia else 'Aguardando sua partida.',
+                             x + 16, 447, 186, 13, INK, 6)
+        if expandido:
+            self.botao('alternar_percurso', 'Ver ordem de entrega' if fisico else 'Ver percurso físico',
+                       (x + 16, 447 + linhas + 3, 186, 26))
+        elif caminho:
+            self.texto('Percurso físico segue a ordem acima', x + 16, 447 + linhas + 5, 11, MUTED,
+                       largura=186)
+        garantia = a.resultado.garantia if a.resultado else (
+            'Heurística: sem garantia de ótimo global.' if a.metodo == 'heuristica' else
+            'Caminho mínimo entre dois pontos.' if a.metodo == 'dijkstra' else
+            'Busca exata de circuito Hamiltoniano.')
         if h >= 880:
             self.linhas(garantia, x + 16, 569, 186, 12, GREEN_TEXT if a.metodo != 'heuristica' else MUTED, 3)
             if a.metodo == 'dijkstra':

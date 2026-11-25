@@ -11,7 +11,7 @@ def main():
     parser.add_argument('--frames', type=int, default=0)
     parser.add_argument('--screenshot', type=Path)
     parser.add_argument('--mapa', choices=('5', '18'), default='5')
-    parser.add_argument('--algoritmo', choices=('forca', 'dijkstra', 'heuristica'))
+    parser.add_argument('--algoritmo', choices=('forca', 'dijkstra', 'heuristica', 'circuito'))
     parser.add_argument('--iniciar', action='store_true')
     args = parser.parse_args()
     app = Aplicacao3D(offscreen=args.offscreen)

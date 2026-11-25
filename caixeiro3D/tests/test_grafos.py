@@ -9,12 +9,12 @@ EDGES_5 = {(1, 2, 2), (1, 4, 3), (1, 5, 6), (2, 3, 4),
            (2, 4, 3), (3, 4, 7), (3, 5, 3), (4, 5, 3)}
 # Oráculo independente da leitura JSON: transcrição visual + correções do usuário.
 EDGES_18 = {
-    (1,2,20),(1,3,37),(1,8,29),(1,12,29),(2,3,25),(2,8,28),(2,12,39),
+    (1,2,20),(1,8,29),(1,12,29),(1,13,37),(2,3,25),(2,8,28),(2,12,39),
     (3,4,25),(3,8,30),(3,13,54),(4,5,39),(4,6,32),(4,7,42),(4,9,23),
     (4,10,33),(4,14,56),(5,6,12),(5,7,26),(5,10,19),(6,7,17),(6,10,35),
-    (6,11,30),(7,11,38),(8,12,25),(8,13,22),(9,10,1),(9,13,34),(9,14,1),
-    (9,16,43),(10,11,24),(10,14,1),(10,15,19),(11,15,26),(11,18,36),
-    (12,13,1),(12,16,43),(13,14,1),(13,16,19),(14,15,20),(14,16,19),
+    (6,11,30),(7,11,38),(8,12,25),(8,13,22),(9,10,26),(9,13,34),(9,14,1),
+    (9,16,43),(10,11,24),(10,14,30),(10,15,19),(11,15,26),(11,18,36),
+    (12,13,27),(12,16,43),(13,14,24),(13,16,19),(14,15,20),(14,16,19),
     (14,17,17),(15,17,18),(15,18,21),(16,17,26),(17,18,15),
 }
 
@@ -42,12 +42,18 @@ class GrafosTests(unittest.TestCase):
         g = carregar_mapa(ROOT / 'data/mapa_18.json')
         self.assertEqual(g.adjacencia()[9][14], 1)
         self.assertEqual(g.adjacencia()[9][13], 34)
-        self.assertEqual(g.adjacencia()[1][3], 37)
-        self.assertNotIn(13, g.adjacencia()[1])
-        self.assertEqual(g.custo((9, 14, 13, 12)), 3)
+        self.assertEqual(g.adjacencia()[1][13], 37)
+        self.assertNotIn(3, g.adjacencia()[1])
+        self.assertEqual(g.custo((9, 14, 13, 12)), 52)
         self.assertEqual(g.custo((9, 14, 9)), 2)
         with self.assertRaises(ValueError):
-            g.custo((1, 13))
+            g.custo((1, 3))
+
+    def test_custo_da_rota_antiga_com_a_transcricao_corrigida(self):
+        g = carregar_mapa(ROOT / 'data/mapa_18.json')
+        caminho = (1, 2, 3, 4, 5, 6, 7, 11, 15, 18, 17, 16, 14, 9, 10, 14, 13, 12, 13, 8, 1)
+        self.assertEqual(g.custo(caminho[:16]), 340)
+        self.assertEqual(g.custo(caminho), 469)
 
     def test_rejeita_dados_invalidos(self):
         nos = (No(1, .2, .3), No(2, .7, .8))

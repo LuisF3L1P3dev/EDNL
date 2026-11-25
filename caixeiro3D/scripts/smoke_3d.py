@@ -272,6 +272,53 @@ def gravar_curva():
         app.fechar()
 
 
+def gravar_circuito_regiao():
+    """Grava o circuito completo e o painel de chegada da região."""
+    largura, altura, fps = 1100, 760, 15
+    app = Aplicacao3D(tamanho=(largura, altura), offscreen=True)
+    destino = DESTINO / 'van-circuito-18.mp4'
+    try:
+        app.acao('mapa1')
+        calcular(app)
+        viagem = app.viagem
+        assert viagem.total == 391 and viagem.caminho == viagem.ordem_visita
+        app.acao('velocidade')
+        app.acao('velocidade')
+        app.camera_iso.mudar_zoom(2)
+        app.acao('acompanhar')
+        limite = ceil((sum(viagem.duracoes) + len(viagem.pesos) * viagem.PAUSA_CHEGADA)
+                      * fps / viagem.velocidade) + 1
+        comando = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
+                   '-s', f'{largura}x{altura}', '-r', str(fps), '-i', 'pipe:0', '-vf', 'vflip',
+                   '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-threads', '2', '-movflags', '+faststart', str(destino)]
+
+        with subprocess.Popen(comando, stdin=subprocess.PIPE) as ffmpeg:
+            def gravar_quadro():
+                app.ui.desenhar()
+                app.graphicsEngine.renderFrame()
+                textura = app.win.getScreenshot()
+                assert textura and textura.getXSize() == largura and textura.getYSize() == altura
+                ffmpeg.stdin.write(bytes(textura.getRamImageAs('RGB')))
+
+            for _ in range(limite):
+                gravar_quadro()
+                if viagem.concluida:
+                    break
+                app.atualizar(1 / fps)
+            assert viagem.concluida and viagem.visitadas == set(app.mapa.ids)
+            assert dist(tuple(app.carro.getPos()), app.cena.posicoes[app.origem]) < 1e-4
+            app.acao('reset')
+            for _ in range(2 * fps):
+                gravar_quadro()
+            ffmpeg.stdin.close()
+            codigo = ffmpeg.wait()
+            if codigo:
+                raise subprocess.CalledProcessError(codigo, comando)
+        return destino
+    finally:
+        app.fechar()
+
+
 def capturar_cidade(app):
     capturar(app, 'regiao-18-cidades.png')
     app.ui.mostrar_pesos = False
@@ -313,7 +360,8 @@ def verificar(tamanho):
             for rect, _ in app.ui.botoes.values():
                 assert app.ui.canvas.get_rect().contains(rect), rect
             calcular(app)
-            assert app.resultado.custo == (15 if n == 5 else 340)
+            assert app.resultado.custo == (15 if n == 5 else 391)
+            assert app.viagem.ordem_visita == app.viagem.caminho
             assert set(app.viagem.caminho) == set(app.mapa.ids)
             assert app.viagem.caminho[0] == app.viagem.caminho[-1]
             app.atualizar(8)
@@ -395,7 +443,7 @@ def verificar(tamanho):
         assert app.viagem.concluida and app.viagem.visitadas == {app.origem}
         app.acao('mapa1')
         app.acao('selecionar_forca')
-        assert app.metodo == 'heuristica'
+        assert app.metodo == 'circuito'
         app.acao('iniciar')
         app.acao('cancelar')
         app.atualizar(1)
@@ -464,10 +512,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--janela', action='store_true', help='verificar abertura, resize e fechamento em janela nativa')
     parser.add_argument('--demo', action='store_true', help='gravar demonstração MP4 com FFmpeg')
+    parser.add_argument('--demo-regiao', action='store_true', help='gravar circuito de 18 cidades com FFmpeg')
     args = parser.parse_args()
     DESTINO.mkdir(parents=True, exist_ok=True)
     if args.demo:
         print(gravar_curva())
+        return
+    if args.demo_regiao:
+        print(gravar_circuito_regiao())
         return
     if args.janela:
         resultados = verificar_janela()

@@ -67,13 +67,13 @@ def posicoes_planejadas(grafo):
         return {1: (-18., 0., ALTURA_RUA), 2: (0., 16.5, ALTURA_RUA),
                 3: (18., 0., ALTURA_RUA), 4: (0., 0., ALTURA_RUA),
                 5: (0., -16.5, ALTURA_RUA)}
-    if len(grafo.ids) == 18 and set(grafo.ids) == set(range(1, 19)):
-        grade = {1: (0, 2), 2: (1, 3), 3: (2, 3), 4: (3, 3), 5: (4, 3),
-                 6: (4, 2), 7: (5, 3), 8: (1, 2), 9: (2, 2), 10: (3, 2),
-                 11: (5, 2), 12: (0, 1), 13: (2, 1), 14: (3, 1),
-                 15: (4, 1), 16: (1, 0), 17: (3, 0), 18: (5, 0)}
+    if all(no.grade is not None for no in grafo.nos):
+        grade = {no.id: no.grade for no in grafo.nos}
+        colunas, linhas = zip(*grade.values())
+        centro_x = (min(colunas) + max(colunas)) / 2
+        centro_y = (min(linhas) + max(linhas)) / 2
         quadra = 12 * PASSO
-        return {no: ((c - 2.5) * quadra, (l - 1.5) * quadra, ALTURA_RUA)
+        return {no: ((c - centro_x) * quadra, (l - centro_y) * quadra, ALTURA_RUA)
                 for no, (c, l) in grade.items()}
     return {n.id: ((n.x - .5) * 46, (.5 - n.y) * 38, ALTURA_RUA) for n in grafo.nos}
 
@@ -296,9 +296,13 @@ def rotear(grafo, posicoes, construcoes, *, w5=False):
     # reserve os corredores diagonais antes das ruas alinhadas, que podem usar
     # as saídas centrais para atravessar o quarteirão em linha reta.
     graus = {no: len(vizinhos) for no, vizinhos in grafo.adjacencia().items()}
+    # O corredor 1–13 deve reservar suas bocas antes das outras ligações
+    # do hub 13. Rotear essa rua depois deixaria uma travessia sem rampa.
+    corredores_prioritarios = {(1, 13)} if grafo.id == 'mapa_18' else set()
     ordem = sorted(
         grafo.arestas,
-        key=lambda e: (-max(graus[e.origem], graus[e.destino]),
+        key=lambda e: (e.identificacao not in corredores_prioritarios,
+                       -max(graus[e.origem], graus[e.destino]),
                        -(graus[e.origem] + graus[e.destino]),
                        any(a == b for a, b in zip(posicoes[e.origem][:2], posicoes[e.destino][:2])),
                        abs(posicoes[e.origem][0] - posicoes[e.destino][0]) +

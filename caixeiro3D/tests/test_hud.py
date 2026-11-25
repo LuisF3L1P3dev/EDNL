@@ -9,7 +9,7 @@ import pygame
 from panda3d.core import NodePath
 
 from geometria3d import criar_mapa_visual
-from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW
+from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW, PASSAGEM
 from mundo3d import Viagem
 from solvers import executar
 from tsp_core import carregar_mapa
@@ -162,8 +162,7 @@ class TestHUD(unittest.TestCase):
                         for outra, (outro, _) in botoes[i + 1:]:
                             self.assertFalse(rect.colliderect(outro), f'{acao} sobrepõe {outra}')
                     self.assertIn('distancias', app.ui.botoes)
-                    self.assertTrue(any(t == 'Visitado' or t == 'Ponto visitado'
-                                        for t, _, _ in app.ui.textos))
+                    self.assertTrue(any(t in ('Entrega concluída', 'Entregue') for t, _, _ in app.ui.textos))
 
     def test_etiquetas_liberam_veiculo_e_ficam_dentro_do_viewport(self):
         for tamanho in [(1100, 760), (1440, 960)]:
@@ -206,6 +205,10 @@ class TestHUD(unittest.TestCase):
         app.ui.desenhar()
         self.assertEqual(cor(3), CURRENT)
         self.assertEqual(cor(2), GREEN)
+        app.viagem.carregar(app.mapa, (1, 2, 3), ciclo=False, ordem_visita=(1, 3), indices_visita=(0, 2))
+        app.viagem.saltar(1)
+        app.ui.desenhar()
+        self.assertEqual(cor(2), PASSAGEM)
 
     def test_badge_deslocado_continua_selecionavel(self):
         app = self.construir(numero_mapa=5)
@@ -382,6 +385,41 @@ class TestHUD(unittest.TestCase):
         app.ui.desenhar()
         self.assertIn(('Erro no cálculo', RED), [(t, c) for t, _, c in app.ui.textos])
         self.assertTrue(any('24 candidatas' in t for t, _, _ in app.ui.textos))
+
+    def test_painel_mostra_custo_e_alterna_entre_entregas_e_percurso(self):
+        app = self.construir((1100, 760))
+        app.resultado = executar('heuristica', app.mapa, 1)
+        resultado = app.resultado
+        self.assertNotEqual(resultado.caminho, resultado.ordem_visita)
+        app.viagem.carregar(app.mapa, resultado.caminho, ordem_visita=resultado.ordem_visita,
+                            indices_visita=resultado.indices_visita)
+        for titulo, nos in (('ORDEM DE ENTREGA', resultado.ordem_visita),
+                            ('PERCURSO FÍSICO', resultado.caminho)):
+            app.ui.textos.clear()
+            app.ui.desenhar()
+            textos = [t for t, r, _ in app.ui.textos if r.left >= 1100 - 218]
+            self.assertIn(titulo, textos)
+            self.assertIn('388', textos)
+            self.assertIn('Entregas: 1 / 18', textos)
+            rota = tuple(int(n) for t in textos if '→' in t for n in t.split() if n.isdigit())
+            self.assertEqual(rota, nos)
+            app.acao('alternar_percurso')
+
+    def test_painel_do_circuito_mostra_custo_e_todas_as_entregas(self):
+        app = self.construir((1100, 760))
+        app.metodo = 'circuito'
+        app.resultado = executar(app.metodo, app.mapa, 1)
+        r = app.resultado
+        app.viagem.carregar(app.mapa, r.caminho, ordem_visita=r.ordem_visita, indices_visita=r.indices_visita)
+        app.viagem.atualizar(120)
+        app.ui.textos.clear()
+        app.ui.desenhar()
+        textos = [t for t, rect, _ in app.ui.textos if rect.left >= 1100 - 218]
+        self.assertIn(f'{r.custo:g}', textos)
+        self.assertIn('Percorrido: 391.0', textos)
+        self.assertIn('Entregas: 18 / 18', textos)
+        self.assertIn('Percurso físico segue a ordem acima', textos)
+        self.assertEqual(tuple(int(n) for t in textos if '→' in t for n in t.split() if n.isdigit()), r.caminho)
 
     def test_upload_da_textura_preserva_cor_e_transparencia(self):
         app = self.construir((1100, 760), 5)

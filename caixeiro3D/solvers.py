@@ -41,6 +41,8 @@ class Resultado:
     explorados: tuple[int, ...] = ()
     distancias: dict[int, float] = field(default_factory=dict)
     candidatas: int = 0
+    ordem_visita: tuple[int, ...] = ()
+    indices_visita: tuple[int, ...] = ()
 
 
 class _Cancelado(Exception):
@@ -58,6 +60,8 @@ class _Execucao:
         self.explorados: tuple[int, ...] = ()
         self.distancias: dict[int, float] = {}
         self.candidatas = 0
+        self.ordem_visita: tuple[int, ...] = ()
+        self.indices_visita: tuple[int, ...] = ()
 
     def verificar(self):
         if self.cancelar is None:
@@ -85,7 +89,14 @@ class _Execucao:
             self.caminho, self.custo, self.garantia, termino,
             (perf_counter() - self.inicio) * 1000,
             self.explorados, dict(self.distancias), self.candidatas,
+            self.ordem_visita, self.indices_visita,
         )
+
+    def definir_percurso(self, caminho, adj, *, ordem=None, indices=None):
+        self.caminho = tuple(caminho)
+        self.custo = sum(adj[a][b] for a, b in zip(caminho, caminho[1:]))
+        self.ordem_visita = self.caminho if ordem is None else tuple(ordem)
+        self.indices_visita = tuple(range(len(caminho))) if indices is None else tuple(indices)
 
 
 def _adjacencia_validada(grafo):
@@ -153,7 +164,8 @@ def _forca(ids, adj, origem, estado):
     if len(ids) > 9:
         raise ValueError("Força bruta é permitida somente para grafos de até 9 nós.")
     if len(ids) == 1:
-        estado.caminho, estado.custo, estado.candidatas = (origem,), 0.0, 1
+        estado.definir_percurso((origem,), adj)
+        estado.candidatas = 1
         estado.emitir("enumeracao")
         return
     outros = tuple(no for no in ids if no != origem)
@@ -168,12 +180,61 @@ def _forca(ids, adj, origem, estado):
             custo += adj[a][b]
         else:
             if estado.custo is None or custo < estado.custo:
-                estado.caminho, estado.custo = caminho, custo
+                estado.definir_percurso(caminho, adj)
             estado.emitir("enumeracao", caminho, custo)
             continue
         # Não publicar uma candidata com uma conexão inexistente.
         if estado.candidatas % 256 == 0:
             estado.emitir("enumeracao")
+    estado.explorados = ids if estado.caminho else ()
+
+
+def _circuito(ids, adj, origem, estado):
+    """Busca exata em ruas diretas, com poda e desempate por ID."""
+    if len(ids) > 18:
+        raise ValueError("Circuito exato é permitido somente para grafos de até 18 nós.")
+    if any(adj[v].get(u) != peso for u in ids for v, peso in adj[u].items()):
+        raise ValueError("O circuito exato requer um grafo não direcionado.")
+    if len(ids) <= 2:
+        _forca(ids, adj, origem, estado)
+        return
+    if any(len(adj[u]) < 2 for u in ids):
+        return
+
+    bits = {u: 1 << i for i, u in enumerate(ids)}
+    vizinhos = {u: tuple((v, p, bits[v]) for v, p in sorted(adj[u].items())) for u in ids}
+    menores = {u: sorted(adj[u].values())[:2] for u in ids}
+    meia_soma = {u: sum(menores[u]) / 2 for u in ids}
+    prefixos = {}
+    caminho = [origem]
+
+    def buscar(atual, restantes, custo, limite_restante):
+        estado.verificar()
+        if not restantes:
+            volta = adj[atual].get(origem)
+            if volta is not None:
+                estado.candidatas += 1
+                if estado.custo is None or custo + volta < estado.custo:
+                    estado.definir_percurso((*caminho, origem), adj)
+                    estado.emitir("circuito")
+            return
+        # Cada nó pendente precisa de duas ruas. A origem e o nó atual
+        # ainda precisam de uma rua cada. Essa soma nunca excede o custo real.
+        limite = custo + limite_restante + (menores[origem][0] + menores[atual][0]) / 2
+        if estado.custo is not None and limite > estado.custo + 1e-9:
+            return
+        chave = atual, restantes
+        if custo >= prefixos.get(chave, inf):
+            return
+        prefixos[chave] = custo
+        for proximo, peso, bit in vizinhos[atual]:
+            if restantes & bit:
+                caminho.append(proximo)
+                buscar(proximo, restantes ^ bit, custo + peso, limite_restante - meia_soma[proximo])
+                caminho.pop()
+
+    restantes = ((1 << len(ids)) - 1) ^ bits[origem]
+    buscar(origem, restantes, 0., sum(meia_soma[u] for u in ids if u != origem))
     estado.explorados = ids if estado.caminho else ()
 
 
@@ -193,9 +254,15 @@ def _heuristica(ids, adj, origem, estado):
 
     def expandir(ordem):
         resultado = [ordem[0]]
+        entregas = [0]
         for a, b in zip(ordem, ordem[1:]):
             resultado.extend(caminhos[a][b][1:])
-        return tuple(resultado)
+            entregas.append(len(resultado) - 1)
+        return tuple(resultado), entregas
+
+    def registrar(ordem):
+        caminho, entregas = expandir(ordem)
+        estado.definir_percurso(caminho, adj, ordem=ordem, indices=entregas)
 
     def custo_real(caminho):
         return sum(adj[a][b] for a, b in zip(caminho, caminho[1:]))
@@ -207,11 +274,10 @@ def _heuristica(ids, adj, origem, estado):
         proximo = min(restantes, key=lambda no: (matriz[ordem[-1]][no], no))
         ordem.append(proximo)
         restantes.remove(proximo)
-        parcial = expandir(ordem)
+        parcial, _ = expandir(ordem)
         estado.emitir("vizinho_proximo", parcial, custo_real(parcial))
     ordem.append(origem)
-    estado.caminho = expandir(ordem)
-    estado.custo = custo_real(estado.caminho)
+    registrar(ordem)
     estado.candidatas = 1
     estado.emitir("vizinho_proximo")
     custo_ordem = lambda rota: sum(matriz[a][b] for a, b in zip(rota, rota[1:]))
@@ -227,8 +293,7 @@ def _heuristica(ids, adj, origem, estado):
                 estado.candidatas += 1
                 if custo < melhor_custo:
                     ordem, melhor_custo = candidata, custo
-                    estado.caminho = expandir(ordem)
-                    estado.custo = custo_real(estado.caminho)
+                    registrar(ordem)
                     estado.emitir("2-opt")
                     melhorou = True
                     break
@@ -251,7 +316,7 @@ def executar(
     cancelar=None,
     progresso: Callable[[Progresso], None] | None = None,
 ) -> Resultado:
-    """Execute ``forca``, ``dijkstra`` (A→B) ou ``heuristica``.
+    """Execute ``forca``, ``circuito`` exato, ``dijkstra`` (A→B) ou ``heuristica``.
 
     ``cancelar`` aceita uma função booleana ou ``threading.Event``. Um resultado
     cancelado pode conter o melhor circuito completo encontrado até a parada.
@@ -261,6 +326,7 @@ def executar(
     """
     garantias = {
         "forca": "ótimo global",
+        "circuito": "ótimo global entre circuitos hamiltonianos",
         "dijkstra": "caminho mínimo",
         "heuristica": "heurística, sem garantia de ótimo global",
     }
@@ -276,11 +342,15 @@ def executar(
         estado.verificar()
         if metodo == "forca":
             _forca(ids, adj, origem, estado)
+        elif metodo == "circuito":
+            _circuito(ids, adj, origem, estado)
         elif metodo == "dijkstra":
             distancias, anteriores = _dijkstra(adj, origem, destino, estado)
             if isfinite(distancias[destino]):
-                estado.caminho = _reconstituir(anteriores, origem, destino)
-                estado.custo = distancias[destino]
+                caminho = _reconstituir(anteriores, origem, destino)
+                indices = (0,) if origem == destino else (0, len(caminho) - 1)
+                estado.definir_percurso(caminho, adj, ordem=tuple(caminho[i] for i in indices),
+                                        indices=indices)
         else:
             _heuristica(ids, adj, origem, estado)
         estado.verificar()

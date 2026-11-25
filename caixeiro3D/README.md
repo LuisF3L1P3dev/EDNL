@@ -24,16 +24,16 @@ disponíveis localmente. Para executá-lo agora, basta o último comando.
 | Mapa | Ruas | Métodos | Resultado de referência, origem 1 |
 | --- | --- | --- | --- |
 | Bairro, 5 pontos | 8 | Força bruta e Dijkstra A → B | Circuito ótimo 1 → 2 → 3 → 5 → 4 → 1, custo **15** |
-| Região, 18 cidades | 45 | Dijkstra A → B e circuito heurístico | Circuito heurístico de custo **340** |
+| Região, 18 cidades | 45 | Circuito exato, Dijkstra A → B e passeio heurístico | Circuito ótimo de custo **391** |
 
-O circuito de 18 pontos usa Dijkstra para obter distâncias e caminhos entre
-todos os pares, vizinho mais próximo, melhoria 2-opt e expansão de cada trecho
-pelas ruas reais. Pode revisitar pontos e **não garante ótimo global**. Dijkstra
-isolado calcula apenas o caminho mínimo entre origem e destino. Força bruta
-fica indisponível no mapa de 18 pontos.
+O circuito exato é o padrão da região. Encontra o circuito de menor custo em
+ruas diretas que entrega uma vez em cada cidade e retorna à origem. O passeio
+heurístico usa Dijkstra, vizinho mais próximo e 2-opt. Ele aceita passagens
+intermediárias e pode revisitar cidades. Dijkstra A → B calcula o caminho
+mínimo entre os dois pontos selecionados.
 
-A [transcrição completa](docs/grafos.md) documenta a referência visual e as
-correções explícitas fornecidas pelo usuário: **1–3 = 37, 9–13 = 34 e 9–14 = 1**.
+A [transcrição completa](docs/grafos.md) documenta a imagem original e os pesos
+das 45 ruas da região, incluindo **1–13 = 37**, **9–13 = 34** e **9–14 = 1**.
 Sobreposições de ruas sem um ponto numerado não criam conexões. Os pesos são
 custos lógicos; a distância exibida em `u.` mede unidades geométricas do cenário.
 
@@ -42,7 +42,7 @@ custos lógicos; a distância exibida em `u.` mede unidades geométricas do cen�
 | Controle | Ação |
 | --- | --- |
 | Botões superiores / `1`, `2` | Trocar de mapa; a busca anterior é cancelada |
-| Painel esquerdo / `F`, `D`, `H` | Selecionar algoritmo |
+| Painel esquerdo / `F`, `T`, `D`, `H` | Selecionar força bruta, circuito exato, Dijkstra ou passeio heurístico |
 | Origem ou destino e clique no ponto | Selecionar ponto de partida ou chegada |
 | Setas junto ao seletor | Percorrer os números dos pontos |
 | Iniciar entrega / espaço quando pronto | Calcular e acompanhar a busca e a viagem |
@@ -57,13 +57,15 @@ custos lógicos; a distância exibida em `u.` mede unidades geométricas do cen�
 | Configurações / `C` | Abrir diálogo de opções visuais |
 | `P` | Mostrar ou ocultar pesos |
 | Ver todas as distâncias | Inspecionar distâncias e nós explorados de Dijkstra |
+| Ver percurso físico / Ver ordem de entrega | Alternar entre as duas sequências quando há passagens intermediárias |
 | `Esc` | Fechar diálogo ou encerrar jogo |
 
 O diálogo permite ocultar pesos e legendas e desativar a reprodução da busca.
-As cores identificam pontos em azul, rota e exploração em amarelo, visitados em
-verde, ponto atual em roxo e erros em vermelho. A animação tem uma breve
-sinalização a cada chegada. A barra indica a distância física percorrida. O
-custo conta os pesos das arestas efetivamente percorridas, incluindo revisitas.
+As cores identificam pontos em azul, rota e exploração em amarelo, entregas em
+verde, passagens intermediárias em azul acinzentado, ponto atual em roxo e
+erros em vermelho. A animação sinaliza as entregas. A barra indica a distância
+física percorrida. O custo soma os pesos de cada trecho percorrido, incluindo
+passagens repetidas e o retorno à origem.
 
 ## Arquivos e responsabilidades
 
@@ -71,7 +73,7 @@ custo conta os pesos das arestas efetivamente percorridas, incluindo revisitas.
 | --- | --- |
 | `main.py`, `tsp_3d.py` | Entrada, eventos, trabalhador de algoritmos e estado da execução |
 | `tsp_core.py`, `data/` | Grafo validado e dados independentes dos dois cenários |
-| `solvers.py` | Força bruta, Dijkstra, fecho métrico, vizinho próximo e 2-opt |
+| `solvers.py` | Força bruta, circuito exato, Dijkstra, fecho métrico, vizinho próximo e 2-opt |
 | `assets3d.py` | Cache de OBJ/MTL, texturas e normalização de escala |
 | `geometria3d.py`, `render3d.py` | Ruas por aresta, cidade, decoração e realce de rota |
 | `cidades3d.py` | Lotes, calçadas de acesso e composição visual das 18 cidades |
@@ -118,10 +120,14 @@ reúne as capturas dos novos acessos, postes e placas e os testes do percurso.
 O [relatório de todos os cruzamentos](docs/rotatorias-cruzamentos/validacao.md)
 mostra as 23 rotatórias, os testes do grafo e a demonstração da curva da van.
 
+O [relatório da correção da rota](docs/correcao-sequencia/validacao.md) reúne
+a auditoria do grafo, as capturas do percurso de custo 391 e o vídeo completo da van.
+O vídeo pode ser regravado com `python scripts/smoke_3d.py --demo-regiao` e FFmpeg.
+
 Captura rápida, sem manter uma janela aberta:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py --offscreen --frames 120 --mapa 18 --algoritmo heuristica --iniciar --screenshot tmp\cidade.png
+.\.venv\Scripts\python.exe main.py --offscreen --frames 120 --mapa 18 --algoritmo circuito --iniciar --screenshot tmp\cidade.png
 ```
 
 O [relatório de validação](docs/validacao.md) registra os resultados e os limites

@@ -10,6 +10,14 @@ class No:
     id: int
     x: float
     y: float
+    grade: tuple[int, int] | None = None
+
+    def __post_init__(self):
+        if self.grade is not None:
+            grade = tuple(self.grade)
+            if len(grade) != 2 or any(type(valor) is not int for valor in grade):
+                raise ValueError("A célula visual precisa de coluna e linha inteiras.")
+            object.__setattr__(self, 'grade', grade)
 
 
 @dataclass(frozen=True)
@@ -17,6 +25,10 @@ class Aresta:
     origem: int
     destino: int
     peso: float
+
+    @property
+    def identificacao(self):
+        return tuple(sorted((self.origem, self.destino)))
 
 
 @dataclass(frozen=True)
@@ -36,7 +48,7 @@ class Grafo:
                 raise ValueError("Coordenadas devem ser finitas e normalizadas entre 0 e 1.")
         vistas = set()
         for aresta in self.arestas:
-            par = tuple(sorted((aresta.origem, aresta.destino)))
+            par = aresta.identificacao
             if aresta.origem == aresta.destino or not set(par) <= set(self.ids):
                 raise ValueError("Aresta com extremos inválidos.")
             if par in vistas:

@@ -100,6 +100,21 @@ class MundoTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.v.carregar(self.g, (1, 2, 1))
 
+    def test_passagem_antes_da_entrega_nao_conta_e_nao_pausa(self):
+        self.v.carregar(self.g, (1, 3, 2, 3, 1), ordem_visita=(1, 2, 3, 1),
+                        indices_visita=(0, 2, 3, 4), duracoes=(1., 1., 1., 1.))
+        self.v.atualizar(1.)
+        self.assertEqual(self.v.visitadas, {1})
+        self.assertEqual(self.v.passagens, {3})
+        self.assertFalse(self.v.em_chegada)
+        self.v.atualizar(1.)
+        self.assertEqual(self.v.visitadas, {1, 2})
+        self.assertTrue(self.v.em_chegada)
+        self.v.atualizar(10.)
+        self.assertTrue(self.v.concluida)
+        self.assertEqual(self.v.visitadas, {1, 2, 3})
+        self.assertEqual(self.v.custo_atual, 14)
+
     def test_salto_reinicio(self):
         self.v.saltar(1)
         self.assertEqual(self.v.custo_atual, 2)

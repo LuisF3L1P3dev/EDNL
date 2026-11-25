@@ -27,8 +27,9 @@ class CenariosTest(unittest.TestCase):
         self.assertEqual((pequeno.id, grande.id), ('mapa_05', 'mapa_18'))
         self.assertEqual((len(pequeno.arestas), len(grande.arestas)), (8, 45))
         adj = grande.adjacencia()
-        self.assertEqual((adj[1][3], adj[9][13], adj[9][14]), (37, 34, 1))
-        self.assertNotIn(13, adj[1])
+        self.assertEqual((adj[1][13], adj[9][13], adj[9][14]), (37, 34, 1))
+        self.assertNotIn(3, adj[1])
+        self.assertEqual(grande.nos[12].grade, (2, 1))
 
     def test_rejeita_registro_identidade_e_pendencia(self):
         self.modificar('mapa_05.json', lambda d: d.update(id='outro'))

@@ -84,6 +84,8 @@ class Viagem:
     caminho: tuple = ()
     pesos: tuple = ()
     duracoes: tuple = field(default=(), init=False)
+    ordem_visita: tuple = field(default=(), init=False)
+    indices_visita: tuple = field(default=(), init=False, repr=False)
     custo_atual: float = 0.
     reproduzindo: bool = False
     velocidade: float = 1.
@@ -118,9 +120,14 @@ class Viagem:
 
     @property
     def visitadas(self):
-        return set(self.caminho[:self._indice + 1])
+        return {self.caminho[i] for i in self.indices_visita if i <= self._indice}
 
-    def carregar(self, grafo, caminho, *, ciclo=True, duracoes=None):
+    @property
+    def passagens(self):
+        return set(self.caminho[:self._indice + 1]) - self.visitadas
+
+    def carregar(self, grafo, caminho, *, ciclo=True, duracoes=None,
+                 ordem_visita=None, indices_visita=None):
         caminho = tuple(caminho)
         if not caminho:
             raise ValueError("Percurso vazio.")
@@ -128,6 +135,17 @@ class Viagem:
             raise ValueError("Percurso contem nos desconhecidos.")
         if ciclo and (caminho[0] != caminho[-1] or set(caminho) != set(grafo.ids)):
             raise ValueError("O ciclo deve visitar todas as cidades e retornar a origem.")
+        ordem = caminho if ordem_visita is None else tuple(ordem_visita)
+        indices = tuple(range(len(caminho))) if indices_visita is None else tuple(indices_visita)
+        if (not indices or indices[0] != 0 or indices[-1] != len(caminho) - 1 or
+                any(not isinstance(i, int) or not 0 <= i < len(caminho) for i in indices) or
+                any(a >= b for a, b in zip(indices, indices[1:])) or
+                tuple(caminho[i] for i in indices) != ordem):
+            raise ValueError("As entregas devem corresponder a ocorrências ordenadas do percurso.")
+        if ciclo and ordem_visita is not None:
+            entregas = ordem[:-1] if len(ordem) > 1 else ordem
+            if len(entregas) != len(grafo.ids) or set(entregas) != set(grafo.ids):
+                raise ValueError("O circuito deve programar uma entrega por cidade.")
         adj = grafo.adjacencia()
         try:
             pesos = tuple(adj[a][b] for a, b in zip(caminho, caminho[1:]))
@@ -146,6 +164,7 @@ class Viagem:
         for peso in pesos:
             acumulados.append(acumulados[-1] + peso)
         self.caminho, self.pesos = caminho, pesos
+        self.ordem_visita, self.indices_visita = ordem, indices
         self.duracoes = duracoes
         self._acumulados = tuple(acumulados)
         self.reiniciar()
@@ -175,7 +194,7 @@ class Viagem:
             restante -= tempo
             self._indice += 1
             self.custo_atual = self._acumulados[self._indice]
-            if not self.concluida:
+            if not self.concluida and self._indice in self.indices_visita:
                 self._espera = self.PAUSA_CHEGADA
         if self.concluida:
             self.reproduzindo = False

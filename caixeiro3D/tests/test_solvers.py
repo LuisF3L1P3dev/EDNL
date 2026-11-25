@@ -97,6 +97,14 @@ class TestSolvers(unittest.TestCase):
         self.assertEqual(resultado.custo, grafo.custo(resultado.caminho))
         self.assertEqual(resultado.custo, 2 * sum(range(2, 19)))
         self.assertIn("sem garantia", resultado.garantia)
+        self.assertEqual(len(resultado.ordem_visita), 19)
+        self.assertEqual(len(set(resultado.ordem_visita[:-1])), 18)
+        self.assertEqual(tuple(resultado.caminho[i] for i in resultado.indices_visita),
+                         resultado.ordem_visita)
+        self.assertGreater(len(resultado.caminho), len(resultado.ordem_visita))
+        direto = executar("circuito", grafo, 7)
+        self.assertEqual(direto.termino, "sem_solucao")
+        self.assertEqual(direto.ordem_visita, ())
 
     def test_eventos_sao_snapshots_e_usam_arestas_reais(self):
         for metodo, destino in [("forca", None), ("heuristica", None), ("dijkstra", 3)]:

@@ -200,7 +200,7 @@ class LayoutVisualTest(unittest.TestCase):
         grande = next(g for g in self.grafos if len(g.ids) == 18)
         visual = criar_mapa_visual(grande)
         x0, y0, x1, y1 = visual.limites_xy
-        self.assertLessEqual(x1 - x0, 94.)
+        self.assertLessEqual(x1 - x0, 100.)
         self.assertLessEqual(y1 - y0, 66.)
         pontes = {(frozenset((p.aresta, p.inferior)), p.centro[:2]) for p in visual.pontes}
         encontrados = set()

@@ -282,15 +282,6 @@ def _criar_em_cache(identidade, posicoes, construcoes, com_rotatorias):
         pontes = ()
     rotatorias = ()
     if layout_padrao and com_rotatorias:
-        if grafo.id == 'mapa_18' and set(adj.get(17, ())) == {14, 15, 16, 18}:
-            x, y, z = ancoras[17]
-            # Abre quatro corredores independentes na praça. O acesso de
-            # oeste fica reto, e as vias do sul e do leste separam-se na origem.
-            lado_leste = por_aresta[15, 17][1][0]
-            por_aresta[15, 17] = (ancoras[15], por_aresta[15, 17][1], (lado_leste, y, z), ancoras[17])
-            por_aresta[16, 17] = (ancoras[16], ancoras[17])
-            por_aresta[17, 18] = (ancoras[17], (x, y - 4.5, z),
-                                  (ancoras[18][0], y - 4.5, z), ancoras[18])
         if grafo.id in {'mapa_05', 'mapa_18'}:
             eixos = por_aresta | {(v, u): p[::-1] for (u, v), p in por_aresta.items()}
             rotatorias = tuple(

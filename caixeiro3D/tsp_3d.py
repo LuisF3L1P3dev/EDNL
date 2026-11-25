@@ -23,6 +23,7 @@ FASES = {'enumeracao': 'Comparando circuitos', 'dijkstra': 'Explorando caminhos'
          'matriz': 'Calculando distâncias entre pontos',
          'vizinho_proximo': 'Escolhendo o próximo destino',
          '2-opt': 'Melhorando o circuito', 'expansao': 'Expandindo pelas ruas reais',
+         'circuito': 'Comparando circuitos pelas ruas',
          'concluido': 'Busca concluída'}
 INTERVALO_REPLAY = .1
 ETAPAS_REPLAY_REGIAO = 12
@@ -135,7 +136,7 @@ class Aplicacao3D(ShowBase):
         self.accept('wheel_up', self.acao, ['zoom+'])
         self.accept('wheel_down', self.acao, ['zoom-'])
         for tecla, acao in {'1': 'mapa0', '2': 'mapa1', 'd': 'selecionar_dijkstra',
-                            'f': 'selecionar_forca', 'h': 'selecionar_heuristica',
+                            'f': 'selecionar_forca', 'h': 'selecionar_heuristica', 't': 'selecionar_circuito',
                             'z': 'reset', 'p': 'pesos', 'c': 'config',
                             'arrow_left': 'anterior', 'arrow_right': 'proximo'}.items():
             self.accept(tecla, self.acao, [acao])
@@ -237,16 +238,21 @@ class Aplicacao3D(ShowBase):
         self.cena.destruir()
         self.indice_mapa = indice
         self.origem, self.destino = self.mapa.ids[0], self.mapa.ids[2]
-        self.metodo = 'forca' if indice == 0 else 'heuristica'
+        self.metodo = 'forca' if indice == 0 else 'circuito'
         self.selecao = 'origem'
         self.cena = Cena3D(self, self.mapa, self.biblioteca)
         self.camera_iso.centralizar(self._pontos_enquadramento())
         self._limpar()
 
+    def _metodo_disponivel(self, metodo):
+        return metodo == 'dijkstra' or metodo in (
+            ('forca',) if self.indice_mapa == 0 else ('circuito', 'heuristica')
+        )
+
     def _iniciar(self):
         if self.ocupado:
             return
-        if (self.metodo == 'forca' and self.indice_mapa != 0) or (self.metodo == 'heuristica' and self.indice_mapa != 1):
+        if not self._metodo_disponivel(self.metodo):
             self.fase, self.status = 'Metodo indisponivel', 'Escolha um algoritmo disponivel neste mapa.'
             return
         self._limpar()
@@ -279,8 +285,8 @@ class Aplicacao3D(ShowBase):
             self._trocar_mapa(int(acao[-1]))
         elif acao.startswith('selecionar_'):
             metodo = acao.removeprefix('selecionar_')
-            if metodo in ('forca', 'dijkstra', 'heuristica') and not self.ocupado:
-                if (metodo == 'forca' and self.indice_mapa != 0) or (metodo == 'heuristica' and self.indice_mapa != 1):
+            if metodo in ('forca', 'dijkstra', 'heuristica', 'circuito') and not self.ocupado:
+                if not self._metodo_disponivel(metodo):
                     self.status = 'Metodo indisponivel neste mapa.'
                 else:
                     self.metodo = metodo
@@ -345,7 +351,8 @@ class Aplicacao3D(ShowBase):
         if r and r.caminho and r.termino == 'concluido':
             duracoes = getattr(self.cena, 'duracoes_percurso', None)
             self.viagem.carregar(self.mapa, r.caminho, ciclo=self.metodo != 'dijkstra',
-                                 duracoes=duracoes(r.caminho) if duracoes else None)
+                                 duracoes=duracoes(r.caminho) if duracoes else None,
+                                 ordem_visita=r.ordem_visita or None, indices_visita=r.indices_visita or None)
             if not self.viagem.pesos:
                 self.cena.mostrar_rota(r.caminho)
             self._trecho_visual = None
