@@ -43,6 +43,7 @@ class Resultado:
     candidatas: int = 0
     ordem_visita: tuple[int, ...] = ()
     indices_visita: tuple[int, ...] = ()
+    circuitos_validos: int = 0
 
 
 class _Cancelado(Exception):
@@ -60,6 +61,7 @@ class _Execucao:
         self.explorados: tuple[int, ...] = ()
         self.distancias: dict[int, float] = {}
         self.candidatas = 0
+        self.circuitos_validos = 0
         self.ordem_visita: tuple[int, ...] = ()
         self.indices_visita: tuple[int, ...] = ()
 
@@ -89,7 +91,7 @@ class _Execucao:
             self.caminho, self.custo, self.garantia, termino,
             (perf_counter() - self.inicio) * 1000,
             self.explorados, dict(self.distancias), self.candidatas,
-            self.ordem_visita, self.indices_visita,
+            self.ordem_visita, self.indices_visita, self.circuitos_validos,
         )
 
     def definir_percurso(self, caminho, adj, *, ordem=None, indices=None):
@@ -166,6 +168,7 @@ def _forca(ids, adj, origem, estado):
     if len(ids) == 1:
         estado.definir_percurso((origem,), adj)
         estado.candidatas = 1
+        estado.circuitos_validos = 1
         estado.emitir("enumeracao")
         return
     outros = tuple(no for no in ids if no != origem)
@@ -179,6 +182,7 @@ def _forca(ids, adj, origem, estado):
                 break
             custo += adj[a][b]
         else:
+            estado.circuitos_validos += 1
             if estado.custo is None or custo < estado.custo:
                 estado.definir_percurso(caminho, adj)
             estado.emitir("enumeracao", caminho, custo)

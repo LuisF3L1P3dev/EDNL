@@ -12,6 +12,7 @@ from panda3d.core import AmbientLight, AntialiasAttrib, DirectionalLight, Vec3, 
 
 from assets3d import Biblioteca, instancia_normalizada
 from camera3d import CameraIsometrica
+from comparacao import CORES_ROTAS, calcular_comparacao, metodos_comparaveis
 from geometria3d import medir_rua
 from mundo3d import (Viagem, diferenca_angular, heading_antecipado, heading_da_direcao,
                      limitar_heading, normalizar_angulo, pitch_da_direcao, suavizar_heading)
@@ -55,6 +56,13 @@ class Aplicacao3D(ShowBase):
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.futuro = None
+        self.comparacao_aberta = False
+        self.comparacao_futuro = None
+        self.comparacao_resultados = {}
+        self.comparacao_erro = False
+        self.rota_comparada = False
+        self._chave_comparacao = None
+        self._cancelar_comparacao = Event()
         self._cancelar = Event()
         self._fila = Queue(maxsize=96)
         self._etapas = deque(maxlen=64)
@@ -133,8 +141,8 @@ class Aplicacao3D(ShowBase):
         self.accept('mouse1', self.clicar)
         self.accept('mouse3', self._iniciar_arraste)
         self.accept('mouse3-up', self._terminar_arraste)
-        self.accept('wheel_up', self.acao, ['zoom+'])
-        self.accept('wheel_down', self.acao, ['zoom-'])
+        self.accept('wheel_up', self._rolar, [-1])
+        self.accept('wheel_down', self._rolar, [1])
         for tecla, acao in {'1': 'mapa0', '2': 'mapa1', 'd': 'selecionar_dijkstra',
                             'f': 'selecionar_forca', 'h': 'selecionar_heuristica', 't': 'selecionar_circuito',
                             'z': 'reset', 'p': 'pesos', 'c': 'config',
@@ -152,7 +160,9 @@ class Aplicacao3D(ShowBase):
 
     def _iniciar_arraste(self):
         p = self.mouse_pixel()
-        if not self.ui.config_aberta and p and self.camera_iso.viewport.collidepoint(p):
+        painel = getattr(self.ui, 'area_comparacao', None)
+        if (not self.ui.config_aberta and p and self.camera_iso.viewport.collidepoint(p)
+                and not (self.comparacao_aberta and painel and painel.collidepoint(p))):
             self.arraste = p
 
     def _terminar_arraste(self):
@@ -172,8 +182,15 @@ class Aplicacao3D(ShowBase):
     def _escape(self):
         if self.ui.config_aberta:
             self.ui.tratar_acao('config')
+        elif self.comparacao_aberta:
+            self.comparacao_aberta = False
         else:
             self.fechar()
+
+    def _rolar(self, direcao):
+        if self.comparacao_aberta and not self.ui.config_aberta and self.ui.rolar_comparacao(direcao):
+            return
+        self.acao('zoom-' if direcao > 0 else 'zoom+')
 
     def _espaco(self):
         if self.ui.config_aberta:
@@ -191,6 +208,9 @@ class Aplicacao3D(ShowBase):
                 return
         area_controles = getattr(self.ui, '_area_controles', None)
         if area_controles and area_controles().collidepoint(p):
+            return
+        painel = getattr(self.ui, 'area_comparacao', None)
+        if self.comparacao_aberta and painel and painel.collidepoint(p):
             return
         if self.ui.config_aberta or self.ocupado or not self.camera_iso.viewport.collidepoint(p):
             return
@@ -215,6 +235,9 @@ class Aplicacao3D(ShowBase):
 
     def _limpar(self):
         self._invalidar()
+        if self._chave_comparacao is not None and self._chave_comparacao != self._contexto_comparacao():
+            self._limpar_comparacao()
+        self.rota_comparada = False
         self._acompanhar_reinicio = False
         velocidade = self.viagem.velocidade
         self.viagem = Viagem(velocidade=velocidade)
@@ -235,6 +258,7 @@ class Aplicacao3D(ShowBase):
         self.acompanhando = False
         self._acompanhar_reinicio = False
         self._invalidar()
+        self._limpar_comparacao()
         self.cena.destruir()
         self.indice_mapa = indice
         self.origem, self.destino = self.mapa.ids[0], self.mapa.ids[2]
@@ -245,9 +269,65 @@ class Aplicacao3D(ShowBase):
         self._limpar()
 
     def _metodo_disponivel(self, metodo):
-        return metodo == 'dijkstra' or metodo in (
-            ('forca',) if self.indice_mapa == 0 else ('circuito', 'heuristica')
-        )
+        circuito_exato = 'forca' if self.indice_mapa == 0 else 'circuito'
+        return metodo in ('dijkstra', 'heuristica', circuito_exato)
+
+    def _contexto_comparacao(self):
+        metodos = metodos_comparaveis(self.indice_mapa, self.metodo)
+        destino = self.destino if 'dijkstra' in metodos else None
+        return (self.indice_mapa, self.origem, destino, metodos) if metodos else None
+
+    def _limpar_comparacao(self):
+        self._cancelar_comparacao.set()
+        if self.comparacao_futuro is not None:
+            self.comparacao_futuro.cancel()
+        self._chave_comparacao = self.comparacao_futuro = None
+        self.comparacao_resultados = {}
+        self.comparacao_erro = self.comparacao_aberta = False
+
+    def _alternar_comparacao(self):
+        if self.comparacao_aberta:
+            self.comparacao_aberta = False
+            return
+        contexto = self._contexto_comparacao()
+        if contexto is None:
+            return
+        self.comparacao_aberta = True
+        if self.comparacao_futuro is None:
+            self._iniciar_comparacao(contexto)
+
+    def _iniciar_comparacao(self, contexto):
+        _, origem, destino, metodos = contexto
+        self._chave_comparacao = contexto
+        self.comparacao_erro = False
+        self._cancelar_comparacao = Event()
+        self.comparacao_futuro = self.executor.submit(
+            calcular_comparacao, self.mapa, metodos, origem, destino, self._cancelar_comparacao)
+
+    def _atualizar_comparacao(self):
+        futuro = self.comparacao_futuro
+        if futuro is None or not futuro.done():
+            return
+        self.comparacao_futuro = None
+        try:
+            self.comparacao_resultados = futuro.result()
+        except Exception:
+            self.comparacao_resultados = {}
+            self.comparacao_erro = True
+
+    def _visualizar_comparada(self, metodo):
+        resultado = self.comparacao_resultados.get(metodo)
+        if (not self.comparacao_aberta or self.ocupado or self.comparacao_futuro is not None
+                or self._chave_comparacao != self._contexto_comparacao()
+                or not self._metodo_disponivel(metodo) or resultado is None
+                or resultado.termino != 'concluido'):
+            return
+        self.metodo = metodo
+        self.selecao = 'origem'
+        self.comparacao_aberta = False
+        self.rota_comparada = True
+        self._aplicar_resultado(resultado)
+        self._destacar_trecho_atual()
 
     def _iniciar(self):
         if self.ocupado:
@@ -273,6 +353,8 @@ class Aplicacao3D(ShowBase):
         self.fase, self.status = 'Calculando', 'A busca roda em segundo plano.'
         self.futuro = self.executor.submit(executar, self.metodo, self.mapa, self.origem,
                                             destino=self.destino, cancelar=cancelar, progresso=progresso)
+        if self.comparacao_aberta and self.comparacao_futuro is None:
+            self._iniciar_comparacao(self._contexto_comparacao())
 
     def acao(self, acao):
         if self.ui.config_aberta and acao not in ('config', 'fechar_config', 'pesos', 'legendas', 'animacao'):
@@ -283,6 +365,12 @@ class Aplicacao3D(ShowBase):
             return
         if acao in ('mapa0', 'mapa1'):
             self._trocar_mapa(int(acao[-1]))
+        elif acao == 'comparar':
+            self._alternar_comparacao()
+        elif acao == 'fechar_comparacao':
+            self.comparacao_aberta = False
+        elif acao.startswith('visualizar_'):
+            self._visualizar_comparada(acao.removeprefix('visualizar_'))
         elif acao.startswith('selecionar_'):
             metodo = acao.removeprefix('selecionar_')
             if metodo in ('forca', 'dijkstra', 'heuristica', 'circuito') and not self.ocupado:
@@ -344,6 +432,9 @@ class Aplicacao3D(ShowBase):
     def _finalizar_busca(self):
         r = self._resultado_pendente
         self._resultado_pendente = None
+        self._aplicar_resultado(r)
+
+    def _aplicar_resultado(self, r):
         self.resultado = r
         if r:
             self.etapa = Progresso('concluido', r.caminho, r.custo,
@@ -400,6 +491,12 @@ class Aplicacao3D(ShowBase):
     def _destacar_trecho_atual(self):
         if not self.viagem.pesos:
             return
+        if self.rota_comparada:
+            if self._trecho_visual != ():
+                cor = tuple(canal / 255 for canal in CORES_ROTAS[self.metodo]) + (1.,)
+                self.cena.mostrar_rota(self.viagem.caminho, cor=cor)
+                self._trecho_visual = ()
+            return
         if self.viagem.concluida:
             # Após a entrega, HUD e cena voltam a mostrar o percurso inteiro
             # uma única vez; durante execução/pausa permanece só o trecho.
@@ -419,6 +516,7 @@ class Aplicacao3D(ShowBase):
         self._trecho_visual = trecho
 
     def atualizar(self, dt):
+        self._atualizar_comparacao()
         if self.futuro:
             while True:
                 try:
@@ -536,5 +634,6 @@ class Aplicacao3D(ShowBase):
         self.taskMgr.remove('atualizar-jogo')
         self.taskMgr.stop()
         self._invalidar()
+        self._limpar_comparacao()
         self.executor.shutdown(wait=True, cancel_futures=True)
         self.destroy()

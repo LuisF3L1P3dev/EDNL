@@ -23,7 +23,7 @@ disponíveis localmente. Para executá-lo agora, basta o último comando.
 
 | Mapa | Ruas | Métodos | Resultado de referência, origem 1 |
 | --- | --- | --- | --- |
-| Bairro, 5 pontos | 8 | Força bruta e Dijkstra A → B | Circuito ótimo 1 → 2 → 3 → 5 → 4 → 1, custo **15** |
+| Bairro, 5 pontos | 8 | Força bruta, Dijkstra A → B e passeio heurístico | Circuito ótimo 1 → 2 → 3 → 5 → 4 → 1, custo **15** |
 | Região, 18 cidades | 45 | Circuito exato, Dijkstra A → B e passeio heurístico | Circuito ótimo de custo **391** |
 
 O circuito exato é o padrão da região. Encontra o circuito de menor custo em
@@ -31,6 +31,12 @@ ruas diretas que entrega uma vez em cada cidade e retorna à origem. O passeio
 heurístico usa Dijkstra, vizinho mais próximo e 2-opt. Ele aceita passagens
 intermediárias e pode revisitar cidades. Dijkstra A → B calcula o caminho
 mínimo entre os dois pontos selecionados.
+
+O botão **Comparar soluções** calcula as rotas em segundo plano. No bairro,
+compare os dois circuitos a partir da mesma origem, com custo, tempo e diferença
+percentual. Na região, o card mostra o caminho A → B para o destino selecionado
+e o circuito heurístico completo. Escolher **Visualizar rota** fecha o card,
+destaca o percurso na cor do método e inicia a viagem selecionada.
 
 A [transcrição completa](docs/grafos.md) documenta a imagem original e os pesos
 das 45 ruas da região, incluindo **1–13 = 37**, **9–13 = 34** e **9–14 = 1**.
@@ -58,7 +64,9 @@ custos lógicos; a distância exibida em `u.` mede unidades geométricas do cen�
 | `P` | Mostrar ou ocultar pesos |
 | Ver todas as distâncias | Inspecionar distâncias e nós explorados de Dijkstra |
 | Ver percurso físico / Ver ordem de entrega | Alternar entre as duas sequências quando há passagens intermediárias |
-| `Esc` | Fechar diálogo ou encerrar jogo |
+| Comparar soluções / `×` | Abrir ou fechar o card sem pausar a viagem |
+| Roda do mouse sobre o card | Rolar os detalhes e percursos, quando necessário |
+| `Esc` | Fechar o card ou diálogo aberto ou encerrar o jogo |
 
 O diálogo permite ocultar pesos e legendas e desativar a reprodução da busca.
 As cores identificam pontos em azul, rota e exploração em amarelo, entregas em
@@ -102,7 +110,8 @@ O smoke usa OpenGL real em framebuffer fora da tela e salva imagens e o resumo
 em `tmp/3d-review/`. Verifica os dois mapas em 1440×960 e 1100×760, custo,
 retorno físico à origem, pausa, reinício, velocidades, seleção por clique,
 cancelamento, diálogos e troca de mapa durante uma busca. Também confere o
-alinhamento dos marcadores e acompanha cada circuito a 4× com zoom de 300%.
+alinhamento dos marcadores, acompanha cada circuito a 4× com zoom de 300% e
+verifica as rotas selecionadas no card de comparação.
 
 Os resultados e as capturas das tasks complementares estão no
 [relatório de posicionamento e câmera](docs/complementares/validacao.md).

@@ -8,6 +8,7 @@ import unittest
 import pygame
 from panda3d.core import NodePath
 
+from comparacao import CORES_ROTAS
 from geometria3d import criar_mapa_visual
 from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW, PASSAGEM
 from mundo3d import Viagem
@@ -45,6 +46,9 @@ class _App:
         self.origem, self.destino = 1, 3
         self.selecao = 'origem'
         self.ocupado = False
+        self.comparacao_aberta = self.comparacao_erro = self.rota_comparada = False
+        self.comparacao_futuro = None
+        self.comparacao_resultados = {}
         self.viagem = Viagem()
         self.resultado = self.etapa = None
         self.fase, self.status = 'Pronto para partir', 'Selecione um algoritmo e inicie.'
@@ -420,6 +424,57 @@ class TestHUD(unittest.TestCase):
         self.assertIn('Entregas: 18 / 18', textos)
         self.assertIn('Percurso físico segue a ordem acima', textos)
         self.assertEqual(tuple(int(n) for t in textos if '→' in t for n in t.split() if n.isdigit()), r.caminho)
+
+    def test_card_comparacao_em_duas_resolucoes_sem_cobrir_controles(self):
+        for tamanho in ((1100, 760), (1440, 960)):
+            with self.subTest(tamanho=tamanho):
+                app = self.construir(tamanho, 5)
+                hud = app.ui
+                self.assertIn('comparar', hud.botoes)
+                self.assertFalse(hud.area_comparacao)
+                app.comparacao_aberta = True
+                app.comparacao_resultados = {m: executar(m, app.mapa, app.origem) for m in ('forca', 'heuristica')}
+                hud.textos.clear()
+                hud.desenhar()
+                visiveis = [t for t, r, _ in hud.textos if hud.area_comparacao.contains(r)]
+                self.assertIn('Empate no custo', visiveis)
+                self.assertEqual(visiveis.count('1 → 2 → 3 → 5 → 4 → 1'), 2)
+                self.assertIn('Diferença absoluta  0   ·   Em relação ao ótimo  0.00%', visiveis)
+                botoes_rota = [hud.botoes['visualizar_' + metodo] for metodo in ('forca', 'heuristica')]
+                self.assertTrue(all(ativo for _, ativo in botoes_rota))
+                self.assertLess(botoes_rota[0][0].right, botoes_rota[1][0].left)
+                for (rect, _), metodo in zip(botoes_rota, ('forca', 'heuristica')):
+                    self.assertEqual(hud.canvas.get_at((rect.x + 12, rect.centery))[:3], CORES_ROTAS[metodo])
+                for acao in ('mapa0', 'mapa1', 'iniciar', 'pausa', 'zoom+', 'zoom-', 'acompanhar', 'comparar'):
+                    self.assertFalse(hud.area_comparacao.colliderect(hud.botoes[acao][0]), acao)
+                app.comparacao_aberta = False
+                app.metodo = 'dijkstra'
+                hud.desenhar()
+                self.assertNotIn('comparar', hud.botoes)
+                self.assertNotIn('visualizar_forca', hud.botoes)
+
+    def test_card_regiao_rotula_objetivos_e_rola_percurso_expandido(self):
+        app = self.construir((1100, 760))
+        hud = app.ui
+        app.comparacao_aberta = True
+        app.comparacao_resultados = {'dijkstra': executar('dijkstra', app.mapa, 1, 3),
+                                    'heuristica': executar('heuristica', app.mapa, 1)}
+        hud.textos.clear()
+        hud.desenhar()
+        textos = [t for t, _, _ in hud.textos]
+        self.assertIn('Caminho mínimo A → B', textos)
+        self.assertIn('Circuito completo · solução aproximada', textos)
+        self.assertIn('Força bruta desabilitada neste mapa.', textos)
+        self.assertNotIn('visualizar_forca', hud.botoes)
+        self.assertNotIn('Empate no custo', textos)
+        self.assertGreater(hud._limite_comparacao, 0)
+        app.mouse = hud.area_comparacao.center
+        self.assertTrue(hud.rolar_comparacao(100))
+        hud.textos.clear()
+        hud.desenhar()
+        fim = app.comparacao_resultados['heuristica'].caminho[-4:]
+        self.assertTrue(any(t.endswith(' → '.join(map(str, fim))) and r.bottom < hud.botoes['visualizar_heuristica'][0].top
+                            for t, r, _ in hud.textos))
 
     def test_upload_da_textura_preserva_cor_e_transparencia(self):
         app = self.construir((1100, 760), 5)

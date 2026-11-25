@@ -337,6 +337,45 @@ def capturar_cidade(app):
     app.ui.mostrar_pesos = True
 
 
+def verificar_comparacao(app, n, sufixo):
+    def abrir():
+        clicar(app, 'comparar')
+        app.comparacao_futuro.result(timeout=10)
+        app.atualizar(0)
+        assert app.comparacao_aberta
+
+    anterior, viagem = app.resultado, app.viagem
+    assert not app.comparacao_aberta
+    abrir()
+    metodos = ('forca', 'heuristica') if n == 5 else ('dijkstra', 'heuristica')
+    assert tuple(app.comparacao_resultados) == metodos
+    assert app.resultado is anterior and app.viagem is viagem
+    if n == 5:
+        assert all(r.custo == 15 for r in app.comparacao_resultados.values())
+    capturar(app, f'comparacao-mapa{n}-{sufixo}.png')
+    clicar(app, 'fechar_comparacao')
+    assert not app.comparacao_aberta and app.viagem is viagem
+    clicar(app, 'zoom+')
+    assert app.camera_iso.zoom > 1
+    clicar(app, 'reset')
+
+    for metodo in metodos:
+        abrir()
+        selecao = app.comparacao_resultados[metodo]
+        clicar(app, 'visualizar_' + metodo)
+        assert not app.comparacao_aberta and app.resultado is selecao
+        assert app.viagem.caminho == selecao.caminho
+        app.atualizar(.5)
+        indice, fracao = app.viagem.trecho
+        par = selecao.caminho[indice:indice + 2]
+        amostra = medir_rua(app.cena.ruas[par]).amostrar(app.cena.fracao_percurso(par, fracao))
+        assert dist(app.carro.getPos(), amostra.ponto) < 1e-4
+        destaque = app.cena.rota.find('**/rota-destacada').node()
+        assert destaque.getNumGeoms() == len(set(zip(selecao.caminho, selecao.caminho[1:])))
+        app.atualizar(300)
+        assert app.viagem.concluida and app.viagem.custo_atual == selecao.custo
+
+
 def verificar(tamanho):
     sufixo = f'{tamanho[0]}x{tamanho[1]}'
     app = Aplicacao3D(tamanho=tamanho, offscreen=True)
@@ -401,6 +440,8 @@ def verificar(tamanho):
                 capturar_rotatoria(app, n)
                 if n == 18:
                     capturar_ponte(app)
+            verificar_comparacao(app, n, sufixo)
+            resultado['comparacao_e_rotas'] = True
 
         # Seleção pelos mesmos alvos de clique usados pela interface real.
         app.acao('selecionar_dijkstra')

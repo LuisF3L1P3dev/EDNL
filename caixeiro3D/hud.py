@@ -9,6 +9,7 @@ from itertools import chain
 import pygame
 from panda3d.core import CardMaker, Texture, TransparencyAttrib
 
+from comparacao import CORES_ROTAS, diferenca_custos, metodos_comparaveis
 from geometria3d import NIVEL_GRAMA, medir_rua
 
 INK = (32, 47, 64)
@@ -24,6 +25,9 @@ WHITE = (253, 254, 251)
 LINE = (224, 232, 229)
 METHODS = {'forca': 'Força bruta · TSP exato', 'dijkstra': 'Dijkstra · caminho mínimo',
            'circuito': 'Circuito exato · TSP', 'heuristica': 'Passeio heurístico com Dijkstra'}
+TITULOS_COMPARACAO = {'forca': ('Força bruta', 'TSP exato · solução ótima'),
+                      'dijkstra': ('Dijkstra', 'Caminho mínimo A → B'),
+                      'heuristica': ('Dijkstra + heurística', 'Circuito completo · solução aproximada')}
 
 
 @lru_cache(maxsize=8)
@@ -63,6 +67,8 @@ class HUD:
         self._projecao_anterior = None
         self._chave_pesos = None
         self.config_aberta = False
+        self.area_comparacao = pygame.Rect(0, 0, 0, 0)
+        self._rolagem_comparacao = self._limite_comparacao = 0
         self.mostrar_pesos = True
         self.mostrar_legendas = True
         self.animar_busca = True
@@ -109,13 +115,13 @@ class HUD:
         if atual:
             linhas.append(atual)
         visiveis = linhas[:max_linhas]
-        if len(linhas) > max_linhas and visiveis:
+        if max_linhas is not None and len(linhas) > max_linhas and visiveis:
             # Indicar o trecho omitido e preservar o fim do percurso.
             visiveis[-1] = '… ' + linhas[-1]
         for i, linha in enumerate(visiveis):
             self.texto(linha, x, y + i * (tamanho + 5), tamanho, cor,
                        largura=largura)
-        return min(len(linhas), max_linhas) * (tamanho + 5)
+        return len(visiveis) * (tamanho + 5)
 
     def card(self, rect):
         rect = pygame.Rect(rect)
@@ -123,14 +129,14 @@ class HUD:
         pygame.draw.rect(self.canvas, WHITE, rect, border_radius=15)
         pygame.draw.rect(self.canvas, LINE, rect, 1, border_radius=15)
 
-    def botao(self, acao, label, rect, *, ativo=True, selecionado=False, destaque=False):
+    def botao(self, acao, label, rect, *, ativo=True, selecionado=False, destaque=False, acento=BLUE):
         rect = pygame.Rect(rect)
         mouse = self.app.mouse_pixel()
         hover = ativo and mouse is not None and rect.collidepoint(mouse)
-        cor = BLUE if destaque and ativo else (224, 239, 252) if selecionado else (232, 240, 239) if hover else (243, 246, 243)
+        cor = acento if destaque and ativo else (224, 239, 252) if selecionado else (232, 240, 239) if hover else (243, 246, 243)
         pygame.draw.rect(self.canvas, cor, rect, border_radius=8)
         if selecionado:
-            pygame.draw.rect(self.canvas, BLUE, rect, 1, border_radius=8)
+            pygame.draw.rect(self.canvas, acento, rect, 1, border_radius=8)
         tinta = WHITE if destaque and ativo else INK if ativo else (133, 145, 150)
         fonte = self.fonte(13, True)
         img = fonte.render(str(label), True, tinta)
@@ -330,13 +336,14 @@ class HUD:
             self._layout_pesos = self._posicionar_pesos(viewport, selecionadas)
             self._chave_pesos = chave
         self.pesos_ativos = set(selecionadas)
+        cor_ativa = CORES_ROTAS[self.app.metodo] if self.app.rota_comparada else YELLOW
         for par, texto, caixa, ligacao in self._layout_pesos:
             if ligacao:
                 pygame.draw.line(self.canvas, (80, 96, 100, 150), *ligacao, 1)
             ativa = frozenset(par) in selecionadas
             pygame.draw.rect(self.canvas, (255, 244, 197) if ativa else (252, 253, 248, 235),
                              caixa, border_radius=6)
-            pygame.draw.rect(self.canvas, YELLOW if ativa else LINE, caixa, 1, border_radius=6)
+            pygame.draw.rect(self.canvas, cor_ativa if ativa else LINE, caixa, 1, border_radius=6)
             self.texto(texto, caixa.x + 7, caixa.y + 2, 12, INK, True)
             self.pesos_tela[par] = caixa
 
@@ -406,9 +413,8 @@ class HUD:
         circuito = ('forca', 'Força bruta · exato') if a.indice_mapa == 0 else ('circuito', 'Circuito exato · TSP')
         opcoes = (circuito, ('dijkstra', 'Dijkstra · A → B'), ('heuristica', 'Passeio · aceita revisitas'))
         for i, (chave, titulo) in enumerate(opcoes):
-            disponivel = a.indice_mapa == 1 or chave != 'heuristica'
             self.botao('selecionar_' + chave, titulo, (32, 195 + i * 39, 180, 33),
-                       ativo=disponivel and not a.ocupado, selecionado=a.metodo == chave)
+                       ativo=not a.ocupado, selecionado=a.metodo == chave)
         self.texto('ORIGEM', 32, 323, 10, MUTED, True)
         for acao, label, x, largura in [('origem-', '‹', 32, 29), ('origem', f'Ponto {a.origem:02}', 66, 112), ('origem+', '›', 183, 29)]:
             self.botao(acao, label, (x, 344, largura, 33), ativo=not a.ocupado, selecionado=acao == a.selecao)
@@ -444,6 +450,9 @@ class HUD:
     def _direita(self, w, h):
         a = self.app
         x = w - 234
+        comparar = bool(metodos_comparaveis(a.indice_mapa, a.metodo))
+        distancias = a.metodo == 'dijkstra'
+        y_comparar = h - (209 if distancias else 172)
         self.card((x, 94, 218, h - 226))
         self.texto('PAINEL DE ENTREGA', x + 16, 112, 10, MUTED, True)
         self.texto('Resultados', x + 16, 135, 20, INK, True)
@@ -472,8 +481,9 @@ class HUD:
         sequencia = caminho if fisico else entregas
         if not caminho and a.etapa:
             sequencia = a.etapa.caminho
+        max_linhas = min(6, (y_comparar - 477) // 18) if comparar else 6
         linhas = self.linhas(' → '.join(map(str, sequencia)) if sequencia else 'Aguardando sua partida.',
-                             x + 16, 447, 186, 13, INK, 6)
+                             x + 16, 447, 186, 13, INK, max_linhas)
         if expandido:
             self.botao('alternar_percurso', 'Ver ordem de entrega' if fisico else 'Ver percurso físico',
                        (x + 16, 447 + linhas + 3, 186, 26))
@@ -486,18 +496,133 @@ class HUD:
             'Busca exata de circuito Hamiltoniano.')
         if h >= 880:
             self.linhas(garantia, x + 16, 569, 186, 12, GREEN_TEXT if a.metodo != 'heuristica' else MUTED, 3)
-            if a.metodo == 'dijkstra':
-                distancias = a.etapa.distancias if a.etapa else a.resultado.distancias if a.resultado else {}
-                pares = list(sorted(distancias.items()))
+            if distancias:
+                dist = a.etapa.distancias if a.etapa else a.resultado.distancias if a.resultado else {}
+                pares = list(sorted(dist.items()))
                 offset = self.dist_pagina * 9 if len(pares) > 9 else 0
-                linhas_disponiveis = max(0, min(3, (h - 184 - 661) // 22))
+                limite = y_comparar if comparar else h - 172
+                linhas_disponiveis = max(0, min(3, (limite - 661) // 22))
                 if linhas_disponiveis:
                     self.texto('DISTÂNCIAS EXPLORADAS', x + 16, 636, 10, MUTED, True)
                 for i, (no, d) in enumerate(pares[offset:offset + 3 * linhas_disponiveis]):
                     col, row = i % 3, i // 3
                     self.texto(f'{no}: {d:g}' if isfinite(d) else f'{no}: ∞', x + 16 + col * 64, 661 + row * 22, 12, MUTED)
-        if a.metodo == 'dijkstra':
+        if comparar:
+            self.botao('comparar', 'Comparar soluções', (x + 16, y_comparar, 186, 30),
+                       selecionado=a.comparacao_aberta)
+        if distancias:
             self.botao('distancias', 'Ver todas as distâncias', (x + 16, h - 172, 186, 28))
+
+    def rolar_comparacao(self, direcao):
+        p = self.app.mouse_pixel()
+        if p is None or not self.area_comparacao.collidepoint(p):
+            return False
+        self._rolagem_comparacao = max(0, min(self._limite_comparacao, self._rolagem_comparacao + direcao * 40))
+        return True
+
+    def _icone_comparacao(self, metodo, x, y):
+        pygame.draw.rect(self.canvas, CORES_ROTAS[metodo], (x, y, 36, 36), border_radius=9)
+        if metodo == 'forca':
+            for dx, dy in ((9, 9), (20, 9), (9, 20), (20, 20)):
+                pygame.draw.rect(self.canvas, WHITE, (x + dx, y + dy, 7, 7), border_radius=2)
+        else:
+            pontos = [(x + 9, y + 24), (x + 17, y + 11), (x + 27, y + 19)]
+            pygame.draw.lines(self.canvas, WHITE, metodo == 'heuristica', pontos, 2)
+            for p in pontos:
+                pygame.draw.circle(self.canvas, WHITE, p, 3)
+
+    def _coluna_comparacao(self, metodo, r, x, y, largura):
+        cor = CORES_ROTAS[metodo]
+        titulo, descricao = TITULOS_COMPARACAO[metodo]
+        self._icone_comparacao(metodo, x, y + 1)
+        self.texto(titulo, x + 45, y, 18, INK, True, largura=largura - 45)
+        self.texto(descricao, x + 45, y + 24, 11, MUTED, largura=largura - 45)
+        if r is None or r.termino != 'concluido':
+            estado = 'Calculando…' if self.app.comparacao_futuro else 'Sem rota disponível.'
+            if self.app.comparacao_erro:
+                estado = 'Erro ao calcular a comparação.'
+            self.texto(estado, x, y + 63, 14, MUTED, largura=largura)
+            return 90
+
+        self.texto('CUSTO TOTAL', x, y + 51, 11, MUTED, True)
+        self.texto(f'{r.custo:g}', x, y + 66, 33, cor, True, largura=largura)
+        self.texto(f'Tempo de cálculo  {r.tempo_ms:.3f} ms', x, y + 113, 13, INK, largura=largura)
+        if metodo == 'dijkstra':
+            metrica = f'Nós explorados  {len(r.explorados)}'
+        else:
+            metrica = f'Nós visitados  {len(set(r.ordem_visita))} / {len(self.app.mapa.ids)}'
+        self.texto(metrica, x, y + 135, 13, INK, largura=largura)
+        if metodo == 'forca':
+            self.texto(f'Circuitos avaliados  {r.circuitos_validos} válidos', x, y + 155, 13, INK, largura=largura)
+
+        titulo_rota = 'ORDEM DE ENTREGA' if r.ordem_visita != r.caminho and metodo != 'dijkstra' else 'PERCURSO'
+        rota = r.ordem_visita if titulo_rota == 'ORDEM DE ENTREGA' else r.caminho
+        self.texto(titulo_rota, x, y + 185, 10, MUTED, True)
+        fim = 200 + self.linhas(' → '.join(map(str, rota)), x, y + 200, largura, 13, INK, None)
+        if rota != r.caminho:
+            self.texto('PERCURSO FÍSICO', x, y + fim + 6, 10, MUTED, True)
+            fim += 22 + self.linhas(' → '.join(map(str, r.caminho)), x, y + fim + 22, largura, 13, INK, None)
+        return fim + 6
+
+    def _comparacao(self):
+        a = self.app
+        viewport = a.camera_iso.viewport
+        y = self._area_controles().bottom + 12
+        largura = min(760, viewport.w - 20)
+        caixa = pygame.Rect(viewport.centerx - largura // 2, y, largura, min(500, viewport.bottom - y - 12))
+        self.area_comparacao = caixa
+        self.card(caixa)
+        x = caixa.x + 20
+        self.texto('Comparar soluções', x, y + 13, 24, INK, True)
+        metodos = metodos_comparaveis(a.indice_mapa, a.metodo)
+        regiao = 'dijkstra' in metodos
+        contexto = (f'Região · origem {a.origem} · destino A → B {a.destino}' if regiao else
+                    f'Bairro · {len(a.mapa.ids)} pontos · saída e retorno no ponto {a.origem}')
+        self.texto(contexto, x, y + 47, 13, MUTED)
+        self.botao('fechar_comparacao', '×', (caixa.right - 50, y + 14, 34, 32))
+
+        corpo = pygame.Rect(x, y + 74, caixa.w - 40, caixa.h - 179)
+        largura_coluna = (corpo.w - 32) // 2
+        pygame.draw.line(self.canvas, LINE, (corpo.centerx, corpo.y), (corpo.centerx, corpo.bottom))
+        resultados = {} if a.comparacao_futuro else a.comparacao_resultados
+        altura = 0
+        self.canvas.set_clip(corpo)
+        for i, metodo in enumerate(metodos):
+            xx = x + i * (largura_coluna + 27)
+            altura = max(altura, self._coluna_comparacao(metodo, resultados.get(metodo), xx,
+                                                        corpo.y - self._rolagem_comparacao, largura_coluna))
+        self.canvas.set_clip(None)
+        self._limite_comparacao = max(0, altura - corpo.h)
+        self._rolagem_comparacao = min(self._rolagem_comparacao, self._limite_comparacao)
+        if self._limite_comparacao:
+            barra = pygame.Rect(corpo.right - 4, corpo.y, 4, corpo.h)
+            pygame.draw.rect(self.canvas, LINE, barra, border_radius=2)
+            cursor = barra.copy()
+            cursor.h = max(16, round(corpo.h ** 2 / altura))
+            cursor.y += round((barra.h - cursor.h) * self._rolagem_comparacao / self._limite_comparacao)
+            pygame.draw.rect(self.canvas, PASSAGEM, cursor, border_radius=2)
+
+        for i, metodo in enumerate(metodos):
+            r = resultados.get(metodo)
+            self.botao('visualizar_' + metodo, 'Visualizar rota',
+                       (x + i * (largura_coluna + 27), corpo.bottom + 7, largura_coluna, 31),
+                       ativo=not a.ocupado and r is not None and r.termino == 'concluido',
+                       destaque=True, acento=CORES_ROTAS[metodo])
+
+        y_resumo = caixa.bottom - 56
+        pygame.draw.line(self.canvas, LINE, (x, y_resumo - 5), (corpo.right, y_resumo - 5))
+        if regiao:
+            self.texto('Força bruta desabilitada neste mapa.', x, y_resumo + 2, 13, INK, True)
+            self.texto('A → B e circuito completo têm objetivos diferentes.', x, y_resumo + 23, 12, MUTED)
+        elif all(m in resultados and resultados[m].custo is not None for m in metodos):
+            exato, aproximado = (resultados[m].custo for m in metodos)
+            absoluta, percentual = diferenca_custos(exato, aproximado)
+            em_percentual = '—' if percentual is None else f'{percentual:.2f}%'
+            melhor = 'Empate no custo' if exato == aproximado else (
+                'Força bruta tem o menor custo' if exato < aproximado else 'Dijkstra + heurística tem o menor custo')
+            self.texto(melhor, x, y_resumo + 2, 14, GREEN_TEXT, True)
+            self.texto(f'Diferença absoluta  {absoluta:g}   ·   Em relação ao ótimo  {em_percentual}',
+                       x, y_resumo + 23, 12, MUTED)
 
     def _texto_trecho(self):
         """Resumo curto e estável da posição da van na rota exibida."""
@@ -536,7 +661,8 @@ class HUD:
         if fracao:
             preenchido = barra.copy()
             preenchido.w = max(1, int(barra.w * fracao))
-            pygame.draw.rect(self.canvas, GREEN if a.viagem.concluida else YELLOW, preenchido, border_radius=4)
+            cor = CORES_ROTAS[a.metodo] if a.rota_comparada else YELLOW
+            pygame.draw.rect(self.canvas, GREEN if a.viagem.concluida else cor, preenchido, border_radius=4)
 
     def _area_controles(self):
         viewport = self.app.camera_iso.viewport
@@ -604,6 +730,11 @@ class HUD:
         self.texto('VISTA ISOMÉTRICA', 260, 102, 10, MUTED, True)
         self.texto(a.mapa.nome, 260, 123, 16, INK, True)
         self._controles_mapa()
+        if a.comparacao_aberta:
+            self._comparacao()
+        else:
+            self.area_comparacao = pygame.Rect(0, 0, 0, 0)
+            self._rolagem_comparacao = self._limite_comparacao = 0
         if self.config_aberta:
             self._config(w, h)
         if self.textura.getXSize() != w or self.textura.getYSize() != h:

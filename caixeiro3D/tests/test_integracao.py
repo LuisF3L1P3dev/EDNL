@@ -19,8 +19,9 @@ class CenaTeste:
         self.caminho = ()
         self.trechos = []
 
-    def mostrar_rota(self, caminho):
+    def mostrar_rota(self, caminho, cor=None):
         self.caminho = tuple(caminho)
+        self.cor_rota = cor
         for a, b in zip(caminho, caminho[1:]):
             assert (a, b) in self.ruas
 
@@ -192,12 +193,85 @@ class IntegracaoTest(unittest.TestCase):
         app.acao('velocidade')
         self.assertEqual(app.viagem.velocidade, 2)
 
+    def test_comparacao_continua_a_viagem_e_alterna_rotas_e_cores(self):
+        app = self.app
+        app.ui.animar_busca = False
+        app.acao('origem+')
+        app.acao('origem+')
+        self.assertEqual(app.origem, 3)
+        app.acao('iniciar')
+        self.aguardar_calculo()
+        viagem, resultado = app.viagem, app.resultado
+        app.atualizar(1)
+        custo = viagem.custo_atual
+        app.acao('comparar')
+        self.assertTrue(app.comparacao_aberta)
+        app.comparacao_futuro.result(timeout=5)
+        app.atualizar(1)
+        self.assertIs(app.viagem, viagem)
+        self.assertIs(app.resultado, resultado)
+        self.assertGreater(viagem.custo_atual, custo)
+        comparacao = app.comparacao_resultados
+        app.acao('comparar')
+        self.assertFalse(app.comparacao_aberta)
+        self.assertIs(app.comparacao_resultados, comparacao)
+        app.acao('comparar')
+        app._escape()
+        self.assertFalse(app.comparacao_aberta)
+        self.assertFalse(app._fechada)
+
+        percursos, cores = [], []
+        for metodo in ('heuristica', 'forca'):
+            app.acao('comparar')
+            app.comparacao_futuro.result(timeout=5)
+            app.atualizar(0)
+            selecao = app.comparacao_resultados[metodo]
+            app.acao('visualizar_' + metodo)
+            self.assertFalse(app.comparacao_aberta)
+            self.assertEqual(app.metodo, metodo)
+            self.assertIs(app.resultado, selecao)
+            self.assertEqual(app.viagem.caminho, selecao.caminho)
+            self.assertEqual(app.cena.caminho, selecao.caminho)
+            percursos.append(app.cena.caminho)
+            cores.append(app.cena.cor_rota)
+            app.atualizar(.6)
+            self.assertGreater(app.viagem.custo_atual, 0)
+            self.assertEqual(app.cena.caminho, selecao.caminho)
+            indice, fracao = app.viagem.trecho
+            par = selecao.caminho[indice:indice + 2]
+            amostra = medir_rua(app.cena.ruas[par]).amostrar(fracao)
+            self.assertLess(dist(app.carro.getPos(), amostra.ponto), 1e-4)
+            app.atualizar(120)
+            self.assertTrue(app.viagem.concluida)
+            self.assertEqual(app.viagem.custo_atual, selecao.custo)
+            self.assertLess(dist(app.carro.getPos(), app.cena.posicoes[3]), 1e-4)
+        self.assertNotEqual(percursos[0], percursos[1])
+        self.assertNotEqual(cores[0], cores[1])
+
+    def test_mudanca_de_destino_invalida_comparacao_em_andamento(self):
+        app = self.app
+        app.acao('mapa1')
+        app.acao('selecionar_dijkstra')
+        app.acao('comparar')
+        cancelamento = app._cancelar_comparacao
+        app.acao('destino+')
+        self.assertTrue(cancelamento.is_set())
+        self.assertFalse(app.comparacao_aberta)
+        self.assertIsNone(app.comparacao_futuro)
+        self.assertEqual(app.comparacao_resultados, {})
+        app.acao('comparar')
+        app.comparacao_futuro.result(timeout=5)
+        app.atualizar(0)
+        self.assertEqual(set(app.comparacao_resultados), {'dijkstra', 'heuristica'})
+        app.acao('visualizar_dijkstra')
+        self.assertEqual((app.viagem.caminho[0], app.viagem.caminho[-1]), (app.origem, app.destino))
+        self.assertFalse(app.comparacao_aberta)
+
     def test_disponibilidade_de_algoritmos_respeita_tamanho_do_mapa(self):
         app = self.app
         self.assertEqual(app.metodo, 'forca')
         app.acao('selecionar_heuristica')
-        self.assertEqual(app.metodo, 'forca')
-        self.assertIn('indisponivel', app.status.casefold())
+        self.assertEqual(app.metodo, 'heuristica')
         app.acao('selecionar_dijkstra')
         self.assertEqual(app.metodo, 'dijkstra')
         app.acao('mapa1')
