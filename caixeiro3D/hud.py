@@ -18,13 +18,15 @@ BLUE = (47, 126, 221)
 GREEN = (35, 161, 115)
 GREEN_TEXT = (22, 113, 80)
 YELLOW = (247, 188, 56)
+ORANGE = (231, 124, 43)
+NEXT_POINT = (24, 101, 211)
 CURRENT = (137, 79, 190)
 PASSAGEM = (78, 120, 133)
 RED = (184, 45, 57)
 WHITE = (253, 254, 251)
 LINE = (224, 232, 229)
 METHODS = {'forca': 'Força bruta · TSP exato', 'dijkstra': 'Dijkstra · caminho mínimo',
-           'circuito': 'Circuito exato · TSP', 'heuristica': 'Passeio heurístico com Dijkstra'}
+           'circuito': 'Circuito exato · TSP', 'heuristica': 'Dijkstra + heurística'}
 TITULOS_COMPARACAO = {'forca': ('Força bruta', 'TSP exato · solução ótima'),
                       'dijkstra': ('Dijkstra', 'Caminho mínimo A → B'),
                       'heuristica': ('Dijkstra + heurística', 'Circuito completo · solução aproximada')}
@@ -180,6 +182,7 @@ class HUD:
         explorados = set(a.etapa.explorados if a.etapa else ())
         entregas = a.viagem.visitadas
         passagens = a.viagem.passagens
+        proximo = a.viagem.proxima_entrega if a.metodo == 'heuristica' else None
         controles = self._area_controles()
         if not a.viagem.caminho:
             atual = a.origem
@@ -210,7 +213,7 @@ class HUD:
             label = ''
             if self.mostrar_legendas:
                 if no == a.origem:
-                    label = 'ORIGEM'
+                    label = 'RETORNO' if no == proximo else 'ORIGEM'
                 elif no == a.destino and a.metodo == 'dijkstra':
                     label = 'DESTINO'
             largura_label = self.fonte(10, True).size(label)[0] + 12 if label else 0
@@ -292,12 +295,15 @@ class HUD:
                 img = self.fonte(14, True).render(str(no), True, tinta)
                 self.canvas.blit(img, img.get_rect(center=centro))
             if no == a.origem:
-                pygame.draw.circle(self.canvas, GREEN, centro, 21, 2)
+                pygame.draw.circle(self.canvas, GREEN, centro, 22 if no == proximo else 21, 2)
+            if no == proximo:
+                pygame.draw.circle(self.canvas, NEXT_POINT, centro, 19, 2)
             if label:
                 r = pygame.Rect(centro[0] - largura_label // 2,
                                 centro[1] + 25 if abaixo else centro[1] - 43, largura_label, 18)
                 pygame.draw.rect(self.canvas, WHITE, r, border_radius=5)
-                self.texto(label, r.x + 6, r.y + 1, 10, GREEN_TEXT if no == a.origem else BLUE, True)
+                cor_legenda = GREEN_TEXT if label == 'ORIGEM' else BLUE
+                self.texto(label, r.x + 6, r.y + 1, 10, cor_legenda, True)
                 box.union_ip(r)
             self.etiquetas_tela[no] = box
             ocupadas_pins.append(box)
@@ -336,7 +342,9 @@ class HUD:
             self._layout_pesos = self._posicionar_pesos(viewport, selecionadas)
             self._chave_pesos = chave
         self.pesos_ativos = set(selecionadas)
-        cor_ativa = CORES_ROTAS[self.app.metodo] if self.app.rota_comparada else YELLOW
+        a = self.app
+        cor_ativa = CORES_ROTAS[a.metodo] if a.rota_comparada else (
+            ORANGE if a.metodo == 'heuristica' and not a.viagem.concluida else YELLOW)
         for par, texto, caixa, ligacao in self._layout_pesos:
             if ligacao:
                 pygame.draw.line(self.canvas, (80, 96, 100, 150), *ligacao, 1)
@@ -409,40 +417,43 @@ class HUD:
         self.card((16, 94, 212, 540))
         self.texto('PLANEJAR ENTREGA', 32, 112, 10, MUTED, True)
         self.texto('Sua próxima rota', 32, 135, 19, INK, True)
-        self.texto('ALGORITMO', 32, 173, 10, MUTED, True)
-        circuito = ('forca', 'Força bruta · exato') if a.indice_mapa == 0 else ('circuito', 'Circuito exato · TSP')
-        opcoes = (circuito, ('dijkstra', 'Dijkstra · A → B'), ('heuristica', 'Passeio · aceita revisitas'))
+        self.texto('TIPO DE PERCURSO', 32, 173, 10, MUTED, True)
+        exato = ('forca', 'Força bruta · TSP exato') if a.indice_mapa == 0 else ('circuito', 'Circuito exato · TSP')
+        opcoes = (('dijkstra', 'Caminho entre dois pontos'), ('heuristica', 'Circuito completo'), exato)
         for i, (chave, titulo) in enumerate(opcoes):
             self.botao('selecionar_' + chave, titulo, (32, 195 + i * 39, 180, 33),
                        ativo=not a.ocupado, selecionado=a.metodo == chave)
         self.texto('ORIGEM', 32, 323, 10, MUTED, True)
         for acao, label, x, largura in [('origem-', '‹', 32, 29), ('origem', f'Ponto {a.origem:02}', 66, 112), ('origem+', '›', 183, 29)]:
             self.botao(acao, label, (x, 344, largura, 33), ativo=not a.ocupado, selecionado=acao == a.selecao)
-        self.texto('DESTINO' if a.metodo == 'dijkstra' else 'CIRCUITO COMPLETO', 32, 391, 10, MUTED, True)
+        self.texto('DESTINO FINAL', 32, 391, 10, MUTED, True)
         if a.metodo == 'dijkstra':
             for acao, label, x, largura in [('destino-', '‹', 32, 29), ('destino', f'Ponto {a.destino:02}', 66, 112), ('destino+', '›', 183, 29)]:
                 self.botao(acao, label, (x, 412, largura, 33), ativo=not a.ocupado, selecionado=acao == a.selecao)
         else:
-            self.linhas('Visite todos os pontos e retorne à origem.', 32, 412, 180, 13)
+            self.texto(f'Ponto {a.destino_final:02} · retorno à origem', 32, 418, 13, INK, largura=180)
         self.linhas('Clique em um ponto do mapa para escolher a ' + a.selecao + '.', 32, 460, 180, 13)
         self.botao('cancelar' if a.ocupado else 'limpar', 'Cancelar busca' if a.ocupado else 'Limpar percurso', (32, 518, 180, 32))
         self.botao('config', 'Configurações', (32, 562, 180, 32))
         y = 652
-        if self.canvas.get_height() >= 880:
+        cor_rota = CORES_ROTAS[a.metodo] if a.rota_comparada else YELLOW
+        if self.canvas.get_height() >= 930:
             self.texto('Scroll: zoom · Direito: mover', 32, 607, 12, MUTED)
-            self.card((16, y, 212, 128))
+            legendas = [(BLUE, 'Ponto de entrega'), (cor_rota, 'Rota'), (GREEN, 'Entrega concluída'),
+                        (PASSAGEM, 'Passagem intermediária'), (CURRENT, 'Ponto atual')]
+            if a.metodo == 'heuristica':
+                legendas.insert(1, (NEXT_POINT, 'Próxima parada'))
+                if not a.rota_comparada:
+                    legendas[2:3] = [(YELLOW, 'Ruas percorridas'), (ORANGE, 'Trecho atual')]
+            self.card((16, y, 212, 43 + 17 * len(legendas)))
             self.texto('LEGENDA DO MAPA', 32, y + 14, 10, MUTED, True)
-            for i, (cor, label) in enumerate(((BLUE, 'Ponto de entrega'), (YELLOW, 'Rota / exploração'),
-                                              (GREEN, 'Entrega concluída'), (PASSAGEM, 'Passagem intermediária'),
-                                              (CURRENT, 'Ponto atual'))):
+            for i, (cor, label) in enumerate(legendas):
                 pygame.draw.circle(self.canvas, cor, (39, y + 41 + i * 17), 5)
                 self.texto(label, 52, y + 32 + i * 17, 13, MUTED)
         else:
-            for x, y_item, cor, label in ((37, 603, BLUE, 'Ponto'),
-                                           (98, 603, YELLOW, 'Rota'),
-                                           (157, 603, CURRENT, 'Atual'),
-                                           (37, 625, GREEN, 'Entregue'),
-                                           (125, 625, PASSAGEM, 'Passagem')):
+            proximo = (NEXT_POINT, 'Próximo') if a.metodo == 'heuristica' else (CURRENT, 'Atual')
+            for x, y_item, cor, label in ((37, 603, BLUE, 'Ponto'), (98, 603, cor_rota, 'Rota'), (157, 603, *proximo),
+                                           (37, 625, GREEN, 'Entregue'), (107, 625, PASSAGEM, 'Passagem')):
                 pygame.draw.circle(self.canvas, cor, (x, y_item), 4)
                 self.texto(label, x + 8, y_item - 9, 12, MUTED)
 
@@ -455,11 +466,14 @@ class HUD:
         y_comparar = h - (209 if distancias else 172)
         self.card((x, 94, 218, h - 226))
         self.texto('PAINEL DE ENTREGA', x + 16, 112, 10, MUTED, True)
-        self.texto('Resultados', x + 16, 135, 20, INK, True)
+        circuito_heuristico = a.metodo == 'heuristica'
+        self.texto('Circuito completo' if circuito_heuristico else 'Resultados', x + 16, 135, 20, INK, True)
         self.texto(f'{len(a.mapa.ids)} pontos  ·  {len(a.mapa.arestas)} ruas', x + 16, 171, 13, MUTED)
         self.linhas(METHODS[a.metodo], x + 16, 199, 186, 13, INK, 2)
         busca = a.etapa if a.ocupado else a.resultado
-        if busca:
+        if circuito_heuristico:
+            self.texto(f'Origem {a.origem:02} · retorno {a.destino_final:02}', x + 16, 228, 12, MUTED)
+        elif busca:
             resumo = (f'Explorados: {len(busca.explorados)} / {len(a.mapa.ids)}'
                       if a.metodo == 'dijkstra' else
                       f'{busca.candidatas} candidatas · {len(busca.explorados)} nós')
@@ -470,6 +484,9 @@ class HUD:
         self.texto(f'Percorrido: {a.viagem.custo_atual:.1f}', x + 16, 319, 13, GREEN_TEXT)
         total_entregas = len(set(a.viagem.ordem_visita)) or len(a.mapa.ids)
         self.texto(f'Entregas: {len(a.viagem.visitadas)} / {total_entregas}', x + 16, 342, 13, MUTED)
+        if circuito_heuristico and a.viagem.caminho:
+            percentual = f'{a.progresso_visual:.0%}'
+            self.texto(percentual, x + 202 - self.fonte(13, True).size(percentual)[0], 342, 13, GREEN_TEXT, True)
         self.texto(f'Distância: {a.distancia_percorrida:.1f} u.', x + 16, 365, 13, MUTED)
         tempo = a.resultado.tempo_ms if a.resultado else None
         self.texto('Cálculo: —' if tempo is None else f'Cálculo: {tempo:.2f} ms', x + 16, 388, 13, MUTED)
@@ -635,6 +652,14 @@ class HUD:
         origem, destino = viagem.caminho[indice:indice + 2]
         if viagem.concluida:
             return f'Concluído no ponto {destino} · último: {origem} → {destino}'
+        if self.app.metodo == 'heuristica':
+            proximo = viagem.proxima_entrega
+            if proximo == self.app.origem:
+                estado = 'Retorno à origem' if viagem.reproduzindo else 'Pausada no retorno à origem'
+                return f'{estado} · trecho {origem} → {destino}'
+            if proximo is not None and viagem.reproduzindo:
+                estado = 'Aguardando' if viagem.em_chegada else 'Em rota'
+                return f'{estado}: {origem} → {destino} · próxima entrega: {proximo:02}'
         if viagem.em_chegada:
             return f'Aguardando no ponto {origem} · próximo: {origem} → {destino}'
         if viagem.reproduzindo:

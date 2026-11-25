@@ -24,6 +24,7 @@ from cidades3d import COTA_PRACA, planejar_cidades
 LARGURA_RUA = LARGURA_VIA
 LARGURA_ACESSO = .52
 AMARELO = (1., .76, .13, 1.)
+LARANJA = (1., .48, .14, 1.)
 ESCALA_VERTICAL_RUA = .55
 COR_GRAMA = (.60, .79, .52, 1)
 COR_CALCADA = (.88, .84, .73, 1)
@@ -1087,22 +1088,30 @@ class Cena3D:
                     self._rng.uniform(-self.meia_altura + 1.5, self.meia_altura - 1.5), 'demais', i)
         self._vegetacao_tipos = quantidades
 
-    def mostrar_rota(self, caminho, cor=AMARELO):
+    def mostrar_rota(self, caminho, cor=AMARELO, *, ultimo_ativo=False):
         caminho = tuple(caminho)
         if not set(caminho) <= set(self.posicoes):
             raise ValueError("A rota contém um nó inexistente.")
         try:
-            ruas = [self.ruas[par] for par in dict.fromkeys(zip(caminho, caminho[1:]))]
+            ruas = {par: self.ruas[par] for par in zip(caminho, caminho[1:])}
         except KeyError as erro:
             raise ValueError("A rota contém uma rua inexistente.") from erro
         # Validar primeiro preserva a rota atual se o novo percurso for inválido.
         malha = GeomNode("rota-destacada")
         cor = tuple(cor)
-        for rua in ruas:
+        ativa = ruas.pop(caminho[-2:], None) if ultimo_ativo else None
+        for rua in ruas.values():
             malha.addGeom(_geometria_destaque(rua, cor))
         self.limpar_rota()
         if ruas:
             self.rota.attachNewNode(malha).setTwoSided(True)
+        if ativa is not None:
+            malha_ativa = GeomNode("trecho-ativo")
+            malha_ativa.addGeom(_geometria_destaque(ativa, LARANJA))
+            no = self.rota.attachNewNode(malha_ativa)
+            no.setTwoSided(True)
+            # A aresta pode ter sido atravessada no sentido inverso.
+            no.setZ(.009)
 
     def mostrar_trecho(self, origem, destino, cor=AMARELO):
         """Atualiza a faixa ativa só quando a van troca de aresta."""

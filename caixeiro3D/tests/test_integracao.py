@@ -19,9 +19,10 @@ class CenaTeste:
         self.caminho = ()
         self.trechos = []
 
-    def mostrar_rota(self, caminho, cor=None):
+    def mostrar_rota(self, caminho, cor=None, *, ultimo_ativo=False):
         self.caminho = tuple(caminho)
         self.cor_rota = cor
+        self.ultimo_ativo = ultimo_ativo
         for a, b in zip(caminho, caminho[1:]):
             assert (a, b) in self.ruas
 
@@ -281,6 +282,54 @@ class IntegracaoTest(unittest.TestCase):
         self.assertIn('indisponivel', app.status.casefold())
         app.acao('selecionar_dijkstra')
         self.assertEqual(app.metodo, 'dijkstra')
+
+    def test_circuito_heuristico_recalcula_origem_e_guarda_destino_do_modo_a_b(self):
+        app = self.app
+        app.acao('mapa1')
+        app.ui.animar_busca = False
+        app.acao('selecionar_dijkstra')
+        app.acao('destino-')
+        app.acao('destino-')
+        app.acao('iniciar')
+        self.aguardar_calculo()
+        self.assertEqual(app.viagem.caminho, (1,))
+        self.assertEqual(app.resultado.custo, 0)
+        self.assertFalse(app.viagem.reproduzindo)
+
+        app.acao('destino')
+        app.acao('selecionar_heuristica')
+        app.acao('destino')
+        app.acao('destino+')
+        self.assertEqual(app.selecao, 'origem')
+        for origem in (1, 2):
+            self.assertEqual(app.origem, origem)
+            self.assertEqual(app.destino_final, origem)
+            app.acao('iniciar')
+            self.aguardar_calculo()
+            v = app.viagem
+            self.assertEqual((v.caminho[0], v.caminho[-1]), (origem, origem))
+            self.assertEqual(len(set(v.ordem_visita[:-1])), 18)
+            self.assertEqual(app.resultado.custo, app.mapa.custo(v.caminho))
+            app.acao('proximo')
+            app.atualizar(0)
+            self.assertEqual(app.cena.caminho, v.caminho[:3])
+            self.assertTrue(app.cena.ultimo_ativo)
+            app.acao('reiniciar')
+            app.atualizar(0)
+            self.assertEqual(app.cena.caminho, v.caminho[:2])
+            self.assertEqual(v.visitadas, {origem})
+            self.assertLess(dist(app.carro.getPos(), app.cena.posicoes[origem]), 1e-4)
+            app.acao('pausa')
+            app.atualizar(120)
+            self.assertTrue(v.concluida)
+            self.assertEqual(v.visitadas, set(app.mapa.ids))
+            self.assertEqual(app.cena.caminho, v.caminho)
+            self.assertFalse(app.cena.ultimo_ativo)
+            self.assertLess(dist(app.carro.getPos(), app.cena.posicoes[origem]), 1e-4)
+            app.acao('origem+')
+            self.assertIsNone(app.resultado)
+        app.acao('selecionar_dijkstra')
+        self.assertEqual(app.destino_final, 1)
 
     def test_modelo_da_van_tem_correcao_fixa_de_frente(self):
         self.assertEqual(self.app.modelo_carro.getH(), 180)

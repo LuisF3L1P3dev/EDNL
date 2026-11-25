@@ -26,11 +26,17 @@ disponíveis localmente. Para executá-lo agora, basta o último comando.
 | Bairro, 5 pontos | 8 | Força bruta, Dijkstra A → B e passeio heurístico | Circuito ótimo 1 → 2 → 3 → 5 → 4 → 1, custo **15** |
 | Região, 18 cidades | 45 | Circuito exato, Dijkstra A → B e passeio heurístico | Circuito ótimo de custo **391** |
 
-O circuito exato é o padrão da região. Encontra o circuito de menor custo em
-ruas diretas que entrega uma vez em cada cidade e retorna à origem. O passeio
-heurístico usa Dijkstra, vizinho mais próximo e 2-opt. Ele aceita passagens
-intermediárias e pode revisitar cidades. Dijkstra A → B calcula o caminho
-mínimo entre os dois pontos selecionados.
+Em **Caminho entre dois pontos**, selecione a origem e o destino. Dijkstra
+calcula o caminho mínimo entre eles. Se os dois pontos coincidirem, o custo
+é zero e a van permanece no local. Em **Circuito completo**, selecione a
+origem e pressione **Iniciar entrega**. A van faz as entregas em todos os
+pontos, retornando automaticamente à origem. O cálculo usa Dijkstra, vizinho
+mais próximo e 2-opt. Passagens intermediárias podem se repetir e o resultado
+é aproximado. A origem é reservada para a chegada final nos dois mapas do jogo.
+O painel oferece a ordem de entrega e o percurso físico.
+
+O **Circuito exato · TSP** é o padrão da região. Encontra o circuito de menor
+custo em ruas diretas que entrega uma vez em cada cidade e retorna à origem.
 
 O botão **Comparar soluções** calcula as rotas em segundo plano. No bairro,
 compare os dois circuitos a partir da mesma origem, com custo, tempo e diferença
@@ -48,7 +54,7 @@ custos lógicos; a distância exibida em `u.` mede unidades geométricas do cen�
 | Controle | Ação |
 | --- | --- |
 | Botões superiores / `1`, `2` | Trocar de mapa; a busca anterior é cancelada |
-| Painel esquerdo / `F`, `T`, `D`, `H` | Selecionar força bruta, circuito exato, Dijkstra ou passeio heurístico |
+| Painel esquerdo / `F`, `T`, `D`, `H` | Selecionar força bruta, circuito exato, caminho A → B ou circuito completo |
 | Origem ou destino e clique no ponto | Selecionar ponto de partida ou chegada |
 | Setas junto ao seletor | Percorrer os números dos pontos |
 | Iniciar entrega / espaço quando pronto | Calcular e acompanhar a busca e a viagem |
@@ -74,6 +80,10 @@ verde, passagens intermediárias em azul acinzentado, ponto atual em roxo e
 erros em vermelho. A animação sinaliza as entregas. A barra indica a distância
 física percorrida. O custo soma os pesos de cada trecho percorrido, incluindo
 passagens repetidas e o retorno à origem.
+
+No circuito heurístico, um contorno azul indica a próxima parada. Ao iniciar
+pelo seletor **Circuito completo**, as ruas percorridas recebem destaque amarelo
+e o trecho em curso aparece em laranja.
 
 ## Arquivos e responsabilidades
 
@@ -111,7 +121,11 @@ em `tmp/3d-review/`. Verifica os dois mapas em 1440×960 e 1100×760, custo,
 retorno físico à origem, pausa, reinício, velocidades, seleção por clique,
 cancelamento, diálogos e troca de mapa durante uma busca. Também confere o
 alinhamento dos marcadores, acompanha cada circuito a 4× com zoom de 300% e
-verifica as rotas selecionadas no card de comparação.
+verifica as rotas selecionadas no card de comparação. O circuito heurístico
+regional é percorrido em duas origens, com checagem das entregas e do retorno
+físico. Para gravar esse circuito, execute
+`python scripts/smoke_3d.py --demo-heuristica` com FFmpeg disponível.
+[Validação e vídeo do circuito heurístico.](docs/circuito-dijkstra/validacao.md)
 
 Os resultados e as capturas das tasks complementares estão no
 [relatório de posicionamento e câmera](docs/complementares/validacao.md).

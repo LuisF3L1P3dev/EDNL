@@ -243,17 +243,25 @@ def _circuito(ids, adj, origem, estado):
 
 
 def _heuristica(ids, adj, origem, estado):
-    matriz, caminhos = {}, {}
-    for inicio in ids:
-        estado.verificar()
-        distancias, anteriores = _dijkstra(adj, inicio, None, estado, "matriz")
-        matriz[inicio] = distancias
-        caminhos[inicio] = {
-            fim: _reconstituir(anteriores, inicio, fim)
-            for fim in ids if isfinite(distancias[fim])
-        }
-        if any(not isfinite(distancias[fim]) for fim in ids):
-            return
+    def calcular_matriz(reservar_origem):
+        matriz, caminhos = {}, {}
+        sem_saida = adj | {origem: {}} if reservar_origem else adj
+        for inicio in ids:
+            estado.verificar()
+            consulta = adj if inicio == origem else sem_saida
+            distancias, anteriores = _dijkstra(consulta, inicio, None, estado, "matriz")
+            if any(not isfinite(distancias[fim]) for fim in ids):
+                return None
+            matriz[inicio] = distancias
+            caminhos[inicio] = {fim: _reconstituir(anteriores, inicio, fim) for fim in ids}
+        return matriz, caminhos
+
+    # Entre entregas, Dijkstra pode chegar à origem, mas não sair dela.
+    # Grafos em que a origem é passagem obrigatória precisam do fecho original.
+    dados = calcular_matriz(True) or calcular_matriz(False)
+    if dados is None:
+        return
+    matriz, caminhos = dados
     estado.distancias = dict(matriz[origem])
 
     def expandir(ordem):

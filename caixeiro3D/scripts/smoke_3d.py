@@ -95,7 +95,7 @@ def verificar_posicionamento(app):
     assert not any(r.colliderect(hud._area_controles()) for r in etiquetas)
 
 
-def verificar_acompanhamento(app, sufixo, n):
+def verificar_acompanhamento(app, sufixo, n, *, nome=None):
     camera, v = app.camera_iso, app.viagem
     clicar(app, 'zoom+')
     assert camera.zoom > 1.
@@ -115,7 +115,7 @@ def verificar_acompanhamento(app, sufixo, n):
     clicar(app, 'pausa')
     for _ in range(90):
         app.atualizar(1/60)
-    capturar(app, f'mapa{n}-acompanhamento-{sufixo}.png')
+    capturar(app, f'{nome or f"mapa{n}"}-acompanhamento-{sufixo}.png')
     clicar(app, 'pausa')
     posicao, pan = tuple(app.carro.getPos()), tuple(camera.pan)
     app.atualizar(.25)
@@ -150,6 +150,7 @@ def verificar_acompanhamento(app, sufixo, n):
         if v.concluida:
             break
     assert v.concluida and chegadas | {app.origem} == set(app.mapa.ids)
+    assert dist(tuple(app.carro.getPos()), app.cena.posicoes[app.origem]) < 1e-4
     pan = tuple(camera.pan)
     app.atualizar(.25)
     assert tuple(camera.pan) == pan and camera.zoom == 3.
@@ -272,16 +273,23 @@ def gravar_curva():
         app.fechar()
 
 
-def gravar_circuito_regiao():
+def gravar_circuito_regiao(*, heuristico=False):
     """Grava o circuito completo e o painel de chegada da região."""
-    largura, altura, fps = 1100, 760, 15
+    largura, altura = 1100, 760
+    fps = 20 if heuristico else 15
     app = Aplicacao3D(tamanho=(largura, altura), offscreen=True)
-    destino = DESTINO / 'van-circuito-18.mp4'
+    destino = DESTINO / ('van-circuito-heuristico-18.mp4' if heuristico else 'van-circuito-18.mp4')
     try:
         app.acao('mapa1')
+        if heuristico:
+            clicar(app, 'selecionar_heuristica')
         calcular(app)
         viagem = app.viagem
-        assert viagem.total == 391 and viagem.caminho == viagem.ordem_visita
+        if heuristico:
+            assert viagem.total == app.mapa.custo(viagem.caminho)
+            assert (viagem.caminho[0], viagem.caminho[-1]) == (app.origem, app.origem)
+        else:
+            assert viagem.total == 391 and viagem.caminho == viagem.ordem_visita
         app.acao('velocidade')
         app.acao('velocidade')
         app.camera_iso.mudar_zoom(2)
@@ -376,6 +384,37 @@ def verificar_comparacao(app, n, sufixo):
         assert app.viagem.concluida and app.viagem.custo_atual == selecao.custo
 
 
+def verificar_circuito_heuristico(app, sufixo):
+    clicar(app, 'selecionar_dijkstra')
+    for _ in range(2):
+        clicar(app, 'destino-')
+    assert app.origem == app.destino_final == 1
+    calcular(app)
+    assert app.viagem.caminho == (1,) and app.viagem.total == 0 and app.viagem.concluida
+
+    clicar(app, 'selecionar_heuristica')
+    if sufixo == '1100x760':
+        for _ in range(13):
+            clicar(app, 'origem+')
+    assert app.origem == app.destino_final
+    calcular(app)
+    viagem = app.viagem
+    assert (viagem.caminho[0], viagem.caminho[-1]) == (app.origem, app.origem)
+    assert app.origem not in viagem.caminho[1:-1]
+    assert viagem.total == app.mapa.custo(viagem.caminho)
+    assert not app.cena.rota.find('**/trecho-ativo').isEmpty()
+    app.atualizar(8)
+    assert not app.cena.rota.find('**/rota-destacada').isEmpty()
+    capturar(app, f'heuristica18-em-viagem-{sufixo}.png')
+    app.acao('reiniciar')
+    frames = verificar_acompanhamento(app, sufixo, 18, nome='heuristica18')
+    assert viagem.visitadas == set(app.mapa.ids) and viagem.custo_atual == viagem.total
+    assert app.cena.rota.find('**/trecho-ativo').isEmpty()
+    capturar(app, f'heuristica18-final-{sufixo}.png')
+    return {'origem': app.origem, 'custo': viagem.total, 'ordem_visita': viagem.ordem_visita,
+            'percurso_fisico': viagem.caminho, 'quadros_acompanhados_em_4x': frames}
+
+
 def verificar(tamanho):
     sufixo = f'{tamanho[0]}x{tamanho[1]}'
     app = Aplicacao3D(tamanho=tamanho, offscreen=True)
@@ -442,6 +481,8 @@ def verificar(tamanho):
                     capturar_ponte(app)
             verificar_comparacao(app, n, sufixo)
             resultado['comparacao_e_rotas'] = True
+            if n == 18:
+                resultado['circuito_heuristico'] = verificar_circuito_heuristico(app, sufixo)
 
         # Seleção pelos mesmos alvos de clique usados pela interface real.
         app.acao('selecionar_dijkstra')
@@ -554,13 +595,14 @@ def main():
     parser.add_argument('--janela', action='store_true', help='verificar abertura, resize e fechamento em janela nativa')
     parser.add_argument('--demo', action='store_true', help='gravar demonstração MP4 com FFmpeg')
     parser.add_argument('--demo-regiao', action='store_true', help='gravar circuito de 18 cidades com FFmpeg')
+    parser.add_argument('--demo-heuristica', action='store_true', help='gravar circuito heurístico regional com FFmpeg')
     args = parser.parse_args()
     DESTINO.mkdir(parents=True, exist_ok=True)
     if args.demo:
         print(gravar_curva())
         return
-    if args.demo_regiao:
-        print(gravar_circuito_regiao())
+    if args.demo_regiao or args.demo_heuristica:
+        print(gravar_circuito_regiao(heuristico=args.demo_heuristica))
         return
     if args.janela:
         resultados = verificar_janela()

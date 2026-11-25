@@ -102,6 +102,11 @@ class Aplicacao3D(ShowBase):
         return self.mapas[self.indice_mapa]
 
     @property
+    def destino_final(self):
+        """O destino do modo A → B fica guardado ao escolher um circuito."""
+        return self.destino if self.metodo == 'dijkstra' else self.origem
+
+    @property
     def ocupado(self):
         return self.futuro is not None or bool(self._etapas) or self._resultado_pendente is not None
 
@@ -352,7 +357,7 @@ class Aplicacao3D(ShowBase):
                 pass
         self.fase, self.status = 'Calculando', 'A busca roda em segundo plano.'
         self.futuro = self.executor.submit(executar, self.metodo, self.mapa, self.origem,
-                                            destino=self.destino, cancelar=cancelar, progresso=progresso)
+                                            destino=self.destino_final, cancelar=cancelar, progresso=progresso)
         if self.comparacao_aberta and self.comparacao_futuro is None:
             self._iniciar_comparacao(self._contexto_comparacao())
 
@@ -378,10 +383,14 @@ class Aplicacao3D(ShowBase):
                     self.status = 'Metodo indisponivel neste mapa.'
                 else:
                     self.metodo = metodo
+                    if metodo != 'dijkstra':
+                        self.selecao = 'origem'
                     self._limpar()
-        elif acao in ('origem', 'destino') and not self.ocupado:
+        elif (acao in ('origem', 'destino') and not self.ocupado
+              and (acao == 'origem' or self.metodo == 'dijkstra')):
             self.selecao = acao
-        elif acao in ('origem-', 'origem+', 'destino-', 'destino+') and not self.ocupado:
+        elif (acao in ('origem-', 'origem+', 'destino-', 'destino+') and not self.ocupado
+              and (acao.startswith('origem') or self.metodo == 'dijkstra')):
             campo, passo = acao[:-1], 1 if acao[-1] == '+' else -1
             ids = self.mapa.ids
             setattr(self, campo, ids[(ids.index(getattr(self, campo)) + passo) % len(ids)])
@@ -498,13 +507,18 @@ class Aplicacao3D(ShowBase):
                 self._trecho_visual = ()
             return
         if self.viagem.concluida:
-            # Após a entrega, HUD e cena voltam a mostrar o percurso inteiro
-            # uma única vez; durante execução/pausa permanece só o trecho.
+            # Após a entrega, realçar todo o percurso uma única vez.
             if self._trecho_visual != ():
                 self.cena.mostrar_rota(self.viagem.caminho)
                 self._trecho_visual = ()
             return
         indice, _ = self.viagem.trecho
+        if self.metodo == 'heuristica':
+            # O índice diferencia passagens repetidas pela mesma aresta.
+            if indice != self._trecho_visual:
+                self.cena.mostrar_rota(self.viagem.caminho[:indice + 2], ultimo_ativo=True)
+                self._trecho_visual = indice
+            return
         trecho = tuple(self.viagem.caminho[indice:indice + 2])
         if len(trecho) != 2 or trecho == self._trecho_visual:
             return

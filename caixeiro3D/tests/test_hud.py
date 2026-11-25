@@ -10,7 +10,7 @@ from panda3d.core import NodePath
 
 from comparacao import CORES_ROTAS
 from geometria3d import criar_mapa_visual
-from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW, PASSAGEM
+from hud import HUD, RED, BLUE, GREEN, CURRENT, LINE, YELLOW, PASSAGEM, NEXT_POINT
 from mundo3d import Viagem
 from solvers import executar
 from tsp_core import carregar_mapa
@@ -65,6 +65,10 @@ class _App:
 
     def mouse_pixel(self):
         return self.mouse
+
+    @property
+    def destino_final(self):
+        return Aplicacao3D.destino_final.fget(self)
 
     def acao(self, acao):
         self.acoes.append(acao)
@@ -424,6 +428,46 @@ class TestHUD(unittest.TestCase):
         self.assertIn('Entregas: 18 / 18', textos)
         self.assertIn('Percurso físico segue a ordem acima', textos)
         self.assertEqual(tuple(int(n) for t in textos if '→' in t for n in t.split() if n.isdigit()), r.caminho)
+
+    def test_circuito_heuristico_destaca_entrega_retorno_e_progresso(self):
+        app = self.construir((1100, 760))
+        hud = app.ui
+        viewport = app.camera_iso.viewport
+        app.camera_iso.projetar = lambda p: (viewport.centerx + p[0] * 4, viewport.centery - p[1] * 4)
+        self.assertTrue(hud.botoes['selecionar_heuristica'][1])
+        self.assertTrue(hud.botoes['selecionar_dijkstra'][1])
+        self.assertNotIn('destino', hud.botoes)
+        app.resultado = executar('heuristica', app.mapa, app.origem)
+        r = app.resultado
+        app.viagem.carregar(app.mapa, r.caminho, ordem_visita=r.ordem_visita, indices_visita=r.indices_visita)
+        app.progresso_visual = .25
+        hud.textos.clear()
+        hud.desenhar()
+        textos = [t for t, _, _ in hud.textos]
+        self.assertIn('Circuito completo', textos)
+        self.assertIn('Dijkstra + heurística', textos)
+        self.assertIn('Ponto 01 · retorno à origem', textos)
+        self.assertIn('Origem 01 · retorno 01', textos)
+        self.assertIn('25%', textos)
+        x, y = hud.posicoes_tela[r.ordem_visita[1]]
+        self.assertEqual(hud.canvas.get_at((x + 18, y))[:3], NEXT_POINT)
+
+        for _ in range(r.indices_visita[-2]):
+            app.viagem.saltar(1)
+        hud.textos.clear()
+        hud.desenhar()
+        self.assertEqual(app.viagem.proxima_entrega, app.origem)
+        self.assertIn('RETORNO', [t for t, _, _ in hud.textos])
+        self.assertIn('retorno à origem', hud._texto_trecho())
+        app.viagem.reproduzir()
+        app.viagem.atualizar(100)
+        app.progresso_visual = 1.
+        hud.textos.clear()
+        hud.desenhar()
+        textos = [t for t, _, _ in hud.textos]
+        self.assertIn('Entregas: 18 / 18', textos)
+        self.assertIn('100%', textos)
+        self.assertNotIn('RETORNO', textos)
 
     def test_card_comparacao_em_duas_resolucoes_sem_cobrir_controles(self):
         for tamanho in ((1100, 760), (1440, 960)):

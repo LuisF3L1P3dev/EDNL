@@ -126,6 +126,10 @@ class Viagem:
     def passagens(self):
         return set(self.caminho[:self._indice + 1]) - self.visitadas
 
+    @property
+    def proxima_entrega(self):
+        return next((self.caminho[i] for i in self.indices_visita if i > self._indice), None)
+
     def carregar(self, grafo, caminho, *, ciclo=True, duracoes=None,
                  ordem_visita=None, indices_visita=None):
         caminho = tuple(caminho)

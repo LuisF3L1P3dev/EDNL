@@ -39,7 +39,15 @@ class ContratosTests(unittest.TestCase):
                     self.assertEqual(r.termino, 'concluido')
                     self.assertEqual(r.caminho[0], a)
                     self.assertEqual(r.caminho[-1], a)
+                    self.assertNotIn(a, r.caminho[1:-1])
                     self.assertEqual(set(r.caminho), set(g.ids))
+                    self.assertEqual((r.ordem_visita[0], r.ordem_visita[-1]), (a, a))
+                    self.assertEqual(len(r.ordem_visita), len(g.ids) + 1)
+                    self.assertEqual(set(r.ordem_visita[:-1]), set(g.ids))
+                    for inicio, fim in zip(r.indices_visita, r.indices_visita[1:]):
+                        trecho = r.caminho[inicio:fim + 1]
+                        direto = executar('dijkstra', g, trecho[0], trecho[-1])
+                        self.assertEqual(g.custo(trecho), direto.custo)
                     self.assertEqual(r.custo, g.custo(r.caminho))
                     self.assertIn('sem garantia', r.garantia)
 
