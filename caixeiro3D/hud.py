@@ -36,8 +36,8 @@ def _offsets_pins(largura, altura):
 _OFFSETS_PESOS = tuple(sorted(((x, y) for x in range(-144, 145, 16)
                                for y in range(-144, 145, 16)),
                               key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
-_OFFSETS_CIDADES = tuple(sorted(((x, y) for x in range(-120, 121, 12)
-                                 for y in range(-120, 121, 12) if x*x + y*y <= 120**2),
+_OFFSETS_CIDADES = tuple(sorted(((x, y) for x in range(-156, 157, 12)
+                                 for y in range(-156, 157, 12) if x*x + y*y <= 156**2),
                                 key=lambda d: (d[0]**2 + d[1]**2, d[1], d[0])))
 
 
@@ -187,7 +187,9 @@ class HUD:
         nos = sorted(a.cena.mapa_visual.nos, key=lambda n: (n.id != a.origem, n.id))
         marcadores = getattr(a.cena, 'marcadores_no', {})
         offsets = _offsets_pins(viewport.w, viewport.h)
-        proximos = _OFFSETS_CIDADES if cidades else tuple(d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
+        tem_rotatorias = bool(getattr(a.cena, 'rotatorias', ()))
+        proximos = _OFFSETS_CIDADES if cidades or tem_rotatorias else tuple(
+            d for d in offsets if d[0]**2 + d[1]**2 <= 64**2)
         for no_visual in nos:
             no = no_visual.id
             p = a.camera_iso.projetar(marcadores.get(no, no_visual.posicao_marcador))
@@ -227,6 +229,7 @@ class HUD:
             preferido = centro
             escolhido = None
             candidatos = chain(((x, y, True) for x, y in proximos),
+                               ((x, y, True) for x, y in offsets) if tem_rotatorias else (),
                                ((x, y, False) for x, y in offsets))
             for ox, oy, evitar_edificios in candidatos:
                 cx = round(max(viewport.left + margem_x + 2,
@@ -294,9 +297,10 @@ class HUD:
             if d.tipo not in ('edificio', 'placa'):
                 continue
             hx, hy = getattr(d, 'semieixos', None) or (d.raio, d.raio)
+            base_z = NIVEL_GRAMA + (.59 if d.tipo == 'placa' else 0.)
             pontos = [self.app.camera_iso.projetar((d.x + x, d.y + y, z))
                       for x in (-hx, hx) for y in (-hy, hy)
-                      for z in (NIVEL_GRAMA, NIVEL_GRAMA + d.altura)]
+                      for z in (base_z, NIVEL_GRAMA + d.altura)]
             pontos = [p for p in pontos if p is not None]
             if pontos:
                 x0, x1 = min(p[0] for p in pontos), max(p[0] for p in pontos)
@@ -331,11 +335,12 @@ class HUD:
         fonte = self.fonte(12, True)
         arestas = sorted(a.mapa.arestas, key=lambda e: frozenset((e.origem, e.destino)) not in selecionadas)
         layout = []
+        eixos = a.cena.mapa_visual.eixos_pavimento
         for e in arestas:
             texto = f'{e.peso:g}'
             tamanho = fonte.size(texto)
             escolhido = None
-            amostras = _amostras_pesos(a.cena.ruas[e.origem, e.destino])
+            amostras = _amostras_pesos(eixos[e.origem, e.destino])
             projetados = [a.camera_iso.projetar(ponto) for ponto in amostras]
             projetados = [p for p in projetados if p is not None]
             if not projetados:

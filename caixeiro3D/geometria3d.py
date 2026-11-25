@@ -291,14 +291,12 @@ def _criar_em_cache(identidade, posicoes, construcoes, com_rotatorias):
             por_aresta[16, 17] = (ancoras[16], ancoras[17])
             por_aresta[17, 18] = (ancoras[17], (x, y - 4.5, z),
                                   (ancoras[18][0], y - 4.5, z), ancoras[18])
-            no, angulo = 17, 3 * pi / 4
-        elif grafo.id == 'mapa_05' and set(adj.get(4, ())) == {1, 2, 3, 5}:
-            no, angulo = 4, -pi / 4
-        else:
-            no = None
-        if no is not None:
+        if grafo.id in {'mapa_05', 'mapa_18'}:
             eixos = por_aresta | {(v, u): p[::-1] for (u, v), p in por_aresta.items()}
-            rotatorias = (planejar_rotatoria(no, ancoras[no], sorted(adj[no]), eixos, angulo),)
+            rotatorias = tuple(
+                planejar_rotatoria(no, centro, sorted(adj[no]), eixos, -pi / 4)
+                for no, centro in ancoras.items() if len(adj[no]) >= 3
+            )
     arestas = [ArestaVisual(aresta, por_aresta[aresta.origem, aresta.destino])
                for aresta in grafo.arestas]
     return MapaVisual(grafo, nos, tuple(arestas), tuple(pontes), rotatorias)
@@ -442,6 +440,13 @@ def fracao_com_rotatoria(pontos, zonas, fracao):
     i = bisect_right(tempos, t) - 1
     progresso = (t - tempos[i]) / (tempos[i + 1] - tempos[i])
     return (distancias[i] + progresso * (distancias[i + 1] - distancias[i])) / comprimento
+
+
+def comprimento_no_ritmo_da_via(pontos, zonas):
+    """Comprimento ponderado pela desaceleração usada na animação."""
+    if zonas:
+        return _perfil_rotatoria(pontos, zonas)[1][-1]
+    return medir_rua(pontos).comprimento
 
 
 @lru_cache(maxsize=64)

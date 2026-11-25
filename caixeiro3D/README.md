@@ -115,6 +115,9 @@ geral da região, detalhes dos três perfis de cidade e as medições do HUD.
 O [relatório de rotatórias e sinalização](docs/rotatorias/validacao.md)
 reúne as capturas dos novos acessos, postes e placas e os testes do percurso.
 
+O [relatório de todos os cruzamentos](docs/rotatorias-cruzamentos/validacao.md)
+mostra as 23 rotatórias, os testes do grafo e a demonstração da curva da van.
+
 Captura rápida, sem manter uma janela aberta:
 
 ```powershell

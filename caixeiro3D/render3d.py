@@ -7,6 +7,7 @@ O veículo, as luzes e as etiquetas projetadas pertencem à aplicação.
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from functools import lru_cache
 from math import atan2, cos, degrees, dist, hypot, pi, sin
 from random import Random
 
@@ -14,10 +15,10 @@ from panda3d.core import (Geom, GeomNode, GeomTriangles, GeomVertexData, TextNod
                          GeomVertexFormat, GeomVertexWriter,
                          TransparencyAttrib, Vec3)
 
-from geometria3d import COTA_LOTE, NIVEL_GRAMA, criar_mapa_visual, fracao_com_rotatoria, medir_rua
+from geometria3d import (COTA_LOTE, NIVEL_GRAMA, comprimento_no_ritmo_da_via,
+                         criar_mapa_visual, fracao_com_rotatoria, medir_rua)
 from roteamento3d import LARGURA_VIA
 from cidades3d import COTA_PRACA, planejar_cidades
-from rotatorias3d import BOCA, RAIO_EXTERNO, RAIO_INTERNO, RAIO_PISTA
 
 
 LARGURA_RUA = LARGURA_VIA
@@ -69,25 +70,70 @@ def superficie(parent, nome, pontos, cor, *, material=None):
 
 
 def _disco(parent, nome, x, y, z, raio, cor, *, proporcao=1., lados=20):
-    return superficie(parent, nome, [
+    return superficie(parent, nome, _pontos_disco(x, y, z, raio, proporcao, lados), cor)
+
+
+def _pontos_disco(x, y, z, raio, proporcao, lados):
+    return tuple(
         (x + cos(i * 2 * pi / lados) * raio,
          y + sin(i * 2 * pi / lados) * raio * proporcao, z)
         for i in range(lados)
-    ], cor)
+    )
 
 
 def _faixa(parent, nome, a, b, largura, cor, elevacao=0.):
+    pontos = _pontos_faixa(a, b, largura, elevacao)
+    if pontos:
+        return superficie(parent, nome, pontos, cor)
+
+
+def _pontos_faixa(a, b, largura, elevacao):
     dx, dy = b[0] - a[0], b[1] - a[1]
     comprimento = hypot(dx, dy)
     if comprimento <= 1e-8:
-        return
+        return ()
     px, py = -dy / comprimento * largura / 2, dx / comprimento * largura / 2
-    return superficie(parent, nome, [
+    return (
         (a[0] + px, a[1] + py, a[2] + elevacao),
         (a[0] - px, a[1] - py, a[2] + elevacao),
         (b[0] - px, b[1] - py, b[2] + elevacao),
         (b[0] + px, b[1] + py, b[2] + elevacao),
-    ], cor)
+    )
+
+
+@lru_cache(maxsize=128)
+def _geometria_destaque(pontos_rua, cor):
+    """Compartilha as faixas e juntas de uma rua entre prévia e viagem."""
+    rua = medir_rua(pontos_rua)
+    poligonos = []
+    for a, b in rua.segmentos:
+        contorno = _pontos_faixa(a, b, .34, .031)
+        if contorno:
+            poligonos.append((contorno, (.60, .40, .08, 1)))
+            poligonos.append((_pontos_faixa(a, b, .24, .035), cor))
+    for x, y, z in rua.pontos:
+        poligonos.append((_pontos_disco(x, y, z + .036, .12, 1., 12), cor))
+
+    dados = GeomVertexData("rota", GeomVertexFormat.getV3c4(), Geom.UH_static)
+    quantidade = sum(len(pontos) for pontos, _ in poligonos)
+    dados.setNumRows(quantidade)
+    vertices = GeomVertexWriter(dados, "vertex")
+    cores = GeomVertexWriter(dados, "color")
+    triangulos = GeomTriangles(Geom.UH_static)
+    if quantidade > 65535:
+        triangulos.setIndexType(Geom.NT_uint32)
+    triangulos.reserveNumVertices(3 * (quantidade - 2 * len(poligonos)))
+    indice = 0
+    for pontos, tinta in poligonos:
+        for ponto in pontos:
+            vertices.setData3(*ponto)
+            cores.setData4(*tinta)
+        for i in range(1, len(pontos) - 1):
+            triangulos.addVertices(indice, indice + i, indice + i + 1)
+        indice += len(pontos)
+    geometria = Geom(dados)
+    geometria.addPrimitive(triangulos)
+    return geometria
 
 
 def _projetar_no_segmento(x, y, a, b):
@@ -210,7 +256,7 @@ class Cena3D:
         self.construcoes_no = {}
         self.cidades = {}
         self._espacos_urbanos = ()
-        self._acessos = tuple((self.posicoes[no.id], no.entrada) for no in self.mapa_visual.nos)
+        self._acessos = tuple(self._acesso_construcao(no) for no in self.mapa_visual.nos)
         self.modelos_usados = set()
         self._limites_modelos = {}
         self.trechos_rua = 0
@@ -249,6 +295,18 @@ class Cena3D:
 
     def fracao_percurso(self, par, fracao):
         return fracao_com_rotatoria(self.ruas[par], self.mapa_visual.zonas_rotatorias.get(par), fracao)
+
+    def duracoes_percurso(self, caminho):
+        if not self.rotatorias or len(caminho) < 2:
+            return None
+        comprimentos = tuple(
+            comprimento_no_ritmo_da_via(self.ruas[par], self.mapa_visual.zonas_rotatorias.get(par))
+            for par in zip(caminho, caminho[1:])
+        )
+        # Limita o ritmo nas retas a 18 unidades/s em 1×. O perfil do anel
+        # usa o mesmo comprimento ponderado para reduzir o ritmo local.
+        ritmo = min(18., sum(comprimentos) / 30.)
+        return tuple(comprimento / ritmo for comprimento in comprimentos)
 
     def pontos_enquadramento(self):
         """Envelope completo que a câmera ortográfica precisa preservar.
@@ -361,27 +419,29 @@ class Cena3D:
     def _construir_rotatoria(self, rotatoria, textura):
         x, y, z = rotatoria.centro
         meio_fio = self._modelo('rua', 'road-roundabout', raio_maximo=.351).copyTo(self.raiz)
-        escala = RAIO_INTERNO / .35
+        escala = rotatoria.raio_interno / .35
         meio_fio.setScale(escala, escala, 3.)
         meio_fio.setPos(x, y, z - .03)
         _disco(self.raiz, 'grama-da-ilha', x, y, z + .02, .25 * escala, COR_GRAMA, lados=48)
         arvore = self._modelo('suburbio', 'tree-small').copyTo(self.raiz)
         altura = arvore.getTightBounds()[1].z
-        arvore.setScale(1.08 / altura)
-        arvore.setPos(x, y, z + .02)
+        arvore.setScale(.82 / altura)
+        arvore.setPos(x - .26, y + .22, z + .02)
+        arbusto = self._modelo('suburbio', 'planter').copyTo(self.raiz)
+        lo, hi = arbusto.getTightBounds()
+        arbusto.setScale(.45 / max(hi.x - lo.x, hi.y - lo.y))
+        arbusto.setPos(x + .29, y - .21, z + .02)
         perfis = tuple(rotatoria.perfis_pavimento())
         for (a, b), (c, d) in zip(perfis, perfis[1:]):
             superficie(self.raiz, 'piso-rotatoria', [a, b, d, c], TINTA_RUA,
                        material=(textura, (.03125, .125)))
         self.trechos_rua += len(perfis) - 1
-        for _, angulo in rotatoria.bracos:
-            dx, dy = cos(angulo), sin(angulo)
+        for braco in rotatoria.bracos:
             for lateral in (.14, .32):
-                cx, cy = x + dx * (BOCA - .14) - dy * lateral, y + dy * (BOCA - .14) + dx * lateral
                 superficie(self.raiz, 'marca-preferencia',
-                           [(cx - dx * .11, cy - dy * .11, z + .008),
-                            (cx + dx * .055 - dy * .065, cy + dy * .055 + dx * .065, z + .008),
-                            (cx + dx * .055 + dy * .065, cy + dy * .055 - dx * .065, z + .008)],
+                           [braco.deslocar(-.25, lateral, .008),
+                            braco.deslocar(-.085, lateral + .065, .008),
+                            braco.deslocar(-.085, lateral - .065, .008)],
                            (.98, .95, .86, 1))
 
     def _pista_ponte(self, a, b, textura):
@@ -514,7 +574,7 @@ class Cena3D:
     def distancia_rua(self, x, y):
         """Distância XY à rua mais próxima, útil para verificar lotes."""
         retas = min((_distancia_segmento(x, y, a, b) for a, b in self._segmentos), default=float("inf"))
-        anel = min((abs(hypot(x - r.centro[0], y - r.centro[1]) - RAIO_PISTA)
+        anel = min((abs(hypot(x - r.centro[0], y - r.centro[1]) - r.raio_pista)
                     for r in self.rotatorias), default=float("inf"))
         return min(retas, anel)
 
@@ -524,7 +584,7 @@ class Cena3D:
         for x0, y0, x1, y1 in self._agua + self._espacos_urbanos:
             if hypot(x - max(x0, min(x1, x)), y - max(y0, min(y1, y))) < raio + .1:
                 return False
-        if any(hypot(x - r.centro[0], y - r.centro[1]) < RAIO_EXTERNO + raio + .32
+        if any(hypot(x - r.centro[0], y - r.centro[1]) < r.raio_externo + raio + .32
                for r in self.rotatorias):
             return False
         if self.distancia_rua(x, y) < raio + LARGURA_RUA / 2 + margem_rua:
@@ -615,11 +675,7 @@ class Cena3D:
         superficie(suporte, "lote-do-no", [(-metade, -metade, COTA_LOTE),
                    (metade, -metade, COTA_LOTE), (metade, metade, COTA_LOTE),
                    (-metade, metade, COTA_LOTE)], COR_CALCADA)
-        ancora, entrada = self.posicoes[no_visual.id], no_visual.entrada
-        if any(r.no == no_visual.id for r in self.rotatorias):
-            # A calçada da cidade chega ao passeio pelo lado externo do anel.
-            r = next(r for r in self.rotatorias if r.no == no_visual.id)
-            ancora = r.ponto(r.angulo_chegada, RAIO_EXTERNO)
+        ancora, entrada = self._acesso_construcao(no_visual)
         _faixa(self.raiz, f"acesso-no-{no_visual.id}", ancora, entrada,
                LARGURA_ACESSO, COR_CALCADA)
         _faixa(self.raiz, f"porta-no-{no_visual.id}", entrada, no_visual.porta,
@@ -629,6 +685,15 @@ class Cena3D:
                                raio, altura, no_visual.id)
         self.decoracoes.append(construcao)
         self.construcoes_no[no_visual.id] = construcao
+
+    def _acesso_construcao(self, no):
+        entrada = no.entrada
+        r = next((r for r in self.rotatorias if r.no == no.id), None)
+        if r is None:
+            return no.acesso
+        # O passeio termina na margem do anel voltada para a fachada.
+        angulo = atan2(entrada[1] - r.centro[1], entrada[0] - r.centro[0])
+        return r.ponto(angulo, r.limite_externo(angulo)), entrada
 
     def _construir_cidade(self, cidade):
         largura, comprimento = cidade.area
@@ -807,6 +872,18 @@ class Cena3D:
             superficie(suporte, 'acesso-preferencial', [a, b, c], (.88, .25, .31, 1))
             superficie(suporte, 'miolo-preferencial',
                        [(-.158, -.053, 1.), (.158, -.053, 1.), (0., -.053, .727)], (.99, .97, .91, 1))
+        elif tipo == 'rotatoria':
+            superficie(suporte, 'painel-da-rotatoria',
+                       [(.245 * cos(i*pi/10), -.052, .90 + .245 * sin(i*pi/10))
+                        for i in range(20)], (.18, .43, .72, 1))
+            for i in range(3):
+                angulo = i * 2 * pi / 3
+                c, s = cos(angulo), sin(angulo)
+                for peca in (((.09, -.075), (.135, -.075), (.135, .065), (.09, .065)),
+                             ((.058, .045), (.166, .045), (.112, .135))):
+                    superficie(suporte, 'seta-da-rotatoria',
+                               [(x*c - z*s, -.062, .90 + x*s + z*c) for x, z in peca],
+                               (.98, .97, .91, 1))
         elif texto:
             if tipo == 'velocidade':
                 # A placa circular tem a face em -Y, na direção da aproximação.
@@ -834,29 +911,34 @@ class Cena3D:
                            (.28, -.066, .93), (.20, -.066, .93)], cor_texto)
                 superficie(suporte, 'ponta-da-seta',
                            [(.28, -.066, .83), (.37, -.066, .90), (.28, -.066, .97)], cor_texto)
-        self.decoracoes.append(Decoracao('placa', 'rua', modelo, x, y, raio, 1.18))
+        face = (abs(dy) * raio + abs(dx) * .08, abs(dx) * raio + abs(dy) * .08)
+        self.decoracoes.append(Decoracao('placa', 'rua', modelo, x, y, raio, 1.18, semieixos=face))
         self.sinalizacao.append((tipo, (x, y), direcao))
         return True
 
     def _sinalizar(self):
         for r in self.rotatorias:
-            cx, cy, _ = r.centro
             limite_colocado = False
-            acessos = sorted(r.bracos, key=lambda braco: sin(braco[1]) - cos(braco[1]))
-            for vizinho, angulo in acessos:
-                dx, dy = cos(angulo), sin(angulo)
-                vagas = ((cx + (BOCA + recuo) * dx - lateral * dy,
-                          cy + (BOCA + recuo) * dy + lateral * dx)
+            painel_colocado = False
+            acessos = sorted(r.bracos, key=lambda braco: sin(braco.angulo) - cos(braco.angulo))
+            for braco in acessos:
+                dx, dy = cos(braco.angulo), sin(braco.angulo)
+                vagas = (braco.deslocar(recuo, lateral)
                          for lateral in (1.08, 1.32, 1.58, -1.08)
                          for recuo in (.55, .95, 1.35, 1.85, 2.35))
-                for x, y in vagas:
+                for x, y, _ in vagas:
                     if self._placa('preferencia', x, y, (dx, dy)):
                         break
+                if not painel_colocado:
+                    for recuo, lateral in ((1.5, -1.08), (2.2, 1.08), (1.7, -1.55), (2.25, -1.32)):
+                        x, y, _ = braco.deslocar(recuo, lateral)
+                        if self._placa('rotatoria', x, y, (dx, dy)):
+                            painel_colocado = True
+                            break
                 for recuo in (2.4, 2.9, 3.45):
-                    x = cx + (BOCA + recuo) * dx + 1.12 * dy
-                    y = cy + (BOCA + recuo) * dy - 1.12 * dx
+                    x, y, _ = braco.deslocar(recuo, -1.12)
                     tipo = 'direcao' if limite_colocado else 'velocidade'
-                    texto = '30' if tipo == 'velocidade' else f'VIA {vizinho:02}'
+                    texto = '30' if tipo == 'velocidade' else f'VIA {braco.vizinho:02}'
                     if self._placa(tipo, x, y, (dx, dy), texto):
                         limite_colocado = True
                         break
@@ -884,11 +966,10 @@ class Cena3D:
     def _iluminar_ruas(self):
         postes = 0
         for r in self.rotatorias:
-            x, y, _ = r.centro
-            for _, angulo in r.bracos:
-                dx, dy = cos(angulo), sin(angulo)
+            for braco in r.bracos:
+                dx, dy = cos(braco.angulo), sin(braco.angulo)
                 for recuo in (.35, .80, 1.15):
-                    px, py = x + (BOCA + recuo)*dx + 1.0*dy, y + (BOCA + recuo)*dy - 1.0*dx
+                    px, py, _ = braco.deslocar(recuo, -1.)
                     if self._adicionar_decoracao('poste', 'rua', 'light-curved', px, py, 1.55,
                                                 degrees(atan2(dy, dx))):
                         postes += 1
@@ -1011,19 +1092,17 @@ class Cena3D:
         if not set(caminho) <= set(self.posicoes):
             raise ValueError("A rota contém um nó inexistente.")
         try:
-            ruas = [medir_rua(self.ruas[a, b]) for a, b in zip(caminho, caminho[1:])]
+            ruas = [self.ruas[par] for par in dict.fromkeys(zip(caminho, caminho[1:]))]
         except KeyError as erro:
             raise ValueError("A rota contém uma rua inexistente.") from erro
         # Validar primeiro preserva a rota atual se o novo percurso for inválido.
-        self.limpar_rota()
-        self._trecho_destacado = None
+        malha = GeomNode("rota-destacada")
+        cor = tuple(cor)
         for rua in ruas:
-            for a, b in rua.segmentos:
-                _faixa(self.rota, "contorno-rota", a, b, .34, (.60, .40, .08, 1), .031)
-                _faixa(self.rota, "rota-amarela", a, b, .24, cor, .035)
-            for x, y, z in rua.pontos:
-                _disco(self.rota, "junta-rota", x, y, z + .036, .12, cor, lados=12)
-        self.rota.flattenStrong()
+            malha.addGeom(_geometria_destaque(rua, cor))
+        self.limpar_rota()
+        if ruas:
+            self.rota.attachNewNode(malha).setTwoSided(True)
 
     def mostrar_trecho(self, origem, destino, cor=AMARELO):
         """Atualiza a faixa ativa só quando a van troca de aresta."""

@@ -73,6 +73,21 @@ class MundoTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.v.atualizar(-1)
 
+    def test_duracao_visual_preserva_custo_e_chegadas_nas_tres_velocidades(self):
+        for velocidade in (1, 2, 4):
+            with self.subTest(velocidade=velocidade):
+                self.v.carregar(self.g, (1, 2, 3, 1), duracoes=(3., 1., 2.))
+                self.v.velocidade = velocidade
+                self.v.atualizar(1.5 / velocidade)
+                self.assertEqual(self.v.trecho, (0, .5))
+                self.assertEqual(self.v.custo_atual, 1.)
+                self.v.atualizar(1.5 / velocidade)
+                self.assertEqual(self.v.visitadas, {1, 2})
+                self.assertEqual(self.v.custo_atual, 2.)
+                self.v.atualizar(5. / velocidade)
+                self.assertTrue(self.v.concluida)
+                self.assertEqual(self.v.custo_atual, 9.)
+
     def test_unico_e_validacao(self):
         self.v.carregar(self.g, (2,), ciclo=False)
         self.assertTrue(self.v.concluida)

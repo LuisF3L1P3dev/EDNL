@@ -163,6 +163,25 @@ class IntegracaoTest(unittest.TestCase):
         self.assertTrue(app.viagem.concluida)
         self.assertEqual(app.cena.caminho, app.viagem.caminho)
 
+    def test_replay_da_regiao_inicia_a_viagem_em_ate_um_segundo_e_dois_decimos(self):
+        app = self.app
+        app.acao('mapa1')
+        app.acao('iniciar')
+        app.futuro.result(timeout=5)
+        app.atualizar(0)
+        self.assertTrue(app.ocupado)
+        self.assertEqual(app.fase, 'Exibindo a busca')
+
+        with patch.object(app.cena, 'mostrar_rota', wraps=app.cena.mostrar_rota) as destaque:
+            # Um quadro atrasado consome o replay, sem desenhar cada etapa
+            # descartada ou avançar a van usando tempo anterior à partida.
+            app.atualizar(1.2 + 1e-8)
+            self.assertFalse(app.ocupado)
+            self.assertEqual(app.resultado.custo, 340)
+            self.assertEqual(app.viagem.trecho, (0, 0.))
+            self.assertTrue(app.viagem.reproduzindo)
+            destaque.assert_called_once_with(app.viagem.caminho[:2])
+
     def test_modal_bloqueia_acao(self):
         app = self.app
         app.acao('config')
@@ -222,7 +241,7 @@ class IntegracaoTest(unittest.TestCase):
             self.assertEqual(app.distancia_percorrida, 11.)
             self.assertEqual(app.progresso_visual, 1.)
 
-    def test_retorno_gira_parado_e_sai_alinhado_em_1x_e_4x(self):
+    def test_retorno_no_anel_preserva_o_sentido_em_1x_e_4x(self):
         app = self.app
         for velocidade in (1, 4):
             with self.subTest(velocidade=velocidade):
@@ -233,16 +252,18 @@ class IntegracaoTest(unittest.TestCase):
                 saida = medir_rua(app.cena.ruas[12, 13]).amostrar(0.)
                 rumo_entrada = heading_da_direcao(entrada.tangente)
                 rumo_saida = heading_da_direcao(saida.tangente)
+                giro = diferenca_angular(rumo_entrada, rumo_saida)
+                self.assertLess(abs(giro), 8.)
                 tempo_ate_parada = 30 * app.viagem.pesos[0] / app.viagem.total / velocidade
                 app.atualizar(tempo_ate_parada - .01 / velocidade)
-                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_entrada), 0.)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_entrada), 0., places=4)
                 app.atualizar(.01 / velocidade + 1e-8)
                 self.assertLess(dist(tuple(app.carro.getPos()), entrada.ponto), 1e-5)
                 self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_entrada), 0., places=3)
 
                 app.atualizar(app.viagem.PAUSA_CHEGADA / (2 * velocidade))
                 meio_giro = app.carro.getH()
-                self.assertAlmostEqual(abs(diferenca_angular(rumo_entrada, meio_giro)), 90., places=3)
+                self.assertAlmostEqual(diferenca_angular(rumo_entrada, meio_giro), giro / 2., places=3)
                 app.acao('pausa')
                 app.atualizar(10.)
                 self.assertEqual(meio_giro, app.carro.getH())
@@ -251,11 +272,12 @@ class IntegracaoTest(unittest.TestCase):
                 app.acao('pausa')
                 app.atualizar(.17 / velocidade)
                 self.assertFalse(app.viagem.em_chegada)
-                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_saida), 0.)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), rumo_saida), 0., places=4)
                 app.atualizar(40.)
                 fim = medir_rua(app.cena.ruas[12, 13]).amostrar(1.)
                 self.assertLess(dist(tuple(app.carro.getPos()), fim.ponto), 1e-5)
-                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), heading_da_direcao(fim.tangente)), 0.)
+                self.assertAlmostEqual(diferenca_angular(app.carro.getH(), heading_da_direcao(fim.tangente)),
+                                       0., places=4)
 
 
 if __name__ == '__main__':

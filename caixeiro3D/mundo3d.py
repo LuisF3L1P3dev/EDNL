@@ -75,7 +75,7 @@ def direcao_antecipada(ruas, caminho, indice, fracao, distancia=2.25):
 
 @dataclass
 class Viagem:
-    """Relogio de percurso: custo avanca por 30 s de movimento a 1x.
+    """Relógio de percurso com durações visuais independentes dos pesos.
 
     A cada chegada intermediaria ha 0,3 s de sinalizacao, escalados pela
     velocidade. `trecho` e (indice da aresta, fracao); no percurso unitario
@@ -83,6 +83,7 @@ class Viagem:
     """
     caminho: tuple = ()
     pesos: tuple = ()
+    duracoes: tuple = field(default=(), init=False)
     custo_atual: float = 0.
     reproduzindo: bool = False
     velocidade: float = 1.
@@ -119,7 +120,7 @@ class Viagem:
     def visitadas(self):
         return set(self.caminho[:self._indice + 1])
 
-    def carregar(self, grafo, caminho, *, ciclo=True):
+    def carregar(self, grafo, caminho, *, ciclo=True, duracoes=None):
         caminho = tuple(caminho)
         if not caminho:
             raise ValueError("Percurso vazio.")
@@ -134,10 +135,18 @@ class Viagem:
             raise ValueError("Percurso contem uma rua inexistente.") from erro
         if any(not isfinite(p) or p <= 0 for p in pesos):
             raise ValueError("A animacao exige pesos positivos.")
+        if duracoes is None:
+            total = sum(pesos)
+            duracoes = tuple(30. * peso / total for peso in pesos)
+        else:
+            duracoes = tuple(duracoes)
+            if len(duracoes) != len(pesos) or any(not isfinite(t) or t <= 0 for t in duracoes):
+                raise ValueError("Cada trecho exige uma duração visual positiva.")
         acumulados = [0.]
         for peso in pesos:
             acumulados.append(acumulados[-1] + peso)
         self.caminho, self.pesos = caminho, pesos
+        self.duracoes = duracoes
         self._acumulados = tuple(acumulados)
         self.reiniciar()
         self.reproduzindo = bool(pesos)
@@ -150,7 +159,6 @@ class Viagem:
         if not self.reproduzindo or not dt:
             return
         restante = dt * self.velocidade
-        taxa = self.total / 30.
         while restante > 0 and not self.concluida:
             if self._espera:
                 consumido = min(restante, self._espera)
@@ -159,6 +167,7 @@ class Viagem:
                 if self._espera > 1e-10:
                     break
                 self._espera = 0.
+            taxa = self.pesos[self._indice] / self.duracoes[self._indice]
             tempo = (self._acumulados[self._indice + 1] - self.custo_atual) / taxa
             if restante < tempo:
                 self.custo_atual += restante * taxa

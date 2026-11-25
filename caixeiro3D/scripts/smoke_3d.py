@@ -5,10 +5,12 @@ Executar da raiz: python scripts/smoke_3d.py. Não controla o desktop.
 import argparse
 from itertools import combinations
 import json
-from math import dist
+from math import ceil, dist
 from pathlib import Path
 import statistics
+import subprocess
 import sys
+from tempfile import TemporaryDirectory
 from time import perf_counter
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +20,6 @@ from direct.showbase.MessengerGlobal import messenger
 from panda3d.core import PNMImage, StringStream
 from geometria3d import medir_rua
 from mundo3d import diferenca_angular, heading_da_direcao
-from rotatorias3d import RAIO_INTERNO, RAIO_PISTA
 from tsp_3d import Aplicacao3D
 
 DESTINO = ROOT / 'tmp' / '3d-review'
@@ -75,7 +76,8 @@ def verificar_posicionamento(app):
     assert len(hud.etiquetas_tela) == len(nos)
     assert len(hud.pesos_tela) == len(app.mapa.arestas)
     if cena.cidades:
-        assert not any(r.collidelist(hud._edificios_tela) >= 0 for r in hud.etiquetas_tela.values())
+        cobertos = [no for no, r in hud.etiquetas_tela.items() if r.collidelist(hud._edificios_tela) >= 0]
+        assert not cobertos, (camera.viewport.size, camera.zoom, cobertos)
     for no in nos:
         ancora = cena.marcadores_no[no.id]
         assert hud.ancoras_tela[no.id] == camera.projetar(ancora)
@@ -125,18 +127,21 @@ def verificar_acompanhamento(app, sufixo, n):
         app.atualizar(1/60)
     clicar(app, 'pausa')
     chegadas = set()
-    for frames in range(1, 601):
+    limite_quadros = ceil((sum(v.duracoes) + len(v.pesos) * v.PAUSA_CHEGADA) * 60 / v.velocidade) + 2
+    chegada_rotatorias = {r.no: r for r in app.cena.rotatorias}
+    for frames in range(1, limite_quadros):
         app.atualizar(1/60)
         i, fracao = v.trecho
         par = v.caminho[i:i + 2]
         amostra = medir_rua(app.cena.ruas[par]).amostrar(app.cena.fracao_percurso(par, fracao))
         assert dist(app.carro.getPos(), amostra.ponto) < 1e-4
-        if par in app.cena.mapa_visual.zonas_rotatorias:
-            r = app.cena.rotatorias[0]
-            assert dist(amostra.ponto[:2], r.centro[:2]) >= RAIO_INTERNO
-            if not v.em_chegada:
-                heading = heading_da_direcao(amostra.tangente)
-                assert abs(diferenca_angular(heading, app.carro.getH())) <= 45.001
+        for no in par:
+            if no in chegada_rotatorias:
+                r = chegada_rotatorias[no]
+                assert dist(amostra.ponto[:2], r.centro[:2]) >= r.raio_interno
+        if not v.em_chegada:
+            heading = heading_da_direcao(amostra.tangente)
+            assert abs(diferenca_angular(heading, app.carro.getH())) <= 45.001
         p = camera.projetar(app.carro.getPos(app.render))
         assert p is not None and camera.viewport.collidepoint(p), (n, frames, par, p)
         if v.em_chegada:
@@ -153,6 +158,20 @@ def verificar_acompanhamento(app, sufixo, n):
     clicar(app, 'reset')
     v.velocidade = 1
     return frames
+
+
+def tempo_para_posicao(app, indice, fracao_fisica):
+    viagem = app.viagem
+    par = viagem.caminho[indice:indice + 2]
+    esquerda, direita = 0., 1.
+    for _ in range(40):
+        meio = (esquerda + direita) / 2
+        if app.cena.fracao_percurso(par, meio) < fracao_fisica:
+            esquerda = meio
+        else:
+            direita = meio
+    return (sum(viagem.duracoes[:indice]) + direita * viagem.duracoes[indice]
+            + indice * viagem.PAUSA_CHEGADA)
 
 
 def capturar_ponte(app):
@@ -177,9 +196,7 @@ def capturar_ponte(app):
     app.acao('reiniciar')
     viagem.velocidade = 1
     app.acao('pausa')
-    taxa = viagem.total / 30.
-    app.atualizar((sum(viagem.pesos[:i]) + fracao * viagem.pesos[i]) / taxa
-                  + i * viagem.PAUSA_CHEGADA)
+    app.atualizar(tempo_para_posicao(app, i, fracao))
     assert dist(app.carro.getPos(), ponte.centro) < 1e-4
     ponto = app.camera_iso.projetar(ponte.centro)
     cx, cy = app.camera_iso.viewport.center
@@ -191,33 +208,68 @@ def capturar_ponte(app):
 
 def capturar_rotatoria(app, n):
     viagem = app.viagem
-    rotatoria, = app.cena.rotatorias
-    zonas = app.cena.mapa_visual.zonas_rotatorias
-    _, i = max((max(zonas[par]), i) for i, par in enumerate(zip(viagem.caminho, viagem.caminho[1:]))
-               if par in zonas)
+    rotatoria = next(r for r in app.cena.rotatorias if r.no == (4 if n == 5 else 17))
+    i = viagem.caminho.index(rotatoria.no)
     par = viagem.caminho[i:i + 2]
     rua = medir_rua(app.cena.ruas[par])
-    alvo = rua.acumulados[8 if zonas[par][0] else -9] / rua.comprimento
-    esquerda, direita = 0., 1.
-    for _ in range(40):
-        meio = (esquerda + direita) / 2
-        if app.cena.fracao_percurso(par, meio) < alvo:
-            esquerda = meio
-        else:
-            direita = meio
+    anel = [s for p, s in zip(rua.pontos, rua.acumulados)
+            if abs(dist(p[:2], rotatoria.centro[:2]) - rotatoria.raio_pista) < .001]
+    alvo = anel[len(anel) // 2] / rua.comprimento
     app.acao('reiniciar')
     viagem.velocidade = 1
     app.acao('pausa')
-    taxa = viagem.total / 30.
-    app.atualizar((sum(viagem.pesos[:i]) + direita * viagem.pesos[i]) / taxa
-                  + i * viagem.PAUSA_CHEGADA)
-    assert abs(dist(tuple(app.carro.getPos())[:2], rotatoria.centro[:2]) - RAIO_PISTA) < .01
+    app.atualizar(tempo_para_posicao(app, i, alvo))
+    assert abs(dist(tuple(app.carro.getPos())[:2], rotatoria.centro[:2]) - rotatoria.raio_pista) < .01
     x, y = app.camera_iso.projetar(rotatoria.centro)
     cx, cy = app.camera_iso.viewport.center
     app.camera_iso.arrastar(cx - x, cy - y)
     app.camera_iso.mudar_zoom(3)
     capturar(app, f'rotatoria-mapa{n}.png')
     app.acao('reset')
+
+
+def gravar_curva():
+    """Grava a chegada e a saída reais da van no nó 4, em 1×."""
+    app = Aplicacao3D(offscreen=True)
+    destino = DESTINO / 'van-na-rotatoria.mp4'
+    try:
+        calcular(app)
+        viagem = app.viagem
+        rotatoria = next(r for r in app.cena.rotatorias if r.no == 4)
+        i = viagem.caminho.index(rotatoria.no)
+        entrada, saida = viagem.caminho[i - 1:i + 1], viagem.caminho[i:i + 2]
+        chegada = medir_rua(app.cena.ruas[entrada])
+        partida = medir_rua(app.cena.ruas[saida])
+        _, n_chegada = app.cena.mapa_visual.zonas_rotatorias[entrada]
+        n_partida, _ = app.cena.mapa_visual.zonas_rotatorias[saida]
+        a = (chegada.acumulados[-1 - n_chegada] - 2.) / chegada.comprimento
+        b = (partida.acumulados[n_partida] + 2.) / partida.comprimento
+        inicio = tempo_para_posicao(app, i - 1, a)
+        fim = tempo_para_posicao(app, i, b)
+        x, y = app.camera_iso.projetar(rotatoria.centro)
+        cx, cy = app.camera_iso.viewport.center
+        app.camera_iso.arrastar(cx - x, cy - y)
+        app.camera_iso.mudar_zoom(3)
+        app.atualizar(inicio)
+        fps = 24
+        with TemporaryDirectory(dir=DESTINO) as quadros:
+            pasta = Path(quadros)
+            for i in range(ceil((fim - inicio) * fps)):
+                app.ui.desenhar()
+                app.graphicsEngine.renderFrame()
+                imagem, fluxo = PNMImage(), StringStream()
+                assert app.win.getScreenshot(imagem) and imagem.write(fluxo, 'captura.png')
+                (pasta / f'{i:04}.png').write_bytes(fluxo.getData())
+                app.atualizar(1 / fps)
+            subprocess.run(
+                ['ffmpeg', '-y', '-loglevel', 'error', '-framerate', str(fps),
+                 '-i', str(pasta / '%04d.png'), '-pix_fmt', 'yuv420p', '-c:v', 'libx264',
+                 '-movflags', '+faststart', str(destino)],
+                check=True,
+            )
+        return destino
+    finally:
+        app.fechar()
 
 
 def capturar_cidade(app):
@@ -411,8 +463,12 @@ def verificar_janela():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--janela', action='store_true', help='verificar abertura, resize e fechamento em janela nativa')
+    parser.add_argument('--demo', action='store_true', help='gravar demonstração MP4 com FFmpeg')
     args = parser.parse_args()
     DESTINO.mkdir(parents=True, exist_ok=True)
+    if args.demo:
+        print(gravar_curva())
+        return
     if args.janela:
         resultados = verificar_janela()
         (DESTINO / 'janela.json').write_text(json.dumps(resultados, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

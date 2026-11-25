@@ -240,8 +240,8 @@ class TestRender3D(unittest.TestCase):
                 self.assertEqual(tuple(len(itens[t]) for t in ('banco', 'passeio')), (6, 8))
                 self.assertEqual({d.modelo for d in itens['poste']}, {'light-curved', 'light-square'})
                 tipos = [tipo for tipo, _, _ in cena.sinalizacao]
-                self.assertEqual(tipos.count('preferencia'), 4)
-                self.assertTrue({'velocidade', 'direcao', 'curva'} <= set(tipos))
+                self.assertGreaterEqual(tipos.count('preferencia'), len(cena.rotatorias))
+                self.assertTrue({'velocidade', 'direcao', 'curva', 'rotatoria'} <= set(tipos))
                 if cena.cidades:
                     self.assertIn('cidade', tipos)
                 self.assertTrue(all(abs(d.altura - 1.55) < .01 for d in itens['poste']))
@@ -372,7 +372,11 @@ class TestRender3D(unittest.TestCase):
                 self.assertEqual(cena.rota.getParent(), base.render)
                 self.assertEqual(cena.raiz.getParent(), base.render)
                 self.assertNotEqual(cena.raiz, cena.rota)
-                self.assertGreater(cena.rota.getNumChildren(), 0)
+                self.assertEqual(cena.rota.getNumChildren(), 1)
+                malha = cena.rota.getChild(0).node()
+                self.assertEqual(malha.getNumGeoms(), len(set(zip(resultado.caminho, resultado.caminho[1:]))))
+                cena.mostrar_trecho(*resultado.caminho[:2])
+                self.assertEqual(cena.rota.getChild(0).node().getGeom(0), malha.getGeom(0))
                 self.assertEqual(cena.raiz.getTightBounds(), limites)
                 self.assertTrue(cena.raiz.find("**/veículo").isEmpty())
                 filhos = cena.rota.getNumChildren()

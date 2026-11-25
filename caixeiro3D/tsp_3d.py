@@ -24,6 +24,8 @@ FASES = {'enumeracao': 'Comparando circuitos', 'dijkstra': 'Explorando caminhos'
          'vizinho_proximo': 'Escolhendo o próximo destino',
          '2-opt': 'Melhorando o circuito', 'expansao': 'Expandindo pelas ruas reais',
          'concluido': 'Busca concluída'}
+INTERVALO_REPLAY = .1
+ETAPAS_REPLAY_REGIAO = 12
 
 
 class Aplicacao3D(ShowBase):
@@ -341,8 +343,11 @@ class Aplicacao3D(ShowBase):
             self.etapa = Progresso('concluido', r.caminho, r.custo,
                                    r.explorados, r.distancias, r.candidatas)
         if r and r.caminho and r.termino == 'concluido':
-            self.viagem.carregar(self.mapa, r.caminho, ciclo=self.metodo != 'dijkstra')
-            self.cena.mostrar_rota(r.caminho)
+            duracoes = getattr(self.cena, 'duracoes_percurso', None)
+            self.viagem.carregar(self.mapa, r.caminho, ciclo=self.metodo != 'dijkstra',
+                                 duracoes=duracoes(r.caminho) if duracoes else None)
+            if not self.viagem.pesos:
+                self.cena.mostrar_rota(r.caminho)
             self._trecho_visual = None
             self._heading_carro = None
             self._posicionar_carro()
@@ -417,28 +422,38 @@ class Aplicacao3D(ShowBase):
                 futuro, self.futuro = self.futuro, None
                 try:
                     self._resultado_pendente = futuro.result()
+                    if self.indice_mapa == 1 and len(self._etapas) > ETAPAS_REPLAY_REGIAO:
+                        etapas = tuple(self._etapas)
+                        ultimo = len(etapas) - 1
+                        self._etapas.clear()
+                        self._etapas.extend(etapas[i * ultimo // (ETAPAS_REPLAY_REGIAO - 1)]
+                                            for i in range(ETAPAS_REPLAY_REGIAO))
                 except Exception as erro:
                     self._etapas.clear()
                     self._resultado_pendente = None
                     self.fase, self.status = 'Erro no calculo', str(erro)
+        dt_viagem = dt
         if self._resultado_pendente is not None and not self._replay_pausado:
             if not self.ui.animar_busca:
                 self._etapas.clear()
             self._relogio += max(0, dt) * self.viagem.velocidade
-            while self._etapas and self._relogio >= .1:
-                self._relogio -= .1
+            previa = ()
+            while self._etapas and self._relogio >= INTERVALO_REPLAY:
+                self._relogio -= INTERVALO_REPLAY
                 self.etapa = self._etapas.popleft()
-                self.fase = FASES.get(self.etapa.fase, self.etapa.fase)
-                self.status = (f'{self.etapa.candidatas} candidatos avaliados'
-                               if self.metodo == 'forca' else
-                               f'{len(self.etapa.explorados)} pontos explorados')
-                if self.etapa.caminho:
-                    self.cena.mostrar_rota(self.etapa.caminho)
+                previa = self.etapa.caminho or previa
             if not self._etapas:
                 self._finalizar_busca()
+                dt_viagem = 0.
+            else:
+                self.fase = 'Exibindo a busca'
+                fase = FASES.get(self.etapa.fase, self.etapa.fase) if self.etapa else 'Resultado calculado'
+                self.status = fase
+                if previa:
+                    self.cena.mostrar_rota(previa)
         indice_anterior, _ = self.viagem.trecho
         estava_em_chegada = self.viagem.em_chegada
-        self.viagem.atualizar(dt)
+        self.viagem.atualizar(dt_viagem)
         if not self.viagem.em_chegada and (estava_em_chegada or self.viagem.trecho[0] != indice_anterior):
             # Um frame pode consumir toda a pausa. A van sai alinhada mesmo
             # se a última orientação desenhada ainda estava no meio do giro.
@@ -453,7 +468,7 @@ class Aplicacao3D(ShowBase):
                 self.fase = 'Em viagem'
             else:
                 self.fase = 'Pausado'
-        self._posicionar_carro(dt if self.viagem.reproduzindo else 0.)
+        self._posicionar_carro(dt_viagem if self.viagem.reproduzindo else 0.)
         if self.arraste and not self.ui.config_aberta:
             p = self.mouse_pixel()
             if p:
